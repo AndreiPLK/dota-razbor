@@ -94,7 +94,15 @@ canvas{max-width:100%}
 .rp{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:8px 14px;font-weight:500}
 .rp.active{background:var(--accent);border-color:var(--accent);font-weight:700}
 .rp small{color:var(--muted);margin-left:4px} .rp.active small{color:#fff}
-#offerCard .rolepick{padding:14px 0 0} #offerCard .rolepick.hidden{display:none}
+#offerCard .rolepick{padding:14px 0 0;display:grid;gap:6px} #offerCard .rolepick.hidden{display:none}
+.rrow{display:grid;grid-template-columns:200px 1fr auto;gap:12px;align-items:center;padding:8px 12px;border-radius:10px;background:var(--panel2);border:1px solid var(--line)}
+@media(max-width:600px){.rrow{grid-template-columns:1fr auto}.rrow>.muted{grid-column:1/3;grid-row:2}}
+.rrow.cur{border-color:var(--accent)} .rrow.off{opacity:.55}
+.hp{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:14px;line-height:1;margin-left:4px;filter:grayscale(1);opacity:.7}
+.hp:hover{opacity:1;filter:none} .hp.on{filter:none;opacity:1;border-color:var(--good);background:#1d3326} .hp.no.on{border-color:var(--bad);background:#3a1d1d}
+.himg .hpref{position:absolute;top:6px;right:6px;display:flex}
+.himg .hpref .hp{background:rgba(0,0,0,.65)}
+.hcard.liked{border-color:var(--good)}
 #offerTitle{font-size:22px;line-height:1.3}
 .accent{color:var(--accent)}
 #offerWhy li{margin:4px 0}
@@ -172,7 +180,7 @@ details.more>summary::after{content:' ▾';color:var(--muted)} details.more[open
       <h2 id="offerTitle"></h2>
       <ul class="ins" id="offerWhy"></ul>
       <p class="muted" id="winLine" style="margin:12px 0 0"></p>
-      <div class="offerbar"><span id="offerAlt" class="muted"></span><button class="ghost" id="changeRole">Хочу другую позицию</button></div>
+      <div class="offerbar"><span id="offerAlt" class="muted"></span><button class="ghost" id="changeRole">Все позиции: выбрать или отметить</button></div>
       <div class="rolepick hidden" id="rolePick"></div>
     </div>
 
@@ -180,6 +188,8 @@ details.more>summary::after{content:' ▾';color:var(--muted)} details.more[open
 
     <div class="card">
       <h2 id="heroTitle">Герои</h2>
+      <p class="hint" id="prefHint" style="margin:-6px 0 14px"></p>
+      <div id="likedWrap" class="hidden" style="margin-bottom:20px"><h3>Ты хочешь играть</h3><div class="hgroups" id="hLiked"></div></div>
       <div class="hgroups">
         <div><h3>Твои сильные</h3><div class="hcol" id="hStrong"></div></div>
         <div><h3>Мета под тебя</h3><div class="hcol" id="hMeta"></div></div>
@@ -284,6 +294,16 @@ async function gql(query, retry = 3){
   if(j.errors && (!j.data || Object.values(j.data).every(v => v == null))) throw new Error('Stratz: ' + j.errors[0].message);
   return j.data;
 }
+// Список матчей игрока. Stratz иногда падает на отдельном запросе («Error trying to resolve field»)
+// и отдаёт пустоту — это сбой, а не «матчей нет», поэтому повторяем до 4 раз с растущей паузой.
+async function gqlMatches(query){
+  for(let i = 0; i < 4; i++){
+    try{ const d = await gql(query); if(d.player && d.player.matches) return d.player.matches; }
+    catch(e){ if(i === 3) throw e; }
+    await sleep(2000 * 2**i);
+  }
+  throw new Error('Stratz не отдал список матчей. Подожди минуту и нажми «Разобрать» ещё раз.');
+}
 async function ensureHeroes(){
   if(Object.keys(heroes).length) return;
   const c = lsGet('st_heroes');
@@ -351,25 +371,35 @@ function myLaneResult(m, me){
 let PERIOD = {label: 'за всё время', short: 'всё время', cap: 'Всё время'};
 const LIGHT = `id didRadiantWin durationSeconds startDateTime analysisOutcome bottomLaneOutcome midLaneOutcome topLaneOutcome averageRank
   me: players(steamAccountId: $ID) { heroId position lane isRadiant isVictory kills deaths assists goldPerMinute networth numLastHits heroDamage towerDamage imp award partyId }`;
-// Список матчей кэшируется: повторный разбор докачивает только новые игры.
-// full — в кэше вся история игрока (нужно для «всего времени»).
+// Список матчей кэшируется и докачивается: сначала новые игры сверху, потом — вглубь истории
+// с того места, где остановились в прошлый раз. Каждая страница сразу сохраняется, так что сбой
+// Stratz посреди загрузки не теряет уже скачанное. full — в кэше вся история игрока.
 async function yearLayer(id, posTable, days){
   const since = days ? Math.floor(Date.now()/1000) - days*86400 : 0, ck = 'st_matches_' + id;
-  let cache = lsGet(ck);
-  if(cache && !days && !cache.full) cache = null;
-  const cached = cache ? cache.v : [], known = new Set(cached.map(m => m.id)), fresh = [];
-  let full = cache ? cache.full : false;
-  for(let skip = 0; skip < 6000; skip += 100){
-    prog(PERIOD.cap, `Матчи ${skip + 1}–${skip + 100}…`, 0.03 + Math.min(0.12, 0.12*skip/2000));
-    const d = await gql(`{ player(steamAccountId: ${id}) { matches(request: {take: 100, skip: ${skip}, lobbyTypeIds: [0,7], gameModeIds: [1,22]}) { ${LIGHT.replace('$ID', id)} } } }`);
-    const page = d.player.matches || [], news = page.filter(m => !known.has(m.id));
-    fresh.push(...news);
-    if(news.length < page.length) break;                     // дошли до уже сохранённых матчей
-    if(page.length < 100){ full = true; break; }
-    if(page[page.length-1].startDateTime < since) break;
+  const cache = lsGet(ck), ok = cache && cache.v && cache.v.length;
+  let raw = ok ? cache.v : [], full = ok ? !!cache.full : false;
+  const save = () => lsSet(ck, {t: Date.now(), full, v: raw});
+  const fetchPage = skip => gqlMatches(`{ player(steamAccountId: ${id}) { matches(request: {take: 100, skip: ${skip}, lobbyTypeIds: [0,7], gameModeIds: [1,22]}) { ${LIGHT.replace('$ID', id)} } } }`);
+  const failed = () => new Error(`Stratz сейчас сбоит. Уже загружено ${raw.length} матчей и сохранено — нажми «Разобрать» ещё раз, продолжу с этого места.`);
+  if(raw.length){
+    const known = new Set(raw.map(m => m.id)), fresh = [];
+    for(let skip = 0; skip < 6000; skip += 100){
+      prog(PERIOD.cap, 'Новые матчи…', 0.03);
+      let page; try{ page = await fetchPage(skip); }catch(e){ throw failed(); }
+      const news = page.filter(m => !known.has(m.id));
+      fresh.push(...news);
+      if(news.length < page.length || page.length < 100) break;   // дошли до уже сохранённых
+    }
+    raw = [...fresh, ...raw]; save();
   }
-  const raw = [...fresh, ...cached];
-  lsSet(ck, {t: Date.now(), full, v: raw});
+  for(let skip = raw.length; !full && skip < 6000 && (!raw.length || raw[raw.length-1].startDateTime >= since); skip += 100){
+    prog(PERIOD.cap, `Матчи ${skip + 1}–${skip + 100}…`, 0.03 + Math.min(0.12, 0.12*skip/2000));
+    let page; try{ page = await fetchPage(skip); }catch(e){ save(); throw failed(); }
+    const known = new Set(raw.map(m => m.id));
+    raw.push(...page.filter(m => !known.has(m.id)));
+    if(page.length < 100) full = true;
+    save();
+  }
   const list = raw.filter(m => m.startDateTime >= since && m.me && m.me[0]);
   if(!list.length) throw new Error(`Матчей ${PERIOD.label} не видно — статистика скрыта в настройках Dota 2 или профиль не тот.`);
   return list.map(m => { const me = m.me[0];
@@ -388,12 +418,15 @@ async function monthLayer(id, yearGames, posTable, refTime){
   let list = yearGames.filter(g => g.t >= since);
   if(list.length < 20) list = yearGames.slice(0, 40);
   list = list.slice(0, 100);
-  const out = [];
-  for(let i = 0; i < list.length; i += 20){
-    const ids = list.slice(i, i+20).map(g => g.id);
-    prog('Месяц под микроскопом', `Матчи ${i+1}–${Math.min(i+20, list.length)} из ${list.length}`, 0.35 + 0.45*(i+20)/list.length);
-    const d = await gql(`{ player(steamAccountId: ${id}) { matches(request: {matchIds: [${ids.join(',')}], take: 20}) { ${HEAVY.replace('$ID', id)} } } }`);
-    (d.player.matches || []).forEach(m => { const s = summarize(m, posTable, refTime); if(s) out.push(s); });
+  // Разобранный матч сохраняется: повторно качаем только новые и те, что Stratz ещё не успел разобрать
+  const MK = mid => 'st_m_' + id + '_' + mid;
+  const out = [], need = [];
+  list.forEach(g => { const s = lsGet(MK(g.id)); if(s && s.parsed) out.push(s); else need.push(g.id); });
+  for(let i = 0; i < need.length; i += 20){
+    const ids = need.slice(i, i+20);
+    prog('Месяц под микроскопом', `Новые матчи ${i+1}–${Math.min(i+20, need.length)} из ${need.length}`, 0.35 + 0.45*(i+20)/need.length);
+    const page = await gqlMatches(`{ player(steamAccountId: ${id}) { matches(request: {matchIds: [${ids.join(',')}], take: 20}) { ${HEAVY.replace('$ID', id)} } } }`);
+    page.forEach(m => { const s = summarize(m, posTable, refTime); if(s){ out.push(s); lsSet(MK(s.id), s); } });
   }
   return out.sort((a,b) => b.t - a.t);
 }
@@ -557,9 +590,26 @@ function whyHero(x, wp){
   return parts.join(' ');
 }
 
+// ───────── отметки игрока: «хочу / не хочу» героев и позиций ─────────
+// Хранятся в браузере, отдельно для каждого игрока. heroes[id] / roles[p] = 1 (хочу) или -1 (не хочу).
+const prefKey = () => 'dc_prefs_' + state.id;
+function prefs(){ const p = lsGet(prefKey()) || {}; p.heroes = p.heroes || {}; p.roles = p.roles || {}; return p; }
+function setPref(kind, key, v){
+  const p = prefs();
+  if(p[kind][key] === v) delete p[kind][key]; else p[kind][key] = v;   // повторный клик снимает отметку
+  lsSet(prefKey(), p);
+  state.recommended = rankRoles(state, state.wp.aw)[0].p;
+  const saved = lsGet('dc_role_' + state.id);
+  setRole(saved || state.recommended, !!saved);
+}
+const prefBtns = (attr, key, cur, likeTitle, dislikeTitle) =>
+  `<button class="hp ${cur === 1 ? 'on' : ''}" ${attr}="${key}" data-v="1" title="${likeTitle}">👍</button><button class="hp no ${cur === -1 ? 'on' : ''}" ${attr}="${key}" data-v="-1" title="${dislikeTitle}">👎</button>`;
+
 // Подбор героев на позицию: 2 твоих сильных, 2 из меты, 2 вне меты и 1 «дикий» — нетипичный для позиции,
 // но совпадающий с профилем побед. Оценка новых: стиль побед 40% + герои того же типа, на которых ты выигрываешь 30% + мета 30%.
+// Герои с отметкой «не хочу» в советы не попадают.
 function recommendHeroes(yearGames, wp, pos, posTable){
+  const dis = prefs().heroes, ok = id => dis[id] !== -1;
   const yr = {};
   yearGames.forEach(g => { const o = yr[g.hero] = yr[g.hero] || {n:0,w:0,pn:0,pw:0,imp:[]}; o.n++; o.w += g.win; if(g.pos === pos){ o.pn++; o.pw += g.win; o.imp.push(g.imp); } });
   const totalAll = Object.values(posTable).reduce((s,t) => s + Object.values(t).reduce((a,x) => a + x.n, 0), 0);
@@ -570,22 +620,36 @@ function recommendHeroes(yearGames, wp, pos, posTable){
   keys.forEach(k => { const v = all.map(x => x.row[k]).filter(x => x != null); norm[k] = {min: Math.min(...v), max: Math.max(...v)}; });
   all.forEach(x => { x.fit = styleFit(x.row, norm, wp.aw); x.tagS = clamp(0.5 + (tagScore(x.h, wp) - wp.overall)/0.12, 0, 1);
     x.metaS = clamp(((x.metaWr ?? .5) - .44)/.12, 0, 1); x.total = 0.4*x.fit + 0.3*x.tagS + 0.3*x.metaS; });
-  const onPos = all.filter(x => x.share >= 0.2);
+  const onPos = all.filter(x => x.share >= 0.2 && ok(x.h.id));
   const impOf = x => mean(x.my.imp) || 0;
   // Свои сильные — любой герой, сыгранный на этой позиции 6+ раз, даже если в мете его тут не берут (Снайпер на миде и т. п.)
-  const strong = Object.entries(yr).filter(([,o]) => o.pn >= 6).map(([id, o]) => all.find(x => x.h.id === +id) || {h: H(+id), my: o, fit: .5, share: 0})
+  const strong = Object.entries(yr).filter(([id, o]) => o.pn >= 6 && ok(id)).map(([id, o]) => all.find(x => x.h.id === +id) || {h: H(+id), my: o, fit: .5, share: 0})
     .sort((a,b) => (solid(b.my.pw, b.my.pn) + impOf(b)/100) - (solid(a.my.pw, a.my.pn) + impOf(a)/100)).slice(0,2);
   const fresh = onPos.filter(x => !x.my || x.my.pn < 6);
   const medianPick = onPos.map(x => x.pick).sort((a,b) => a-b)[Math.floor(onPos.length/2)] || 0.008;
   const meta = fresh.filter(x => x.pick >= medianPick).sort((a,b) => b.total - a.total).slice(0,2);
   const off = fresh.filter(x => x.pick < medianPick).sort((a,b) => b.total - a.total).slice(0,2);
-  const wild = all.filter(x => x.share < 0.2 && (!x.my || x.my.n < 3) && x.metaWr != null && x.metaWr >= 0.47).sort((a,b) => (b.fit + b.tagS) - (a.fit + a.tagS))[0] || null;
-  return {strong, meta, off, wild, pool: strong};
+  const wild = all.filter(x => x.share < 0.2 && ok(x.h.id) && (!x.my || x.my.n < 3) && x.metaWr != null && x.metaWr >= 0.47).sort((a,b) => (b.fit + b.tagS) - (a.fit + a.tagS))[0] || null;
+  return {strong, meta, off, wild, pool: strong, all, yr};
 }
 function heroCard(x, why, cls = ''){
   const g = x.my ? x.my.n : 0;
   const badge = g ? `<span class="badge">${x.my.w}–${g - x.my.w} ${PERIOD.label}</span>` : `<span class="badge new">ни разу ${PERIOD.label}</span>`;
-  return `<div class="hcard ${cls}"><div class="himg"><img src="${CDN + x.h.img}" alt="">${badge}</div><div class="hb"><div class="hn">${x.h.localized_name}</div><div class="hr">${why}</div></div></div>`;
+  const pb = prefBtns('data-h', x.h.id, prefs().heroes[x.h.id], 'Хочу играть — проверить, подходит ли он мне', 'Не хочу — убрать из советов');
+  return `<div class="hcard ${cls}"><div class="himg"><img src="${CDN + x.h.img}" alt="">${badge}<span class="hpref">${pb}</span></div><div class="hb"><div class="hn">${x.h.localized_name}</div><div class="hr">${why}</div></div></div>`;
+}
+// Честная оценка героя, которого игрок отметил «хочу»: где его играют, как он у тебя идёт и подходит ли под твой профиль побед
+function likedCard(hid, S){
+  const t = S.posTable[hid] || {}, tot = Object.values(t).reduce((a,x) => a + x.n, 0);
+  const mainPos = tot ? +Object.entries(t).sort((a,b) => b[1].n - a[1].n)[0][0] : S.trainRole.p;
+  const r = recommendHeroes(S.year, S.wp, mainPos, S.posTable);
+  const x = r.all.find(y => y.h.id === hid) || {h: H(hid), my: r.yr[hid], fit: .5, tagS: .5, total: .5, share: tot ? t[mainPos].n/tot : 0, metaWr: null};
+  const verdict = x.total >= .62 ? ['Да, твой герой', 'good'] : x.total >= .5 ? ['Можно качать', 'warn'] : ['Пойдёт тяжело', 'bad'];
+  const my = x.my;
+  const txt = `<b class="${verdict[1]}">${verdict[0]}.</b> Его играют в основном на позиции ${roleShort(mainPos).toLowerCase()} (${pct0(x.share)} игр). `
+    + (my ? `У тебя ${my.w}–${my.n - my.w}${my.pn ? `, на этой позиции ${my.pw}–${my.pn - my.pw}` : ''}. ` : 'Ты на нём ещё не играл. ')
+    + whyHero(x, S.wp) + (mainPos !== S.trainRole.p ? ` <button class="linkbtn" data-go="${mainPos}">Разбор для позиции ${roleShort(mainPos).toLowerCase()} →</button>` : '');
+  return heroCard(x, txt, 'liked');
 }
 
 // ───────── рендер ─────────
@@ -606,15 +670,16 @@ const roleShort = p => POS[p].split(' · ')[1];
 // Что позиция требует от игрока — оси психотипа (safe = 100 − риск)
 const ROLE_NEEDS = {1:[['farm','фарм'],['safe','выживаемость']], 2:[['aggr','агрессия'],['farm','фарм']], 3:[['team','драки'],['push','давление']],
   4:[['aggr','агрессия'],['team','драки']], 5:[['map','карта'],['team','драки']]};
-// Оценка позиции: результат на ней (винрейт, IMP, линия) с весом по числу игр + насколько она подходит под тип игрока
+// Оценка позиции: результат на ней (винрейт, IMP, линия) с весом по числу игр + насколько она подходит под тип игрока.
+// Отметка «хочу» добавляет позиции вес, «не хочу» отправляет её в конец (советуется, только если отмечены все).
 function rankRoles(S, ax){
-  const val = k => k === 'safe' ? 100 - ax.risk : (ax[k] ?? 50);
+  const val = k => k === 'safe' ? 100 - ax.risk : (ax[k] ?? 50), pr = prefs().roles;
   return S.rolesY.map(r => {
     const needs = ROLE_NEEDS[r.p], fit = mean(needs.map(([k]) => val(k)))/100, conf = Math.min(1, r.n/30);
     const wrS = clamp((smooth(r.w, r.n) - 0.42)/0.16, 0, 1), impS = r.imp == null ? .5 : clamp((r.imp + 12)/24, 0, 1), laneS = r.laneN >= 10 ? r.lane : .45;
-    const score = conf*(0.35*wrS + 0.25*impS + 0.15*laneS) + (1 - conf)*0.375 + 0.25*fit;
-    return {...r, fit, score, needs: needs.map(([k,l]) => `${l} ${Math.round(val(k))}`)};
-  }).sort((a,b) => b.score - a.score);
+    const score = conf*(0.35*wrS + 0.25*impS + 0.15*laneS) + (1 - conf)*0.375 + 0.25*fit + (pr[r.p] === 1 ? 0.08 : 0);
+    return {...r, fit, score, liked: pr[r.p] === 1, disliked: pr[r.p] === -1, needs: needs.map(([k,l]) => `${l} ${Math.round(val(k))}`)};
+  }).sort((a,b) => (a.disliked - b.disliked) || (b.score - a.score));
 }
 
 function renderReport(S){
@@ -655,7 +720,7 @@ function renderReport(S){
       recR.n < 30 ? 'Игр на ней мало — совет больше по стилю, чем по результатам.' : null,
       bestHeroes.length ? `Твои лучшие герои на любой позиции: ${bestHeroes.join(', ')}.` : null,
     ].filter(Boolean).map(t => `<li>${t}</li>`).join('');
-    const alts = ranked.filter(r => r.p !== tr.p).slice(0, 2);
+    const alts = ranked.filter(r => r.p !== tr.p && !r.disliked).slice(0, 2);
     $('offerAlt').innerHTML = `Ещё подходят: ${alts.map(r => `<button class="linkbtn" data-p="${r.p}">${roleShort(r.p)}</button>`).join(' и ')}`;
   } else {
     $('offerTitle').innerHTML = `Ты выбрал: <span class="accent">${POS[tr.p]}</span>`;
@@ -664,10 +729,14 @@ function renderReport(S){
     $('offerAlt').innerHTML = `<button class="linkbtn" data-p="0">← Вернуть совет: ${roleShort(S.recommended)}</button>`;
   }
   $('winLine').textContent = winLineText(S.wp);
-  $('rolePick').innerHTML = [1,2,3,4,5].map(p => { const r = rolesY.find(x => x.p === p);
-    return `<button class="rp ${p === tr.p ? 'active' : ''}" data-p="${p}">${roleShort(p)}<small>${r.n ? `${r.n} игр · ${pct0(r.wr)}` : 'нет игр'}</small></button>`; }).join('');
+  // Панель позиций: разбор по любой из них + отметки «хочу / не хочу», которые учитывает совет
+  const pr = prefs().roles;
+  $('rolePick').innerHTML = `<div class="hint" style="margin:0 0 4px">👍 — хочу эту позицию, совет её предпочтёт. 👎 — не хочу, советовать не будем.</div>` + [1,2,3,4,5].map(p => { const r = rolesY.find(x => x.p === p);
+    return `<div class="rrow ${p === tr.p ? 'cur' : ''} ${pr[p] === -1 ? 'off' : ''}"><button class="linkbtn" data-p="${p}">${POS[p]}</button>
+      <span class="muted">${r.n ? `${r.n} игр · ${pct0(r.wr)}` : 'нет игр'}${p === S.recommended ? ' · наш совет' : ''}${p === tr.p ? ' · сейчас на экране' : ''}</span>
+      <span>${prefBtns('data-r', p, pr[p], 'Хочу эту позицию', 'Не хочу эту позицию')}</span></div>`; }).join('');
   const pick = p => { p = +p; lsSet(roleKey, p && p !== S.recommended ? p : null); setRole(p || S.recommended, !!p && p !== S.recommended); };
-  document.querySelectorAll('#rolePick .rp, #offerAlt .linkbtn').forEach(b => b.onclick = () => pick(b.dataset.p));
+  document.querySelectorAll('#rolePick .linkbtn, #offerAlt .linkbtn').forEach(b => b.onclick = () => pick(b.dataset.p));
   $('changeRole').onclick = () => $('rolePick').classList.toggle('hidden');
 
   // ── причины поражений, победы vs поражения, матчапы — по фокусу
@@ -711,6 +780,15 @@ function renderReport(S){
   $('hMeta').innerHTML = rec.meta.map(x => heroCard(x, why(x))).join('') || '<p class="muted">—</p>';
   $('hOff').innerHTML = rec.off.map(x => heroCard(x, why(x))).join('') || '<p class="muted">—</p>';
   $('hWild').innerHTML = rec.wild ? heroCard(rec.wild, `На эту позицию его берут только в ${pct0(rec.wild.share)} игр — враг к такому не готов. ${why(rec.wild)}`, 'wild') : '<p class="muted">—</p>';
+  const ph = prefs().heroes, liked = Object.keys(ph).filter(h => ph[h] === 1).map(Number), hidden = Object.keys(ph).filter(h => ph[h] === -1).length;
+  $('hLiked').innerHTML = liked.map(h => likedCard(h, S)).join('');
+  $('likedWrap').classList.toggle('hidden', !liked.length);
+  $('prefHint').innerHTML = `👍 на герое — «хочу играть»: он появится сверху с оценкой, подходит ли он тебе. 👎 — убрать из советов. Отметки сохраняются в этом браузере.`
+    + (hidden ? ` Скрыто героев: ${hidden}. <button class="linkbtn" id="resetHidden">Вернуть всех</button>` : '');
+  if(hidden) $('resetHidden').onclick = () => { const p = prefs(); Object.keys(p.heroes).forEach(h => { if(p.heroes[h] === -1) delete p.heroes[h]; }); lsSet(prefKey(), p); setRole(tr.p, S.manual); };
+  document.querySelectorAll('[data-h]').forEach(b => b.onclick = () => setPref('heroes', b.dataset.h, +b.dataset.v));
+  document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => setPref('roles', b.dataset.r, +b.dataset.v));
+  document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => pick(b.dataset.go));
 
   // ── Подробная статистика (свёрнута)
   $('monthTitle').textContent = focus === mRole ? `Последний месяц на позиции ${rn.toLowerCase()} · ${fw}–${focus.length-fw}` : `Последний месяц · ${fw}–${focus.length-fw}`;
