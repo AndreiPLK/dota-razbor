@@ -1,0 +1,3 @@
+// Токен Stratz (stratz.com/api) — общий для всех посетителей сайта.
+// Если его начнут злоупотреблять, перевыпусти токен на stratz.com/api и замени здесь.
+window.STRATZ_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJTdWJqZWN0IjoiMjEyZjYwZGYtYWJjZi00NmI4LTkxMzQtMTJlNWY5NjE1ZDZiIiwiU3RlYW1JZCI6IjE0MjY0ODE4OTIiLCJBUElVc2VyIjoidHJ1ZSIsIm5iZiI6MTc5MjY2MjQ0MywiZXhwIjoxODI0MTk4NDQzLCJpYXQiOjE3OTI2NjI0NDMsImlzcyI6Imh0dHBzOi8vYXBpLnN0cmF0ei5jb20ifQ.HuS-ZVhbVCswMopeJ2X38hKonHWnhKTa61CmJqJk_ic';

@@ -1,0 +1,948 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dota Разбор</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="config.js"></script>
+<style>
+:root{
+  --bg:#0c0e12; --panel:#15181f; --panel2:#1c2029; --line:#262b36;
+  --text:#e9ebf0; --muted:#8e95a5; --accent:#ff5e3a; --accent2:#4f8ef7; --good:#3ecf6e; --bad:#ff4d4d; --warn:#f2b134;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:24px 16px 80px}
+h1{font-size:26px;margin:0 0 4px} h2{font-size:20px;margin:0 0 14px} h3{font-size:12px;margin:0 0 10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.sub{color:var(--muted);margin:0 0 20px}
+form{display:flex;gap:8px;flex-wrap:wrap}
+input,select{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:12px 14px;border-radius:10px;font:inherit}
+input{flex:1;min-width:220px}
+button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:12px 18px;font:inherit;font-weight:600;cursor:pointer}
+button:disabled{opacity:.5;cursor:wait}
+button.ghost{background:var(--panel2);border:1px solid var(--line);color:var(--text)}
+.hint{color:var(--muted);font-size:13px;margin-top:8px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;margin-top:16px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr} .g3{grid-template-columns:1fr 1fr 1fr} .g32{grid-template-columns:3fr 2fr}
+@media(max-width:860px){.g2,.g3,.g32{grid-template-columns:1fr}}
+.good{color:var(--good)} .bad{color:var(--bad)} .warn{color:var(--warn)} .muted{color:var(--muted)}
+.hidden{display:none}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tab{background:var(--panel);color:var(--muted);border:1px solid var(--line);padding:8px 16px}
+.tab.active{background:var(--panel2);color:var(--text);border-color:var(--accent)}
+.err{background:#3a1d1d;border:1px solid #6b2a2a;color:#ffd0d0;padding:12px 14px;border-radius:10px;margin-top:16px}
+.prog{display:flex;align-items:center;gap:16px}
+.prog .ring{width:56px;height:56px;border-radius:50%;border:4px solid var(--line);border-top-color:var(--accent);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:10px}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .3s}
+.hero-head{display:grid;grid-template-columns:auto 1fr auto;gap:20px;align-items:center}
+@media(max-width:860px){.hero-head{grid-template-columns:1fr}}
+.hero-head img{width:84px;height:84px;border-radius:14px}
+.arch{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.1;margin:4px 0}
+.arch small{display:block;font-size:13px;font-weight:500;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.tiles{display:flex;gap:10px;flex-wrap:wrap}
+.tile{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-width:96px}
+.tile b{display:block;font-size:24px;line-height:1.1} .tile span{font-size:12px;color:var(--muted)}
+.rolebar{display:grid;grid-template-columns:120px 1fr 110px;gap:10px;align-items:center;padding:6px 0;font-size:14px}
+.rolebar .track{height:14px;background:var(--line);border-radius:7px;overflow:hidden;position:relative}
+.rolebar .track i{position:absolute;left:0;top:0;height:100%;background:var(--accent2);border-radius:7px}
+.rolebar .track em{position:absolute;left:8px;top:-2px;font-size:11px;font-style:normal;color:#fff;line-height:18px;text-shadow:0 1px 2px #000}
+.rolebar b{text-align:right} .rolebar small{color:var(--muted);font-size:11px;display:block;text-align:right}
+.kv{display:grid;grid-template-columns:1fr auto;gap:6px 16px;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
+.kv:last-child{border-bottom:0} .kv b{white-space:nowrap}
+.stack{display:flex;height:22px;border-radius:6px;overflow:hidden;gap:2px;margin:6px 0 12px}
+.stack i{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13px}
+.legend span i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.causes .row{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;padding:10px 0;border-bottom:1px solid var(--line)}
+.causes .row:last-child{border-bottom:0}
+.causes .n{font-size:26px;font-weight:800;min-width:34px;line-height:1}
+.causes small{color:var(--muted);display:block}
+.causes a{color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--muted)}
+.steps{display:grid;gap:12px}
+.step{display:grid;grid-template-columns:44px 1fr;gap:14px;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.step .num{width:44px;height:44px;border-radius:12px;background:var(--accent);color:#fff;font-weight:800;font-size:20px;display:flex;align-items:center;justify-content:center}
+.step .t{font-weight:700;margin-bottom:2px}
+.htiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.htile{position:relative;border-radius:14px;overflow:hidden;background:var(--panel2);border:1px solid var(--line);aspect-ratio:16/10}
+.htile img{width:100%;height:100%;object-fit:cover;display:block}
+.htile .ov{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 20%,rgba(0,0,0,.85) 75%);}
+.htile .txt{position:absolute;left:12px;right:12px;bottom:10px}
+.htile .nm{font-weight:800;font-size:16px}
+.htile .m{font-size:12px;color:#cfd3dc}
+.htile .badge{position:absolute;top:8px;left:8px;font-size:11px;padding:3px 8px;border-radius:99px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.15)}
+.htile .badge.new{background:var(--warn);color:#000;border:0;font-weight:700}
+.htile .wr{position:absolute;top:8px;right:8px;font-weight:800;font-size:15px;text-shadow:0 1px 3px #000}
+.teams{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.teams .score{font-size:28px;font-weight:700}
+.prow{display:grid;grid-template-columns:64px 1fr auto;gap:4px 12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.prow:last-child{border-bottom:0}
+.prow img{width:64px;height:36px;border-radius:4px;object-fit:cover}
+.prow .nm{font-weight:600} .prow .meta{color:var(--muted);font-size:13px}
+.prow .r{text-align:right;white-space:nowrap}
+.chips{grid-column:2/4;display:flex;flex-wrap:wrap;gap:6px}
+@media(max-width:600px){.chips{grid-column:1/4}}
+.chip{font-size:12px;padding:3px 8px;border-radius:6px;background:var(--panel2);border:1px solid var(--line)}
+.chip.ok{border-color:#2f5d3c} .chip.no{border-color:#6b2a2a}
+.chip b{font-weight:600} .chip.ok b{color:var(--good)} .chip.no b{color:var(--bad)}
+ul.ins{margin:0;padding-left:18px} ul.ins li{margin:6px 0}
+canvas{max-width:100%}
+.rolepick{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 20px}
+.rp{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:8px 14px;font-weight:500}
+.rp.active{background:var(--accent);border-color:var(--accent);font-weight:700}
+.rp small{color:var(--muted);margin-left:4px} .rp.active small{color:#fff}
+#offerCard .rolepick{padding:14px 0 0}
+#offerTitle{font-size:22px;line-height:1.3}
+.accent{color:var(--accent)}
+.offers{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:4px}
+@media(max-width:860px){.offers{grid-template-columns:1fr}}
+.offer{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:14px 16px;cursor:pointer;transition:border-color .15s}
+.offer:hover{border-color:#3a4150} .offer.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.offer .olabel{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:700}
+.offer .oname{font-size:20px;font-weight:800;margin:2px 0 6px}
+.offer .owhy{font-size:13px;color:var(--muted)}
+.oheroes{display:flex;gap:8px;margin:12px 0 8px}
+.oheroes div{flex:1;min-width:0} .oheroes img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;display:block}
+.oheroes span{font-size:11px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.offer .ogo{font-size:12px;font-weight:600}
+.hgroups{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+@media(max-width:860px){.hgroups{grid-template-columns:1fr 1fr}} @media(max-width:520px){.hgroups{grid-template-columns:1fr}}
+.hcol{display:grid;gap:10px;align-content:start}
+.hcard{background:var(--panel2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.hcard.wild{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn) inset}
+.himg{position:relative} .himg img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+.himg .badge{position:absolute;top:6px;left:6px;font-size:11px;padding:2px 7px;border-radius:99px;background:rgba(0,0,0,.65)}
+.himg .badge.new{background:var(--warn);color:#000;font-weight:700}
+.hb{padding:8px 10px 10px} .hn{font-weight:800} .hr{font-size:12px;color:var(--muted);margin-top:2px}
+.pros{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:860px){.pros{grid-template-columns:1fr}}
+.pro{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.pro .pn{font-size:22px;font-weight:800}
+.mini{display:flex;gap:8px;flex-wrap:wrap}
+.mini div{width:88px} .mini img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;display:block}
+.mini span{font-size:11px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+details.more{margin-top:16px}
+details.more>summary{cursor:pointer;list-style:none;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 20px;font-weight:700}
+details.more>summary::-webkit-details-marker{display:none}
+details.more>summary::after{content:' ▾';color:var(--muted)} details.more[open]>summary::after{content:' ▴'}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Dota Разбор</h1>
+  <p class="sub">Год твоих игр целиком и последний месяц под микроскопом: тип игрока, роль, почему проигрываешь, кого качать. Данные — Stratz.</p>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="player">Игрок</button>
+    <button class="tab" data-tab="match">Матч</button>
+  </div>
+
+  <div id="tab-player">
+    <form id="f">
+      <input id="q" placeholder="Steam ID, Friend ID или ссылка на профиль Dotabuff/Stratz/OpenDota" autocomplete="off">
+      <button id="go">Разобрать</button>
+    </form>
+    <div class="hint">Нужна открытая статистика матчей: Dota 2 → Настройки → «Открыть доступ к данным матчей». Первый разбор занимает до минуты, повторный — секунды.</div>
+  </div>
+
+  <div id="tab-match" class="hidden">
+    <form id="fm">
+      <input id="qm" placeholder="Match ID или ссылка на матч" autocomplete="off">
+      <button id="gom">Разобрать матч</button>
+    </form>
+  </div>
+
+  <div id="err" class="err hidden"></div>
+
+  <div id="progress" class="card hidden">
+    <div class="prog"><div class="ring"></div><div style="flex:1"><div id="pTitle" style="font-weight:700">Загружаю…</div><div id="pStep" class="muted"></div><div class="bar"><i id="pFill" style="width:0"></i></div></div></div>
+  </div>
+
+  <div id="report" class="hidden">
+    <div class="card hero-head">
+      <img id="avatar" alt="">
+      <div>
+        <div class="muted" id="pname"></div>
+        <div class="arch"><small>Твой тип игрока</small><span id="archName"></span></div>
+        <div id="archText"></div>
+      </div>
+      <div class="tiles" id="headTiles"></div>
+    </div>
+
+    <div class="card" id="offerCard">
+      <h2 id="offerTitle"></h2>
+      <p class="muted" id="winLine" style="margin:-6px 0 14px"></p>
+      <div class="offers" id="offers"></div>
+      <div class="rolepick" id="rolePick"></div>
+    </div>
+
+    <div class="card"><h2>Главное</h2><div class="steps" id="verdict"></div></div>
+
+    <div class="card">
+      <h2 id="heroTitle">Герои</h2>
+      <div class="hgroups">
+        <div><h3>Твои сильные</h3><div class="hcol" id="hStrong"></div></div>
+        <div><h3>Мета под тебя</h3><div class="hcol" id="hMeta"></div></div>
+        <div><h3>Вне меты</h3><div class="hcol" id="hOff"></div></div>
+        <div><h3>Дикий вариант</h3><div class="hcol" id="hWild"></div></div>
+      </div>
+    </div>
+
+    <div class="card"><h2 id="proTitle">На какого про ты похож</h2><div class="pros" id="pros"></div></div>
+
+    <details class="more" id="more">
+    <summary>Подробная статистика</summary>
+    <div class="card">
+      <h2 id="monthTitle">Месяц под микроскопом</h2>
+      <p class="muted" id="monthNote"></p>
+      <div class="grid g2">
+        <div>
+          <h3>Почему проиграл</h3>
+          <div class="stack" id="causeStack"></div>
+          <div class="legend" id="causeLegend"></div>
+          <div class="causes" id="causes" style="margin-top:12px"></div>
+        </div>
+        <div>
+          <h3>Победы против поражений</h3>
+          <div id="winDiff"></div>
+          <h3 style="margin-top:18px">Сессии и тильт</h3>
+          <div id="sessions"></div>
+          <h3 style="margin-top:18px">Против кого тяжело на твоей позиции</h3>
+          <div id="matchups"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid g32">
+      <div class="card">
+        <h3>Психотип · год против месяца</h3>
+        <canvas id="radar" height="300"></canvas>
+        <div class="hint" id="radarNote"></div>
+      </div>
+      <div class="card">
+        <h3>Роли за год</h3>
+        <div id="roleBars"></div>
+        <div class="hint">Ширина — доля игр, справа — винрейт и средний IMP (оценка вклада Stratz: 0 — норма для героя на этой позиции, выше — лучше).</div>
+      </div>
+    </div>
+
+    <div class="grid g2">
+      <div class="card"><h3>Винрейт по месяцам</h3><canvas id="trend" height="220"></canvas></div>
+      <div class="card"><h3>Год в цифрах</h3><div id="yearFacts"></div></div>
+    </div>
+    </details>
+  </div>
+
+  <div id="mout" class="hidden">
+    <div class="card" id="mhead"></div>
+    <div class="card"><h2 id="whyTitle">Почему проиграли</h2><ul class="ins" id="why"></ul></div>
+    <div class="card"><h2 id="loseTitle"></h2><div id="loseTeam"></div></div>
+    <div class="card"><h2 id="winTitle"></h2><div id="winTeam"></div></div>
+  </div>
+</div>
+
+<script>
+const STRATZ = 'https://api.stratz.com/graphql';
+const ODOTA = 'https://api.opendota.com/api';
+const CDN = 'https://cdn.cloudflare.steamstatic.com';
+const STEAM64_BASE = 76561197960265728n;
+const RANKS = ['','Herald','Guardian','Crusader','Archon','Legend','Ancient','Divine','Immortal'];
+const POS = {1:'Pos 1 · Керри', 2:'Pos 2 · Мид', 3:'Pos 3 · Оффлейн', 4:'Pos 4 · Роумер', 5:'Pos 5 · Саппорт'};
+const $ = id => document.getElementById(id);
+let heroes = {}, state = null, charts = {};
+
+// ───────── утилиты ─────────
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const smooth = (w, n) => (w + 5) / (n + 10);
+const pct = x => (x * 100).toFixed(1) + '%';
+const pct0 = x => Math.round(x*100) + '%';
+const wrClass = x => x >= 0.53 ? 'good' : x <= 0.47 ? 'bad' : '';
+const avg = (arr, f) => arr.length ? arr.reduce((s,x) => s + f(x), 0)/arr.length : 0;
+const mean = a => { const v = a.filter(x => x != null && !isNaN(x)); return v.length ? v.reduce((s,x)=>s+x,0)/v.length : null; };
+const clamp = (x,a,b) => Math.max(a, Math.min(b, x));
+const fmtK = x => Math.abs(x) >= 1000 ? (x/1000).toFixed(1) + 'k' : String(Math.round(x));
+const H = id => heroes[id] || {id, localized_name:`Герой #${id}`, img:'', roles:[]};
+const heroOf = p => H(p.hero_id ?? p.heroId);
+const lsGet = k => { try{ return JSON.parse(localStorage.getItem(k)); }catch{ return null; } };
+const lsSet = (k,v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} };
+const prog = (title, step, f) => { $('pTitle').textContent = title; $('pStep').textContent = step || ''; $('pFill').style.width = Math.round(100*f) + '%'; };
+const posNum = p => p ? +String(p).replace('POSITION_', '') : null;
+const sigmoid = r => 1/(1 + Math.exp(-(r - 1)*3));   // отношение к норме 1.0 → 0.5; 1.3 → 0.71; 0.7 → 0.29
+function parseId(raw){
+  const m = raw.trim().match(/(\d{5,20})/); if(!m) return null;
+  const n = BigInt(m[1]); return (n > STEAM64_BASE ? n - STEAM64_BASE : n).toString();
+}
+
+// Stratz GraphQL. Лимит токена по умолчанию: 20/с, 250/мин, 2000/час, 10 000/день
+async function gql(query, retry = 3){
+  const tok = window.STRATZ_TOKEN || lsGet('stratz_token');
+  if(!tok) throw new Error('Нет токена Stratz. Положи его в config.js рядом со страницей.');
+  const r = await fetch(STRATZ, {method:'POST', headers:{'Authorization':'Bearer ' + tok, 'Content-Type':'application/json', 'User-Agent':'STRATZ_API'}, body: JSON.stringify({query})});
+  if(r.status === 429 && retry){ for(let s = 15; s > 0; s--){ $('pStep').textContent = `Лимит Stratz, жду ${s} с…`; await sleep(1000); } return gql(query, retry - 1); }
+  if(!r.ok) throw new Error(`Stratz ответил ${r.status}`);
+  const j = await r.json();
+  if(j.errors && (!j.data || Object.values(j.data).every(v => v == null))) throw new Error('Stratz: ' + j.errors[0].message);
+  return j.data;
+}
+async function ensureHeroes(){
+  if(Object.keys(heroes).length) return;
+  const c = lsGet('st_heroes');
+  if(c && Date.now() - c.t < 7*86400e3){ heroes = c.v; return; }
+  const d = await gql('{ constants { heroes { id displayName shortName roles { roleId level } } } }');
+  d.constants.heroes.forEach(h => heroes[h.id] = {id: h.id, localized_name: h.displayName, img: `/apps/dota2/images/dota_react/heroes/${h.shortName}.png`,
+    roles: h.roles.map(r => r.roleId[0] + r.roleId.slice(1).toLowerCase())});
+  lsSet('st_heroes', {t: Date.now(), v: heroes});
+}
+const bracketOf = rank => { const m = rank ? Math.floor(rank/10) : 0; return m <= 0 ? 'ALL' : m <= 2 ? 'HERALD_GUARDIAN' : m <= 4 ? 'CRUSADER_ARCHON' : m <= 6 ? 'LEGEND_ANCIENT' : 'DIVINE_IMMORTAL'; };
+
+// ───────── справочники: средние по герою и позиции в твоём ранге ─────────
+// posTable[hero][pos] = {n, w, nw, cs, k, d, a, hd, td} на 35-й минуте — и «где героя играют», и вектор стиля героя
+async function loadPosTable(bracket){
+  const k = 'st_pos_' + bracket, c = lsGet(k);
+  if(c && Date.now() - c.t < 2*86400e3) return c.v;
+  const d = await gql(`{ heroStats { stats(groupByPosition: true, bracketBasicIds: [${bracket}]) { heroId position matchCount winCount networth cs kills deaths assists heroDamage towerDamage } } }`);
+  const v = {};
+  d.heroStats.stats.forEach(r => { (v[r.heroId] = v[r.heroId] || {})[posNum(r.position)] = {n: r.matchCount, w: r.winCount, nw: r.networth, cs: r.cs, k: r.kills, d: r.deaths, a: r.assists, hd: r.heroDamage, td: r.towerDamage}; });
+  lsSet(k, {t: Date.now(), v}); return v;
+}
+// refTime[`${hero}_${pos}`][minute] — средние к этой минуте (0–35)
+async function loadRefTime(heroIds, bracket){
+  const out = {}, need = [];
+  heroIds.forEach(h => { const c = lsGet(`st_ref_${bracket}_${h}`); if(c && Date.now() - c.t < 2*86400e3) Object.assign(out, c.v); else need.push(h); });
+  for(let i = 0; i < need.length; i += 15){
+    const batch = need.slice(i, i+15);
+    prog('Нормы героев', `${Math.min(i+15, need.length)} из ${need.length}`, 0.15 + 0.15*(i+15)/need.length);
+    const d = await gql(`{ heroStats { stats(heroIds: [${batch.join(',')}], groupByTime: true, groupByPosition: true, bracketBasicIds: [${bracket}]) { heroId position time networth cs kills deaths assists heroDamage towerDamage campsStacked } } }`);
+    const per = {};
+    d.heroStats.stats.forEach(r => { const key = `${r.heroId}_${posNum(r.position)}`; (per[r.heroId] = per[r.heroId] || {}); (per[r.heroId][key] = per[r.heroId][key] || [])[r.time] = r; });
+    batch.forEach(h => { lsSet(`st_ref_${bracket}_${h}`, {t: Date.now(), v: per[h] || {}}); Object.assign(out, per[h] || {}); });
+  }
+  return out;
+}
+// Оценка «ты против нормы героя на этой позиции»: отношение темпов → 0..1 (0.5 = норма)
+function benchOf(me, pos, dur, refTime){
+  const t = clamp(Math.round(dur/60), 5, 35), ref = refTime[`${me.heroId}_${pos}`], r = ref && ref[t];
+  if(!r) return {};
+  const rate = (mine, norm) => norm > 0 ? sigmoid((mine/(dur/60)) / (norm/t)) : null;
+  return {gpm: rate(me.networth, r.networth), lh: rate(me.numLastHits, r.cs), k: rate(me.kills, r.kills), a: rate(me.assists, r.assists),
+    hd: rate(me.heroDamage, r.heroDamage), td: rate(me.towerDamage, r.towerDamage),
+    d: r.deaths > 0 ? sigmoid((r.deaths/t) / ((me.deaths + 0.5)/(dur/60))) : null};   // меньше смертей — выше
+}
+// Позиция, если Stratz её не определил (неразобранный матч): где героя чаще играют + кор/саппорт по GPM
+function estimatePos(heroId, lane, gpm, posTable){
+  const t = posTable[heroId] || {};
+  const laneNum = {SAFE_LANE:1, MID_LANE:2, OFF_LANE:3}[lane];
+  const cand = laneNum === 2 ? [2] : laneNum === 1 ? [1,5] : laneNum === 3 ? [3,4] : [1,2,3,4,5];
+  const best = cand.sort((a,b) => ((t[b]||{}).n||0) - ((t[a]||{}).n||0))[0];
+  if(cand.length === 2){ const sup = cand[1], core = cand[0]; return gpm < 330 ? sup : gpm > 480 ? core : best; }
+  return best;
+}
+// Исход моей линии из исходов линий матча
+function myLaneResult(m, me){
+  const side = me.isRadiant;
+  const laneKey = me.lane === 'MID_LANE' ? 'midLaneOutcome' : me.lane === 'SAFE_LANE' ? (side ? 'bottomLaneOutcome' : 'topLaneOutcome') : me.lane === 'OFF_LANE' ? (side ? 'topLaneOutcome' : 'bottomLaneOutcome') : null;
+  const o = laneKey && m[laneKey]; if(!o) return null;
+  if(o === 'TIE') return 0;
+  const radWon = o.startsWith('RADIANT'); return (radWon === side ? 1 : -1) * (o.endsWith('STOMP') ? 2 : 1);
+}
+
+// ───────── СЛОЙ «ГОД» ─────────
+const LIGHT = `id didRadiantWin durationSeconds startDateTime analysisOutcome bottomLaneOutcome midLaneOutcome topLaneOutcome averageRank
+  me: players(steamAccountId: $ID) { heroId position lane isRadiant isVictory kills deaths assists goldPerMinute networth numLastHits heroDamage towerDamage imp award partyId }`;
+async function yearLayer(id, posTable){
+  const since = Math.floor(Date.now()/1000) - 365*86400, raw = [];
+  for(let skip = 0; skip < 1500; skip += 100){
+    prog('Год', `Матчи ${skip + 1}–${skip + 100}…`, 0.03 + 0.1*skip/1000);
+    const d = await gql(`{ player(steamAccountId: ${id}) { matches(request: {take: 100, skip: ${skip}, lobbyTypeIds: [0,7], gameModeIds: [1,22]}) { ${LIGHT.replace('$ID', id)} } } }`);
+    const page = d.player.matches || []; raw.push(...page);
+    if(page.length < 100 || page[page.length-1].startDateTime < since) break;
+  }
+  const list = raw.filter(m => m.startDateTime >= since && m.me && m.me[0]);
+  if(!list.length) throw new Error('За год матчей не видно — статистика скрыта в настройках Dota 2 или профиль не тот.');
+  return list.map(m => { const me = m.me[0];
+    return {id: m.id, t: m.startDateTime, dur: m.durationSeconds, win: me.isVictory, hero: me.heroId, party: me.partyId != null ? 2 : 1, parsed: !!me.position,
+      pos: posNum(me.position) || estimatePos(me.heroId, me.lane, me.goldPerMinute, posTable), lane: myLaneResult(m, me), outcome: m.analysisOutcome,
+      k: me.kills, d: me.deaths, a: me.assists, gpm: me.goldPerMinute, imp: me.imp, award: me.award, rank: m.averageRank, raw: me}; });
+}
+
+// ───────── СЛОЙ «МЕСЯЦ»: каждый матч целиком ─────────
+const HEAVY = `id didRadiantWin durationSeconds startDateTime analysisOutcome bottomLaneOutcome midLaneOutcome topLaneOutcome averageRank radiantNetworthLeads
+  all: players { heroId position isRadiant kills deaths assists networth imp stats { networthPerMinute } }
+  me: players(steamAccountId: $ID) { heroId position lane isRadiant isVictory kills deaths assists goldPerMinute networth numLastHits heroDamage towerDamage imp award partyId
+    stats { campStack wards { time type } killEvents { time } assistEvents { time } deathEvents { time timeDead } networthPerMinute runes { time } tripsFountainPerMinute } }`;
+async function monthLayer(id, yearGames, posTable, refTime){
+  const since = Date.now()/1000 - 30*86400;
+  let list = yearGames.filter(g => g.t >= since);
+  if(list.length < 20) list = yearGames.slice(0, 40);
+  list = list.slice(0, 100);
+  const out = [];
+  for(let i = 0; i < list.length; i += 20){
+    const ids = list.slice(i, i+20).map(g => g.id);
+    prog('Месяц под микроскопом', `Матчи ${i+1}–${Math.min(i+20, list.length)} из ${list.length}`, 0.35 + 0.45*(i+20)/list.length);
+    const d = await gql(`{ player(steamAccountId: ${id}) { matches(request: {matchIds: [${ids.join(',')}], take: 20}) { ${HEAVY.replace('$ID', id)} } } }`);
+    (d.player.matches || []).forEach(m => { const s = summarize(m, posTable, refTime); if(s) out.push(s); });
+  }
+  return out.sort((a,b) => b.t - a.t);
+}
+function summarize(m, posTable, refTime){
+  const me = m.me && m.me[0]; if(!me) return null;
+  const st = me.stats || {}, dur = m.durationSeconds, win = me.isVictory;
+  const pos = posNum(me.position) || estimatePos(me.heroId, me.lane, me.goldPerMinute, posTable);
+  const team = m.all.filter(p => p.isRadiant === me.isRadiant), foes = m.all.filter(p => p.isRadiant !== me.isRadiant);
+  const foe = foes.find(p => posNum(p.position) === pos) || null;
+  const nw = st.networthPerMinute || [], fnw = foe && foe.stats ? foe.stats.networthPerMinute || [] : [];
+  const ref = refTime[`${me.heroId}_${pos}`];
+  const teamKills = team.reduce((s,p) => s + (p.kills||0), 0);
+  // ход игры
+  const leads = (m.radiantNetworthLeads || []).map(x => me.isRadiant ? x : -x);
+  const maxAdv = leads.length > 10 ? Math.max(...leads) : null, adv10 = leads.length > 10 ? leads[10] : null;
+  // соло-смерти: смерть, рядом с которой (±20 с) у меня нет ни убийства, ни ассиста
+  const ka = [...(st.killEvents||[]), ...(st.assistEvents||[])].map(e => e.time);
+  const deaths = st.deathEvents || [];
+  const soloDeaths = deaths.filter(d => !ka.some(t => Math.abs(t - d.time) <= 20)).length;
+  const stacks = st.campStack && st.campStack.length ? st.campStack[st.campStack.length-1] : 0;
+  return {id: m.id, t: m.startDateTime, dur, win, hero: me.heroId, pos, foeHero: foe ? foe.heroId : null, party: me.partyId != null ? 2 : 1, parsed: !!me.position && nw.length > 10,
+    k: me.kills, d: me.deaths, a: me.assists, gpm: me.goldPerMinute, imp: me.imp, award: me.award, rank: m.averageRank, outcome: m.analysisOutcome,
+    lane: myLaneResult(m, me),
+    duel: nw[10] != null && fnw[10] != null ? nw[10] - fnw[10] : null,
+    laneEff: nw[10] != null && ref && ref[10] ? nw[10] / ref[10].networth : null,       // 1.0 = норма героя к 10-й минуте
+    kp: teamKills ? (me.kills + me.assists)/teamKills : null,
+    obs: (st.wards||[]).filter(w => w.type === 0).length, sen: (st.wards||[]).filter(w => w.type === 1).length,
+    runes: (st.runes||[]).length, stacks, dead: deaths.reduce((s,d) => s + (d.timeDead||0), 0),
+    earlyKills: (st.killEvents||[]).filter(e => e.time < 600).length, soloDeaths,
+    threw: !win && maxAdv != null && maxAdv >= 5000, lostEarly: !win && adv10 != null && adv10 < -2500, comeback: win && leads.length > 10 && Math.min(...leads) <= -5000, maxAdv,
+    bench: benchOf(me, pos, dur, refTime)};
+}
+
+// ───────── анализ ─────────
+const pc = (games, k) => mean(games.map(g => g.bench && g.bench[k]));
+function sessionStats(games){
+  const g = [...games].sort((a,b) => a.t - b.t);
+  let sid = 0, prevEnd = 0, idx = 0, streak = 0;
+  g.forEach(x => { if(x.t - prevEnd > 90*60){ sid++; idx = 0; streak = 0; } idx++; x.sess = sid; x.sessIdx = idx; x.lossStreak = streak; streak = x.win ? 0 : streak + 1; prevEnd = x.t + x.dur; });
+  const wr = a => ({n: a.length, w: a.filter(x=>x.win).length, wr: a.length ? a.filter(x=>x.win).length/a.length : null});
+  return {first: wr(g.filter(x => x.sessIdx === 1)), mid: wr(g.filter(x => x.sessIdx >= 2 && x.sessIdx <= 3)), late: wr(g.filter(x => x.sessIdx >= 4)),
+    afterLoss: wr(g.filter(x => x.lossStreak >= 1)), afterTwo: wr(g.filter(x => x.lossStreak >= 2)), afterWin: wr(g.filter(x => x.lossStreak === 0 && x.sessIdx > 1)), sessions: sid};
+}
+function psychotype(games, sess){
+  const P = games.filter(g => g.parsed && g.obs != null), hasP = P.length >= 3, ax = {};
+  const roleNorm = {1:6, 2:6, 3:8, 4:16, 5:24};
+  const earlyK = hasP ? avg(P, g => g.earlyKills) : null;
+  ax.aggr = clamp(100*(earlyK == null ? 0.55*(pc(games,'k')||.5) + 0.45*(pc(games,'hd')||.5) : 0.45*(pc(games,'k')||.5) + 0.35*(pc(games,'hd')||.5) + 0.2*clamp(earlyK/2,0,1)), 0, 100);
+  const solo = hasP ? avg(P.filter(g => g.d > 0), g => g.soloDeaths/g.d) : null;
+  ax.risk = clamp(100*(solo == null ? 1-(pc(games,'d')||.5) : 0.7*(1-(pc(games,'d')||.5)) + 0.3*solo), 0, 100); ax.solo = solo;
+  const le = hasP ? mean(P.map(g => g.laneEff)) : null;
+  ax.farm = clamp(100*(le == null ? 0.6*(pc(games,'gpm')||.5) + 0.4*(pc(games,'lh')||.5) : 0.5*(pc(games,'gpm')||.5) + 0.3*(pc(games,'lh')||.5) + 0.2*sigmoid(le)), 0, 100);
+  const kp = hasP ? mean(P.map(g => g.kp)) : null;
+  ax.team = clamp(100*(kp == null ? (pc(games,'a')||.5) : 0.5*clamp(kp/0.7,0,1) + 0.5*(pc(games,'a')||.5)), 0, 100);
+  ax.map = hasP ? clamp(100*avg(P, g => clamp(((g.obs||0)+(g.sen||0))/roleNorm[g.pos],0,1.5)/1.5*0.5 + clamp((g.runes||0)/6,0,1)*0.25 + clamp((g.stacks||0)/3,0,1)*0.25), 0, 100) : null;
+  ax.push = clamp(100*(pc(games,'td')||.5), 0, 100);
+  const sh = games.filter(g => g.dur < 32*60), lg = games.filter(g => g.dur > 42*60), wr = a => a.length ? a.filter(g=>g.win).length/a.length : null;
+  ax.tempo = (sh.length >= 4 && lg.length >= 4) ? clamp(50 + (wr(sh) - wr(lg))*120, 0, 100) : 50;
+  const lossesP = games.filter(g => !g.win && g.maxAdv != null);
+  const throwRate = lossesP.length >= 3 ? games.filter(g => g.threw).length/lossesP.length : null;
+  const tilt = sess.afterLoss.n >= 5 ? clamp(wr(games) - sess.afterLoss.wr, -0.3, 0.3) : null;
+  ax.mental = clamp(100*(throwRate == null && tilt == null ? 0.5 : throwRate == null ? 0.5 - tilt : tilt == null ? 1 - throwRate : 0.5*(1-throwRate) + 0.5*(0.5-tilt)), 0, 100);
+  ax.parsedN = P.length;
+  return ax;
+}
+const AX = {aggr:'Агрессия', risk:'Риск', farm:'Фарм', team:'Команда', map:'Карта', push:'Давление', tempo:'Темп', mental:'Ментал'};
+function archetype(ax){
+  const S = ['aggr','farm','team','map','push'].filter(k => ax[k] != null).map(k => [k, ax[k]]).sort((a,b) => b[1]-a[1]);
+  const N = {aggr:['Хищник','ищешь драку и наносишь урон раньше, чем соперник готов'], farm:['Фармер','зарабатываешь золото быстрее нормы своих героев'],
+    team:['Командный игрок','почти всегда в драке вместе с командой'], map:['Контроль карты','варды, руны, стаки — играешь в карту, а не только в героя'], push:['Таран','конвертируешь преимущество в башни']};
+  const spread = S[0][1] - S[S.length-1][1];
+  let name = spread < 15 ? 'Универсал' : N[S[0][0]][0];
+  const mods = [];
+  if(ax.risk >= 62) mods.push('безрассудный'); else if(ax.risk <= 35) mods.push('осторожный');
+  if(ax.tempo >= 62) mods.push('темповый'); else if(ax.tempo <= 38) mods.push('лейт-игрок');
+  if(mods.length) name = mods.join(', ') + ' ' + name.toLowerCase();
+  name = name[0].toUpperCase() + name.slice(1);
+  const lines = [spread < 15 ? 'Ни одна сторона не выделяется: ты играешь ровно, без фирменной силы — и это само по себе диагноз: нет того, вокруг чего строить игру.' : `Ты ${N[S[0][0]][1]}${S[1][1] > 55 ? `, и при этом ${N[S[1][0]][1]}` : ''}.`];
+  if(ax.risk >= 62) lines.push(`Платишь смертями: умираешь заметно чаще нормы своих героев${ax.solo > 0.45 ? ', и почти половина смертей — без размена, в одиночку' : ''}.`);
+  else if(ax.risk <= 35) lines.push('Умираешь реже нормы — это фундамент, не теряй его при смене роли.');
+  const weak = S[S.length-1]; if(spread >= 15) lines.push(`Слабее всего — ${AX[weak[0]].toLowerCase()} (${Math.round(weak[1])}/100).`);
+  return {name, lines};
+}
+function lossCause(g){
+  if(g.maxAdv == null) return g.outcome === 'STOMPED' ? 'early' : g.outcome === 'COMEBACK' ? 'threw' : 'unknown';
+  if(g.threw) return 'threw';
+  if(g.lostEarly && g.lane != null && g.lane < 0) return 'lane';
+  if(g.lostEarly) return 'early';
+  if(g.d >= 8 && g.soloDeaths >= g.d*0.5) return 'feed';
+  if(g.dur > 42*60) return 'late';
+  return 'even';
+}
+const CAUSES = {
+  threw: ['Слили лидерство', 'вели 5k+ золота и проиграли: решения после 25-й минуты', '#ff5e3a'],
+  lane:  ['Проиграли линию', 'твоя линия проиграна, к 10-й минуте команда в минусе', '#f2b134'],
+  early: ['Проиграли старт', 'к 10-й минуте команда в минусе, твоя линия держалась', '#e8d44d'],
+  feed:  ['Соло-смерти', 'много смертей без размена: ловили одного', '#c850c0'],
+  late:  ['Перестояли в лейте', 'ровно до 40+ минуты, проиграли решающую драку', '#4f8ef7'],
+  even:  ['Ровно проиграли', 'без перелома — соперник чуть сильнее везде', '#6c7a92'],
+  unknown: ['Нет разбора', 'Stratz ещё не разобрал реплей', '#3a4150'],
+};
+const FIX = {threw:'после 25-й минуты: байбек всегда в кармане, Рошан перед хайграундом, не гоняться за одним героем через всю карту',
+  lane:'матчапы линии до пика, тяга крипов, агрессия в первые 2 минуты, пока у оппонента нет регена',
+  early:'первые 10 минут: первый вард до крипов, руны на 2:00 и 4:00, помощь мид/сложной до того, как попросят',
+  feed:'перед выходом на карту считай: кого не видно на миникарте и есть ли TP; умирать можно только в драке',
+  late:'в лейте не принимай драку без байбека и без BKB; смотри, кто из врагов не вышел на карту',
+  even:'ровные поражения — это драфт и мид-гейм: герои с сильной серединой, закрывать игру раньше'};
+function pickTrainRole(roles){
+  const main = roles.slice().sort((a,b) => b.n - a.n)[0];
+  // Другая роль берётся, если разница в винрейте значима для её выборки: 6% при 50+ играх, 12% при 15+
+  const alt = roles.filter(r => r.p !== main.p && ((r.n >= 50 && r.wr >= main.wr + 0.06) || (r.n >= 15 && r.wr >= main.wr + 0.12))).sort((a,b) => b.score - a.score)[0];
+  return alt || main;
+}
+function roleTable(games){
+  return [1,2,3,4,5].map(p => { const gs = games.filter(g => g.pos === p), w = gs.filter(g => g.win).length, lk = gs.filter(g => g.lane != null);
+    return {p, gs, n: gs.length, w, wr: gs.length ? w/gs.length : 0, score: smooth(w, gs.length), d: avg(gs, g => g.d), imp: mean(gs.map(g => g.imp)),
+      lane: lk.length ? lk.filter(g => g.lane > 0).length/lk.length : null, laneN: lk.length}; });
+}
+
+// ───────── герои под психотип ─────────
+function styleFit(hv0, norm, ax){
+  const z = k => norm[k].max > norm[k].min ? (hv0[k] - norm[k].min)/(norm[k].max - norm[k].min) : .5;
+  const hv = {aggr: (z('k')+z('hd'))/2, farm: (z('nw')+z('cs'))/2, team: z('a'), push: z('td'), safe: 1 - z('d')};
+  const me = {aggr: ax.aggr/100, farm: ax.farm/100, team: ax.team/100, push: ax.push/100, safe: 1 - ax.risk/100};
+  const w = {aggr: 1, farm: 1, team: .7, push: .6, safe: ax.risk >= 60 ? 1.2 : .4};
+  let s = 0, ws = 0;
+  for(const k in w){ const d = k === 'safe' ? Math.max(0, me.safe - hv.safe) : Math.abs(me[k] - hv[k]); s += w[k]*(1-d); ws += w[k]; }
+  return s/ws;
+}
+// ───────── профиль побед: как ты играешь, когда выигрываешь ─────────
+// Не «что ты делаешь чаще всего», а чем твои победы отличаются от поражений —
+// по этому профилю подбираются роль и герои.
+const TAG_RU = {Carry:'керри', Nuker:'урон заклинаниями', Disabler:'контроль', Initiator:'инициация', Durable:'живучесть', Escape:'побег', Pusher:'пуш', Support:'поддержка'};
+// Давление и драки в победах выше просто потому, что игра выиграна, — это следствие, а не стиль.
+// Поэтому из побед берём только то, что игрок контролирует сам: фарм и смерти; остальные оси — общие.
+function winProfile(year, sess, base){
+  const W = year.filter(g => g.win), L = year.filter(g => !g.win), overall = W.length/year.length, tags = {};
+  year.forEach(g => (H(g.hero).roles || []).forEach(t => { const o = tags[t] = tags[t] || {n:0,w:0}; o.n++; o.w += g.win; }));
+  const tagWr = {};
+  Object.entries(tags).forEach(([t,o]) => tagWr[t] = {n: o.n, wr: (o.w + 10*overall)/(o.n + 10)});   // сглаживание к общему винрейту
+  const aw = psychotype(W, sess), al = psychotype(L, sess);
+  return {aw: {...base, farm: aw.farm, risk: aw.risk}, win: aw, loss: al, overall, tagWr};
+}
+function winLineText(wp){
+  const PH = {farm:['больше фармишь','меньше фармишь'], risk:['умираешь больше','умираешь заметно меньше']};
+  const d = ['farm','risk'].map(k => [k, wp.win[k] - wp.loss[k]]).filter(([,x]) => Math.abs(x) >= 4).sort((a,b) => Math.abs(b[1]) - Math.abs(a[1]));
+  const style = d.map(([k,x]) => PH[k][x > 0 ? 0 : 1]).join(' и ');
+  const tags = Object.entries(wp.tagWr).filter(([t,o]) => o.n >= 30 && TAG_RU[t]).sort((a,b) => b[1].wr - a[1].wr);
+  const best = tags.slice(0,2), worst = tags[tags.length-1];
+  let s = style ? `Когда ты выигрываешь, ты ${style}, чем в поражениях.` : '';
+  if(best.length && worst) s += ` Лучше всего заходят герои на ${best.map(([t,o]) => `${TAG_RU[t]} (${pct0(o.wr)})`).join(' и ')}, хуже — на ${TAG_RU[worst[0]]} (${pct0(worst[1].wr)}).`;
+  return s;
+}
+function tagScore(h, wp){ const t = (h.roles || []).map(r => wp.tagWr[r]).filter(Boolean); return t.length ? mean(t.map(x => x.wr)) : wp.overall; }
+function whyHero(x, wp){
+  const parts = [];
+  const good = (x.h.roles || []).map(r => [r, wp.tagWr[r]]).filter(([r,t]) => t && t.n >= 30 && TAG_RU[r] && t.wr > wp.overall + 0.015).sort((a,b) => b[1].wr - a[1].wr)[0];
+  if(good) parts.push(`${TAG_RU[good[0]][0].toUpperCase() + TAG_RU[good[0]].slice(1)} — с такими героями ты выигрываешь ${pct0(good[1].wr)}.`);
+  if(x.fit >= .7) parts.push('По цифрам похож на то, как ты играешь в победах.');
+  if(x.metaWr != null) parts.push(`${pct(x.metaWr)} на этой позиции в твоём ранге.`);
+  return parts.join(' ');
+}
+
+// Подбор героев на позицию: 2 твоих сильных, 2 из меты, 2 вне меты и 1 «дикий» — нетипичный для позиции,
+// но совпадающий с профилем побед. Оценка новых: стиль побед 40% + герои того же типа, на которых ты выигрываешь 30% + мета 30%.
+function recommendHeroes(yearGames, wp, pos, posTable){
+  const yr = {};
+  yearGames.forEach(g => { const o = yr[g.hero] = yr[g.hero] || {n:0,w:0,pn:0,pw:0,imp:[]}; o.n++; o.w += g.win; if(g.pos === pos){ o.pn++; o.pw += g.win; o.imp.push(g.imp); } });
+  const totalAll = Object.values(posTable).reduce((s,t) => s + Object.values(t).reduce((a,x) => a + x.n, 0), 0);
+  const all = Object.keys(heroes).map(id => { const t = posTable[id] || {}, tot = Object.values(t).reduce((a,x) => a + x.n, 0), r = t[pos];
+    return {h: H(+id), share: tot && r ? r.n/tot : 0, metaWr: r && r.n > 100 ? r.w/r.n : null, pick: tot/totalAll, row: r, my: yr[id]}; })
+    .filter(x => x.row && x.row.n >= 100 && x.share >= 0.06);
+  const keys = ['k','d','a','nw','cs','hd','td'], norm = {};
+  keys.forEach(k => { const v = all.map(x => x.row[k]).filter(x => x != null); norm[k] = {min: Math.min(...v), max: Math.max(...v)}; });
+  all.forEach(x => { x.fit = styleFit(x.row, norm, wp.aw); x.tagS = clamp(0.5 + (tagScore(x.h, wp) - wp.overall)/0.12, 0, 1);
+    x.metaS = clamp(((x.metaWr ?? .5) - .44)/.12, 0, 1); x.total = 0.4*x.fit + 0.3*x.tagS + 0.3*x.metaS; });
+  const onPos = all.filter(x => x.share >= 0.2);
+  const impOf = x => mean(x.my.imp) || 0;
+  const strong = onPos.filter(x => x.my && x.my.pn >= 6).sort((a,b) => (smooth(b.my.pw, b.my.pn) + impOf(b)/100) - (smooth(a.my.pw, a.my.pn) + impOf(a)/100)).slice(0,2);
+  const fresh = onPos.filter(x => !x.my || x.my.pn < 6);
+  const medianPick = onPos.map(x => x.pick).sort((a,b) => a-b)[Math.floor(onPos.length/2)] || 0.008;
+  const meta = fresh.filter(x => x.pick >= medianPick).sort((a,b) => b.total - a.total).slice(0,2);
+  const off = fresh.filter(x => x.pick < medianPick).sort((a,b) => b.total - a.total).slice(0,2);
+  const wild = all.filter(x => x.share < 0.2 && (!x.my || x.my.n < 3) && x.metaWr != null && x.metaWr >= 0.47).sort((a,b) => (b.fit + b.tagS) - (a.fit + a.tagS))[0] || null;
+  return {strong, meta, off, wild, pool: strong};
+}
+function heroCard(x, why, cls = ''){
+  const g = x.my ? x.my.n : 0;
+  const badge = g ? `<span class="badge">${x.my.w}–${g - x.my.w} за год</span>` : '<span class="badge new">ни разу за год</span>';
+  return `<div class="hcard ${cls}"><div class="himg"><img src="${CDN + x.h.img}" alt="">${badge}</div><div class="hb"><div class="hn">${x.h.localized_name}</div><div class="hr">${why}</div></div></div>`;
+}
+
+// ───────── рендер ─────────
+function chart(id, cfg){ if(charts[id]) charts[id].destroy(); charts[id] = new Chart($(id), cfg); }
+Chart.defaults.color = '#8e95a5'; Chart.defaults.borderColor = '#262b36'; Chart.defaults.font.family = 'system-ui, sans-serif';
+const impClass = x => x == null ? 'muted' : x >= 3 ? 'good' : x <= -3 ? 'bad' : '';
+const impFmt = x => x == null ? '—' : (x > 0 ? '+' : '') + Math.round(x);
+
+// Что делать на линии, если она проигрывается, — по позиции
+const LANE_FIX = {
+  1:'Ласт-хиты важнее драк до 10-й минуты, тяни крипов вместе с саппортом, не отдавай линию ради размена.',
+  2:'Оставь 2–3 мид-героя и играй только их; смотри матчап до пика; руны на 2:00 и 4:00, бутылка всегда полная; добивания важнее харасса.',
+  3:'Цель — не выиграть линию, а не проиграть её: опыт важнее золота, жди 6-го уровня, тяни лагерь.',
+  4:'Сначала дави вражескую линию вместе с оффлейнером, потом ротируй на мид к руне.',
+  5:'Тяни крипов, держи вард на тяге, не давай врагу бить твоего керри.'};
+const roleShort = p => POS[p].split(' · ')[1];
+
+// Что позиция требует от игрока — оси психотипа (safe = 100 − риск)
+const ROLE_NEEDS = {1:[['farm','фарм'],['safe','выживаемость']], 2:[['aggr','агрессия'],['farm','фарм']], 3:[['team','драки'],['push','давление']],
+  4:[['aggr','агрессия'],['team','драки']], 5:[['map','карта'],['team','драки']]};
+// Оценка позиции: результат на ней (винрейт, IMP, линия) с весом по числу игр + насколько она подходит под тип игрока
+function rankRoles(S, ax){
+  const val = k => k === 'safe' ? 100 - ax.risk : (ax[k] ?? 50);
+  return S.rolesY.map(r => {
+    const needs = ROLE_NEEDS[r.p], fit = mean(needs.map(([k]) => val(k)))/100, conf = Math.min(1, r.n/30);
+    const wrS = clamp((smooth(r.w, r.n) - 0.42)/0.16, 0, 1), impS = r.imp == null ? .5 : clamp((r.imp + 12)/24, 0, 1), laneS = r.laneN >= 10 ? r.lane : .45;
+    const score = conf*(0.35*wrS + 0.25*impS + 0.15*laneS) + (1 - conf)*0.375 + 0.25*fit;
+    return {...r, fit, score, needs: needs.map(([k,l]) => `${l} ${Math.round(val(k))}`)};
+  }).sort((a,b) => b.score - a.score);
+}
+
+function renderReport(S){
+  const {player, year, month, axY, axM, rolesY, sessY, sessM, rec, trainRole: tr, posTable, bracket} = S;
+  const rt = player.steamAccount.seasonRank;
+  const ax = axM.parsedN >= 15 ? axM : axY, arch = archetype(ax);
+  // Месяц разбираем по выбранной роли, если на ней достаточно игр
+  const mRole = month.filter(g => g.pos === tr.p), focus = mRole.length >= 10 ? mRole : month;
+  const fw = focus.filter(g => g.win).length, rn = roleShort(tr.p);
+
+  $('avatar').src = player.steamAccount.avatar;
+  $('pname').innerHTML = `<b style="color:var(--text);font-size:18px">${player.steamAccount.name}</b> · ${rt ? `${RANKS[Math.floor(rt/10)]} ${rt%10 || ''}` : 'без ранга'} · ${player.matchCount} матчей за всё время`;
+  $('archName').textContent = arch.name;
+  $('archText').innerHTML = arch.lines.slice(0,2).map(t => `<div style="margin-top:4px">${t}</div>`).join('');
+  $('headTiles').innerHTML = [[`${tr.w}–${tr.n-tr.w}`, `${rn} · год`, wrClass(tr.wr)],
+    [`${fw}–${focus.length-fw}`, focus === mRole ? `${rn} · месяц` : 'месяц', wrClass(fw/focus.length)],
+    [impFmt(tr.imp), `IMP · ${rn}`, impClass(tr.imp)],
+    [tr.laneN >= 5 ? pct0(tr.lane) : '—', 'линия выиграна', tr.lane >= .5 ? 'good' : tr.lane < .4 ? 'bad' : '']]
+    .map(([b,s,c]) => `<div class="tile"><b class="${c}">${b}</b><span>${s}</span></div>`).join('');
+
+  // ── Предложения: 3 лучшие позиции с причинами и героями; клик переключает разбор на позицию
+  // Роли оцениваются по профилю побед: фарм и смерти — какими они бывают в твоих победах
+  const ranked = rankRoles(S, S.wp.aw), top3 = ranked.slice(0, 3);
+  const label = p => `${roleShort(p).toLowerCase()} (поз. ${p})`;
+  $('offerTitle').innerHTML = `Ты — ${arch.name.toLowerCase()}. Тебе лучше всего: <span class="accent">${label(top3[0].p)}</span> или <span class="accent">${label(top3[1].p)}</span>.`;
+  $('winLine').textContent = winLineText(S.wp);
+  $('offers').innerHTML = top3.map((r, i) => {
+    const hr = recommendHeroes(year, S.wp, r.p, posTable), seen = new Set();
+    const picks = [...hr.pool, ...hr.meta, ...hr.off].filter(x => !seen.has(x.h.id) && seen.add(x.h.id)).slice(0, 3);
+    const stats = [r.n ? `${r.w}–${r.n-r.w} за год (${pct0(r.wr)})` : 'за год не играл', r.n >= 5 ? `IMP ${impFmt(r.imp)}` : null, r.laneN >= 10 ? `линия ${pct0(r.lane)}` : null].filter(Boolean).join(' · ');
+    const fitText = r.fit >= .55 ? 'у тебя есть' : r.fit >= .45 ? 'у тебя средне' : 'у тебя слабее';
+    return `<div class="offer ${r.p === tr.p ? 'active' : ''}" data-p="${r.p}">
+      <div class="olabel">${['Лучший выбор', 'Второй вариант', 'Ещё вариант'][i]}</div>
+      <div class="oname">${POS[r.p]}</div>
+      <div class="owhy">${stats}</div>
+      <div class="owhy">Нужно: ${r.needs.join(', ')} — ${fitText}${r.n < 30 ? ' · мало игр, оценка по стилю' : ''}</div>
+      <div class="oheroes">${picks.map(x => `<div><img src="${CDN + x.h.img}" alt=""><span>${x.h.localized_name}</span></div>`).join('')}</div>
+      <div class="ogo ${r.p === tr.p ? 'accent' : 'muted'}">${r.p === tr.p ? 'Разбор ниже — по этой роли' : 'Показать разбор по этой роли →'}</div></div>`; }).join('');
+  document.querySelectorAll('#offers .offer').forEach(el => el.onclick = () => { const p = +el.dataset.p; lsSet('dc_role', p); setRole(p, true); });
+
+  $('rolePick').innerHTML = `<span class="muted" style="margin-right:4px">Или выбери сам:</span>` + [0,1,2,3,4,5].map(p => {
+    const active = p ? (S.manual && tr.p === p) : !S.manual;
+    const label = p ? `${roleShort(p)}<small>${rolesY.find(r => r.p === p).n}</small>` : `Авто · ${roleShort(S.autoRole)}`;
+    return `<button class="rp ${active ? 'active' : ''}" data-p="${p}">${label}</button>`; }).join('');
+  document.querySelectorAll('#rolePick .rp').forEach(b => b.onclick = () => { const p = +b.dataset.p; lsSet('dc_role', p || null); setRole(p || S.autoRole, !!p); });
+
+  // ── причины поражений, победы vs поражения, матчапы — по фокусу
+  const losses = focus.filter(g => !g.win), byCause = {};
+  losses.forEach(g => { const c = lossCause(g); (byCause[c] = byCause[c] || []).push(g); });
+  const order = Object.entries(byCause).sort((a,b) => b[1].length - a[1].length);
+  const W = focus.filter(g => g.win), L = losses, diffs = [];
+  const cmp = (label, f, fmt, lowerBetter, minAbs = 1) => { const a = mean(W.map(f)), b = mean(L.map(f)); if(a == null || b == null) return;
+    if(Math.max(Math.abs(a), Math.abs(b)) < minAbs) return; diffs.push({label, a, b, fmt, rel: Math.abs(a-b)/Math.max(Math.abs(a), Math.abs(b), 1e-9), lowerBetter}); };
+  cmp('Нетворс к 10-й vs оппонент', g => g.duel, x => (x>0?'+':'')+fmtK(x), false, 100);
+  cmp('Линия к 10-й vs норма героя', g => g.laneEff, x => pct0(x), false, .1);
+  cmp('IMP', g => g.imp, impFmt, false, 2);
+  cmp('Смерти', g => g.d, x => x.toFixed(1), true); cmp('Соло-смерти', g => g.soloDeaths, x => x.toFixed(1), true);
+  cmp('Участие в убийствах', g => g.kp, pct0, false, .1); cmp('Фарм vs норма героя', g => g.bench.gpm, pct0, false, .1); cmp('Урон vs норма героя', g => g.bench.hd, pct0, false, .1);
+  cmp('Ранние убийства', g => g.earlyKills, x => x.toFixed(1)); cmp('Варды', g => (g.obs||0)+(g.sen||0), x => x.toFixed(1), false, 3); cmp('Время мёртвым, с', g => g.dead, x => Math.round(x), true, 30);
+  diffs.sort((a,b) => b.rel - a.rel);
+  const vs = {}; focus.filter(g => g.foeHero).forEach(g => { const o = vs[g.foeHero] = vs[g.foeHero] || {n:0,w:0,duel:[]}; o.n++; o.w += g.win; if(g.duel != null) o.duel.push(g.duel); });
+  const hard = Object.entries(vs).map(([h,o]) => ({h:+h, ...o, md: mean(o.duel)})).filter(x => x.n >= 2 && (x.w/x.n < 0.5 || (x.md != null && x.md < -500))).sort((a,b) => (a.w/a.n) - (b.w/b.n)).slice(0,5);
+
+  // ── Главное: до 4 пунктов, всё про выбранную роль
+  const V = [], better = pickTrainRole(rolesY);
+  let roleText = `${tr.w}–${tr.n-tr.w} за год (${pct0(tr.wr)}), за месяц ${fw}–${focus.length-fw}, IMP ${impFmt(tr.imp)}.`;
+  if(better.p !== tr.p) roleText += ` На ${POS[better.p]} у тебя ${pct0(better.wr)} — если цель только рейтинг, там быстрее. Если цель ${rn.toLowerCase()} — ниже то, что на нём чинить.`;
+  V.push([S.manual ? `Ты качаешь: ${rn.toLowerCase()}` : `Твоя роль сейчас: ${rn.toLowerCase()}`, roleText]);
+  if(tr.laneN >= 10){
+    const duel = mean(focus.map(g => g.duel));
+    if(tr.lane < 0.4) V.push(['Линия — главное, что чинить', `Выиграна только в ${pct0(tr.lane)} игр за год${duel != null ? `, к 10-й минуте ты в среднем ${duel > 0 ? '+' : ''}${fmtK(duel)} нетворса против своего оппонента` : ''}. ${LANE_FIX[tr.p]}${hard.length ? ` Тяжелее всего было против: ${hard.slice(0,3).map(x => H(x.h).localized_name).join(', ')}.` : ''}`]);
+    else if(tr.lane >= 0.55) V.push(['Линия — твоя сила', `Выиграна в ${pct0(tr.lane)} игр. Проблемы начинаются после неё — смотри следующий пункт.`]);
+  }
+  const topCause = order.filter(([c]) => c !== 'unknown')[0];
+  if(topCause && topCause[1].length >= 2) V.push([`Почему проигрываешь: ${CAUSES[topCause[0]][0].toLowerCase()}`, `${topCause[1].length} из ${losses.length} поражений за месяц. ${FIX[topCause[0]][0].toUpperCase() + FIX[topCause[0]].slice(1)}.`]);
+  if(sessY.afterTwo.n >= 6 && sessY.afterTwo.wr <= 0.38) V.push(['Тильт', `После двух поражений подряд ты ${sessY.afterTwo.w}–${sessY.afterTwo.n-sessY.afterTwo.w} за год. Правило: два поражения — выход на час.`]);
+  const ind = diffs.find(d => d.label !== 'IMP' && (d.lowerBetter ? d.a < d.b : d.a > d.b));   // IMP растёт в победах по определению — не индикатор
+  if(ind && W.length >= 3 && L.length >= 3) V.push([`Твой индикатор: ${ind.label.toLowerCase()}`, `В победах ${ind.fmt(ind.a)}, в поражениях ${ind.fmt(ind.b)}. Если по ходу игры он проседает — играй от обороны и не форсируй.`]);
+  $('verdict').innerHTML = V.slice(0,4).map(([t,d], i) => `<div class="step"><div class="num">${i+1}</div><div><div class="t">${t}</div><div class="muted">${d}</div></div></div>`).join('');
+
+  // ── Герои: у каждого — почему именно он
+  const why = x => whyHero(x, S.wp);
+  $('heroTitle').textContent = `Герои · ${POS[tr.p]}`;
+  $('hStrong').innerHTML = rec.strong.map(x => heroCard(x, `${x.my.pw}–${x.my.pn - x.my.pw} на этой позиции, IMP ${impFmt(mean(x.my.imp))}. Тут ты уже выигрываешь — это база.`)).join('') || '<p class="muted">Нет героев с 6+ играми на этой позиции.</p>';
+  $('hMeta').innerHTML = rec.meta.map(x => heroCard(x, why(x))).join('') || '<p class="muted">—</p>';
+  $('hOff').innerHTML = rec.off.map(x => heroCard(x, why(x))).join('') || '<p class="muted">—</p>';
+  $('hWild').innerHTML = rec.wild ? heroCard(rec.wild, `На эту позицию его берут только в ${pct0(rec.wild.share)} игр — враг к такому не готов. ${why(rec.wild)}`, 'wild') : '<p class="muted">—</p>';
+
+  // ── Подробная статистика (свёрнута)
+  $('monthTitle').textContent = focus === mRole ? `Последний месяц на позиции ${rn.toLowerCase()} · ${fw}–${focus.length-fw}` : `Последний месяц · ${fw}–${focus.length-fw}`;
+  $('monthNote').textContent = `${focus.length} матчей${focus === mRole ? ` на этой роли из ${month.length}` : ''}, разобраны Stratz: ${focus.filter(g => g.parsed).length}. Каждый матч целиком: исход линии, нетворс против твоего оппонента, соло-смерти, график золота.`;
+  $('causeStack').innerHTML = order.map(([c, gs]) => `<i style="width:${100*gs.length/losses.length}%;background:${CAUSES[c][2]}" title="${CAUSES[c][0]}: ${gs.length}"></i>`).join('');
+  $('causeLegend').innerHTML = order.map(([c, gs]) => `<span><i style="background:${CAUSES[c][2]}"></i>${CAUSES[c][0]} ${gs.length}</span>`).join('');
+  $('causes').innerHTML = order.filter(([c]) => c !== 'unknown').slice(0,4).map(([c, gs]) => `<div class="row"><div class="n" style="color:${CAUSES[c][2]}">${gs.length}</div>
+    <div><b>${CAUSES[c][0]}</b><small>${CAUSES[c][1]}</small><small>${gs.slice(0,5).map(g => `<a href="#m${g.id}">${H(g.hero).localized_name}</a>`).join(' · ')}</small></div></div>`).join('');
+  $('winDiff').innerHTML = diffs.slice(0,6).map(d => `<div class="kv"><span>${d.label}</span><b><span class="good">${d.fmt(d.a)}</span> <span class="muted">/</span> <span class="bad">${d.fmt(d.b)}</span></b></div>`).join('') || '<p class="muted">Нужны и победы, и поражения.</p>';
+  const sv = s => s.n ? `<b class="${wrClass(s.wr)}">${s.w}–${s.n-s.w}</b>` : '<b class="muted">—</b>';
+  $('sessions').innerHTML = [['Первая игра сессии', sessM.first], ['2–3-я игра', sessM.mid], ['4-я и дальше', sessM.late], ['После поражения', sessM.afterLoss], ['После двух подряд', sessM.afterTwo]]
+    .map(([l,s]) => `<div class="kv"><span>${l}</span>${sv(s)}</div>`).join('');
+  $('matchups').innerHTML = hard.map(x => `<div class="kv"><span>${H(x.h).localized_name}${x.md != null ? ` <span class="muted">линия ${x.md>0?'+':''}${fmtK(x.md)}</span>` : ''}</span><b class="${wrClass(x.w/x.n)}">${x.w}–${x.n-x.w}</b></div>`).join('') || '<p class="muted">Мало повторов.</p>';
+
+  const maxN = Math.max(...rolesY.map(r => r.n), 1);
+  $('roleBars').innerHTML = rolesY.map(r => `<div class="rolebar"><span>${POS[r.p]}</span><div class="track"><i style="width:${Math.max(2, r.n/maxN*100)}%;${r.p === tr.p ? 'background:var(--accent)' : ''}"></i><em>${r.n} игр</em></div>
+    <div><b class="${r.n >= 10 ? wrClass(r.wr) : 'muted'}">${r.n ? pct0(r.wr) : '—'}</b><small>IMP <span class="${impClass(r.imp)}">${impFmt(r.imp)}</span>${r.laneN >= 5 ? ` · линия ${pct0(r.lane)}` : ''}</small></div></div>`).join('');
+
+  const hc = {}; year.forEach(g => { const o = hc[g.hero] = hc[g.hero] || {n:0,w:0}; o.n++; o.w += g.win; });
+  const topH = Object.entries(hc).sort((a,b) => b[1].n - a[1].n).slice(0,3);
+  const bestH = Object.entries(hc).filter(([,o]) => o.n >= 8).sort((a,b) => smooth(b[1].w,b[1].n) - smooth(a[1].w,a[1].n))[0];
+  const worstH = Object.entries(hc).filter(([,o]) => o.n >= 8).sort((a,b) => smooth(a[1].w,a[1].n) - smooth(b[1].w,b[1].n))[0];
+  const wrOf = a => a.length ? `${a.filter(g=>g.win).length}–${a.length - a.filter(g=>g.win).length}` : '—';
+  const awards = year.filter(g => g.award && g.award !== 'NONE').length, laneY = year.filter(g => g.lane != null);
+  $('yearFacts').innerHTML = [
+    ['Разных героев', `${new Set(year.map(g => g.hero)).size}`], ['Чаще всего', topH.map(([h,o]) => `${H(h).localized_name} ${o.w}–${o.n-o.w}`).join(', ')],
+    bestH ? ['Лучший герой (8+ игр)', `${H(bestH[0]).localized_name} ${bestH[1].w}–${bestH[1].n-bestH[1].w}`] : null,
+    worstH ? ['Худший герой (8+ игр)', `${H(worstH[0]).localized_name} ${worstH[1].w}–${worstH[1].n-worstH[1].w}`] : null,
+    laneY.length >= 20 ? ['Линия выиграна / ничья / проиграна', `${laneY.filter(g=>g.lane>0).length} / ${laneY.filter(g=>g.lane===0).length} / ${laneY.filter(g=>g.lane<0).length}`] : null,
+    ['Стомпы против тебя / камбэки', `${year.filter(g => !g.win && g.outcome === 'STOMPED').length} / ${year.filter(g => g.win && g.outcome === 'COMEBACK').length}`],
+    ['Награды MVP / Top core / Top support', `${awards} (${pct0(awards/year.length)} игр)`],
+    ['Соло / в пати', `${wrOf(year.filter(g => g.party <= 1))} / ${wrOf(year.filter(g => g.party > 1))}`],
+    ['До 30 мин / дольше 45', `${wrOf(year.filter(g => g.dur < 1800))} / ${wrOf(year.filter(g => g.dur > 2700))}`],
+    ['Средние смерти', avg(year, g => g.d).toFixed(1)],
+    ['Первая игра сессии / 4-я и дальше', `${wrOf(year.filter(g=>g.sessIdx===1))} / ${wrOf(year.filter(g=>g.sessIdx>=4))}`],
+  ].filter(Boolean).map(([k,v]) => `<div class="kv"><span>${k}</span><b>${v}</b></div>`).join('');
+  $('radarNote').textContent = `Оси — ты против средних показателей того же героя на той же позиции в твоём ранге (${bracket.replace('_', '–').toLowerCase()}). Карта и часть ментала — только по разобранным матчам. Риск: больше — хуже.`;
+
+  $('report').classList.remove('hidden');
+  if($('more').open) drawCharts(S);
+}
+
+// Графики рисуются, только когда «Подробная статистика» раскрыта: в свёрнутом блоке у холста нулевой размер
+function drawCharts(S){
+  const {year, axY, axM} = S, keys = Object.keys(AX);
+  chart('radar', {type:'radar', data:{labels: keys.map(k => AX[k]), datasets:[
+      {label:'Год', data: keys.map(k => axY[k] ?? axM[k] ?? 50), borderColor:'#4f8ef7', backgroundColor:'rgba(79,142,247,.15)', pointRadius:3, borderWidth:2},
+      {label:'Месяц', data: keys.map(k => axM[k] ?? 50), borderColor:'#ff5e3a', backgroundColor:'rgba(255,94,58,.18)', pointRadius:3, borderWidth:2}]},
+    options:{scales:{r:{min:0, max:100, ticks:{display:false, stepSize:25}, grid:{color:'#262b36'}, angleLines:{color:'#262b36'}, pointLabels:{color:'#e9ebf0', font:{size:12}}}},
+      plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{label: c => `${c.dataset.label}: ${Math.round(c.raw)}/100`}}}}});
+  const byM = {};
+  year.forEach(g => { const d = new Date(g.t*1000), k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; (byM[k] = byM[k] || []).push(g); });
+  const months = Object.keys(byM).sort();
+  chart('trend', {type:'line', data:{labels: months.map(k => { const [y,m] = k.split('-'); return ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][+m-1] + ' ' + y.slice(2); }),
+      datasets:[{label:'Винрейт', data: months.map(k => 100*byM[k].filter(g=>g.win).length/byM[k].length), borderColor:'#ff5e3a', backgroundColor:'rgba(255,94,58,.12)', fill:true, tension:.3, pointRadius: 4, borderWidth:2}]},
+    options:{scales:{y:{min:0, max:100, ticks:{callback: v => v + '%'}}}, plugins:{legend:{display:false}, tooltip:{callbacks:{label: c => `${Math.round(c.raw)}% · ${byM[months[c.dataIndex]].length} игр`}}}}});
+}
+$('more').addEventListener('toggle', () => { if($('more').open && state) drawCharts(state); });
+
+// Роль, под которую считается разбор: выбранная игроком или «авто» (больше всего игр за последние 2 месяца)
+function setRole(p, manual){
+  const S = state;
+  S.manual = manual; S.trainRole = S.rolesY.find(r => r.p === p);
+  S.rec = recommendHeroes(S.year, S.wp, p, S.posTable);
+  renderReport(S);
+  renderPros(S);
+}
+
+// ───────── на какого про ты похож ─────────
+// Составы — с последних крупных турниров (свежее в Stratz нет), пул героев — по матчам про за 120 дней на этой позиции
+const PRO_LEAGUES = [18324, 18375];   // TI 2025, Esports World Cup 2025
+async function loadPros(){
+  const c = lsGet('st_pros'); if(c && Date.now() - c.t < 7*86400e3) return c.v;
+  const v = {};
+  for(const id of PRO_LEAGUES){
+    const d = await gql(`{ league(id: ${id}) { matches(request: {take: 100, skip: 0}) { players { position steamAccount { id proSteamAccount { name team { name } } } } } } }`);
+    ((d.league && d.league.matches) || []).forEach(m => m.players.forEach(p => {
+      const pa = p.steamAccount && p.steamAccount.proSteamAccount; if(!pa || !pa.name || !p.position) return;
+      const o = v[p.steamAccount.id] = v[p.steamAccount.id] || {name: pa.name, team: pa.team ? pa.team.name : '', pos: {}};
+      const n = posNum(p.position); o.pos[n] = (o.pos[n] || 0) + 1; }));
+  }
+  Object.values(v).forEach(o => o.main = +Object.entries(o.pos).sort((a,b) => b[1] - a[1])[0][0]);
+  lsSet('st_pros', {t: Date.now(), v}); return v;
+}
+async function loadProPools(pros, pos){
+  const k = 'st_propool_' + pos, c = lsGet(k); if(c && Date.now() - c.t < 2*86400e3) return c.v;
+  const ids = Object.entries(pros).filter(([,o]) => o.main === pos).map(([id]) => id).slice(0, 25);
+  const from = Math.floor(Date.now()/1000) - 120*86400, v = {};
+  for(let i = 0; i < ids.length; i += 5){   // Stratz отдаёт не больше 5 игроков за запрос
+    const d = await gql(`{ players(steamAccountIds: [${ids.slice(i, i+5).join(',')}]) { steamAccountId heroesPerformance(request: {positionIds: [POSITION_${pos}], startDateTime: ${from}, take: 300}, take: 25) { heroId matchCount } } }`);
+    (d.players || []).forEach(p => v[p.steamAccountId] = (p.heroesPerformance || []).filter(h => h.matchCount > 0).map(h => [h.heroId, h.matchCount]));
+  }
+  lsSet(k, {t: Date.now(), v}); return v;
+}
+const mini = h => `<div><img src="${CDN + H(h).img}" alt=""><span>${H(h).localized_name}</span></div>`;
+// Сходство — косинус между твоим пулом на позиции (победа весит больше игры) и текущим пулом про
+async function renderPros(S){
+  const pos = S.trainRole.p, token = {}; S.proToken = token;
+  $('proTitle').textContent = `На какого про ты похож · ${POS[pos]}`;
+  $('pros').innerHTML = '<p class="muted">Смотрю, на чём сейчас играют про на этой позиции…</p>';
+  try{
+    const pros = await loadPros(), pools = await loadProPools(pros, pos);
+    if(S.proToken !== token) return;   // роль успели переключить
+    const mine = {}; S.year.filter(g => g.pos === pos).forEach(g => mine[g.hero] = (mine[g.hero] || 0) + 0.4 + 0.6*g.win);
+    const len = o => Math.sqrt(Object.values(o).reduce((s,x) => s + x*x, 0)) || 1, lm = len(mine);
+    const res = Object.entries(pools).map(([id, list]) => { const v = Object.fromEntries(list);
+      return {pro: pros[id], n: list.length, sim: Object.keys(v).reduce((s,h) => s + (mine[h] || 0)*v[h], 0)/(lm*len(v)),
+        common: Object.keys(v).filter(h => mine[h]).sort((a,b) => v[b]*mine[b] - v[a]*mine[a]), theirs: list.filter(([h]) => !mine[h]).map(([h]) => h)}; })
+      .filter(x => x.pro && x.n >= 3).sort((a,b) => b.sim - a.sim).slice(0, 2);
+    if(!res.length){ $('pros').innerHTML = '<p class="muted">Нет свежих данных о про-игроках на этой позиции.</p>'; return; }
+    $('pros').innerHTML = res.map(x => `<div class="pro"><div class="pn">${x.pro.name}</div><div class="muted">${x.pro.team || 'без команды'} · совпадение пула ${pct0(x.sim)}</div>
+      <h3 style="margin-top:12px">Общие герои — смотри его игры на них</h3><div class="mini">${x.common.slice(0,4).map(mini).join('') || '<span class="muted">общих нет</span>'}</div>
+      <h3 style="margin-top:12px">Его герои, которых у тебя нет</h3><div class="mini">${x.theirs.slice(0,3).map(mini).join('')}</div></div>`).join('');
+  }catch(e){ if(S.proToken === token) $('pros').innerHTML = `<p class="muted">Не удалось загрузить про-игроков: ${e.message}</p>`; }
+}
+
+// ───────── оркестрация ─────────
+async function runPlayer(id){
+  $('report').classList.add('hidden'); $('err').classList.add('hidden'); $('progress').classList.remove('hidden');
+  prog('Профиль', '', 0.01);
+  await ensureHeroes();
+  const pd = await gql(`{ player(steamAccountId: ${id}) { steamAccount { name avatar seasonRank } matchCount winCount } }`);
+  const player = pd.player;
+  if(!player || !player.steamAccount) throw new Error('Профиль не найден. Проверь ID и что статистика матчей открыта.');
+  const bracket = bracketOf(player.steamAccount.seasonRank);
+  prog('Справочник', 'Средние по героям и позициям в твоём ранге…', 0.02);
+  const posTable = await loadPosTable(bracket);
+  const year = await yearLayer(id, posTable);
+  const cnt = {}; year.forEach(g => cnt[g.hero] = (cnt[g.hero]||0) + 1);
+  const refTime = await loadRefTime(Object.entries(cnt).filter(([,n]) => n >= 2).map(([h]) => +h), bracket);
+  year.forEach(g => { g.bench = benchOf(g.raw, g.pos, g.dur, refTime); delete g.raw; });
+  const month = await monthLayer(id, year, posTable, refTime);
+  prog('Анализ', 'Психотип, причины, герои…', 0.9);
+  const sessY = sessionStats(year), sessM = sessionStats(month);
+  const axY = psychotype(year, sessY), axM = psychotype(month, sessM);
+  const rolesY = roleTable(year);
+  const recent = year.filter(g => g.t >= Date.now()/1000 - 60*86400);
+  const autoRole = roleTable(recent.length >= 15 ? recent : year).sort((a,b) => b.n - a.n)[0].p;
+  const wp = winProfile(year, sessY, axM.parsedN >= 15 ? axM : axY);
+  state = {id, player, year, month, axY, axM, rolesY, sessY, sessM, posTable, bracket, autoRole, wp};
+  $('progress').classList.add('hidden');
+  const saved = lsGet('dc_role');
+  setRole(saved || autoRole, !!saved);
+}
+
+// ───────── разбор одного матча (OpenDota) ─────────
+const EXP = {
+  1:{gpm:550, dmg:.25, kp:.55, dp10:1.4, tower:2500, lh10:55, w:{gpm:.3, dmg:.2, kp:.1, deaths:.3, tower:.1}},
+  2:{gpm:500, dmg:.25, kp:.60, dp10:1.6, tower:1500, lh10:50, w:{gpm:.2, dmg:.25, kp:.15, deaths:.3, tower:.1}},
+  3:{gpm:420, dmg:.18, kp:.60, dp10:2.0, tower:1000, lh10:35, w:{gpm:.1, dmg:.2, kp:.2, deaths:.3, tower:.2}},
+  4:{gpm:320, dmg:.13, kp:.65, dp10:2.4, wards:8,  w:{gpm:.05, dmg:.15, kp:.25, deaths:.3, wards:.25}},
+  5:{gpm:270, dmg:.09, kp:.65, dp10:2.4, wards:14, w:{dmg:.1, kp:.25, deaths:.3, wards:.35}},
+};
+async function od(path){ const r = await fetch(ODOTA + path); if(!r.ok) throw new Error(`OpenDota ответил ${r.status}`); return r.json(); }
+function assignPositions(team){
+  const val = p => (p.gold_per_min||0) + (p.last_hits||0)*0.3;
+  const byVal = [...team].sort((a,b) => val(b) - val(a));
+  const free = new Set([1,2,3,4,5]), pos = new Map();
+  const take = (p,n) => { if(p && free.has(n) && !pos.has(p)){ pos.set(p,n); free.delete(n); } };
+  const lane = l => byVal.filter(p => p.lane_role === l);
+  take(lane(2)[0], 2); take(lane(1)[0], 1); take(lane(1)[1], 5); take(lane(3)[0], 3); take(lane(3)[1], 4);
+  byVal.filter(p => !pos.has(p)).forEach(p => take(p, Math.min(...free)));
+  return pos;
+}
+function evalPlayer(p, n, ctx){
+  const e = EXP[n], scale = Math.min(1.5, ctx.dur/2100), ms = [];
+  const add = (key, label, act, exp, fmt, lowerBetter = false) => { if(act == null || isNaN(act)) return;
+    const short = lowerBetter ? (act - exp)/exp : (exp - act)/exp; ms.push({key, label, act, exp, fmt, lowerBetter, ok: short < 0.15, short: clamp(short, 0, 1)}); };
+  add('gpm', 'GPM', p.gold_per_min, e.gpm, x => Math.round(x));
+  add('dmg', 'Доля урона', ctx.teamDmg ? (p.hero_damage||0)/ctx.teamDmg : null, e.dmg, pct0);
+  add('kp', 'Участие в убийствах', ctx.teamKills ? ((p.kills||0)+(p.assists||0))/ctx.teamKills : null, e.kp, pct0);
+  add('deaths', 'Смерти', p.deaths, Math.max(2, e.dp10*ctx.dur/600), x => Math.round(x), true);
+  if(e.tower) add('tower', 'Урон по строениям', p.tower_damage, e.tower*scale, fmtK);
+  if(e.wards && p.obs_placed != null) add('wards', 'Варды', (p.obs_placed||0)+(p.sentry_placed||0), Math.round(e.wards*scale), x => Math.round(x));
+  if(e.lh10 && p.lh_t && p.lh_t[10] != null) add('lh10', 'Добивания к 10 мин', p.lh_t[10], e.lh10, x => x);
+  let s = 0, ws = 0; ms.forEach(m => { const w = e.w[m.key]; if(w){ s += w*m.short; ws += w; } });
+  return {ms, score: ws ? Math.round(100*s/ws) : 0};
+}
+function defeatReasons(m, L, W){
+  const out = [], loserRad = L.radiant, name = p => `<b>${heroOf(p).localized_name}</b>`;
+  const adv = m.radiant_gold_adv;
+  if(adv && adv.length > 10){ const a = adv.map(x => loserRad ? x : -x), max = Math.max(...a), maxAt = a.indexOf(max);
+    if(max >= 5000){ let last = a.length - 1; while(last > 0 && a[last] < 0) last--;
+      out.push(`<b>Отдали выигранную игру.</b> На ${maxAt}-й минуте были впереди на ${fmtK(max)} золота, после ${last}-й уже не выходили вперёд.`); }
+    else if(a[10] < -2500) out.push(`<b>Проиграли старт:</b> к 10-й минуте −${fmtK(-a[10])} золота.`);
+    else { const t = a.findIndex(x => x < -5000); if(t > 0) out.push(`Ровно до ${t}-й минуты, потом отставание больше 5k.`); } }
+  const g10 = p => p && p.gold_t && p.gold_t[10];
+  if(L.players.every(g10) && W.players.every(g10)){ const sum = (t, ns) => ns.reduce((s,n) => s + g10(t.byPos[n]), 0);
+    [['лёгкую',[1,5],[3,4]],['центральную',[2],[2]],['сложную',[3,4],[1,5]]].forEach(([nm, mine, theirs]) => { const d = sum(L, mine) - sum(W, theirs);
+      if(d < -1200) out.push(`Проиграли ${nm} линию: к 10-й минуте ${mine.map(n => name(L.byPos[n])).join(' + ')} отстали на ${fmtK(-d)}.`); }); }
+  const lD = L.players.reduce((s,p) => s + (p.deaths||0), 0), worst = [...L.players].sort((a,b) => (b.deaths||0) - (a.deaths||0))[0];
+  if(worst.deaths >= 8 && worst.deaths >= lD/5*1.5) out.push(`${name(worst)} (${POS[L.pos.get(worst)]}) умер ${worst.deaths} раз из ${lD} смертей команды.`);
+  const tw = t => t.players.reduce((s,p) => s + (p.tower_damage||0), 0);
+  if(tw(L) < tw(W)*0.35) out.push(`Почти не давили строения: ${fmtK(tw(L))} против ${fmtK(tw(W))}.`);
+  const top = [...L.players].sort((a,b) => L.ev.get(b).score - L.ev.get(a).score)[0], ev = L.ev.get(top);
+  if(ev.score >= 30){ const miss = ev.ms.filter(x => !x.ok && x.key !== 'lh10').map(x => x.label.toLowerCase()).join(', ');
+    out.push(`Дальше всех от ожиданий роли — ${name(top)} (${POS[L.pos.get(top)]}): недобор ${ev.score}/100${miss ? `, проседают ${miss}` : ''}.`); }
+  if(!out.length) out.push('Одной явной причины нет: соперник сыграл ровнее по всем позициям.');
+  return out;
+}
+function teamHtml(t, showScore){
+  return [1,2,3,4,5].map(n => { const p = t.byPos[n], h = heroOf(p), ev = t.ev.get(p);
+    const chips = ev.ms.map(x => `<span class="chip ${x.ok ? 'ok' : 'no'}">${x.label}: <b>${x.fmt(x.act)}</b> <span class="muted">/ ${x.lowerBetter ? '≤' : '≥'}${x.fmt(x.exp)}</span></span>`).join('');
+    return `<div class="prow"><img src="${CDN + h.img}" alt=""><div><div class="nm">${h.localized_name} · ${POS[n]}</div><div class="meta">${p.personaname || 'Аноним'} · ${p.kills}/${p.deaths}/${p.assists}</div></div>
+      <div class="r">${showScore ? `<span class="muted">недобор</span><br><b class="${ev.score >= 40 ? 'bad' : ev.score >= 20 ? 'warn' : 'good'}">${ev.score}/100</b>` : ''}</div><div class="chips">${chips}</div></div>`; }).join('');
+}
+async function analyzeMatch(id){
+  await ensureHeroes();
+  const m = await od(`/matches/${id}`);
+  if(!m.players || m.players.length !== 10) throw new Error('Нет данных игроков этого матча.');
+  const dur = m.duration || 1;
+  const mk = radiant => { const players = m.players.filter(p => (p.player_slot < 128) === radiant), pos = assignPositions(players), byPos = {}; pos.forEach((n,p) => byPos[n] = p);
+    const ctx = {dur, teamKills: players.reduce((s,p) => s + (p.kills||0), 0), teamDmg: players.reduce((s,p) => s + (p.hero_damage||0), 0)};
+    return {radiant, players, pos, byPos, ev: new Map(players.map(p => [p, evalPlayer(p, pos.get(p), ctx)])), name: radiant ? 'Radiant' : 'Dire'}; };
+  const R = mk(true), D = mk(false), W = m.radiant_win ? R : D, L = m.radiant_win ? D : R;
+  $('mhead').innerHTML = `<div class="teams"><div><span class="muted">Radiant</span><div class="score ${m.radiant_win ? 'good' : 'bad'}">${m.radiant_score}</div></div><div class="muted">:</div>
+    <div><span class="muted">Dire</span><div class="score ${m.radiant_win ? 'bad' : 'good'}">${m.dire_score}</div></div>
+    <div style="margin-left:auto;text-align:right">Победа <b>${W.name}</b><br><span class="muted">${Math.floor(dur/60)}:${String(dur%60).padStart(2,'0')} · матч ${m.match_id}</span></div></div>
+    ${m.version ? '' : `<p class="warn" style="margin:12px 0 0">Матч не разобран OpenDota: нет линий, вардов и графика золота.</p>`}`;
+  $('whyTitle').textContent = `Почему проиграли ${L.name}`; $('why').innerHTML = defeatReasons(m, L, W).map(t => `<li>${t}</li>`).join('');
+  $('loseTitle').textContent = `${L.name} · проиграли · ожидания по роли`; $('loseTeam').innerHTML = teamHtml(L, true);
+  $('winTitle').textContent = `${W.name} · победили`; $('winTeam').innerHTML = teamHtml(W, false);
+}
+
+// ───────── общее ─────────
+function showTab(name){
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  $('tab-player').classList.toggle('hidden', name !== 'player'); $('tab-match').classList.toggle('hidden', name !== 'match');
+  $('report').classList.add('hidden'); $('mout').classList.add('hidden'); $('err').classList.add('hidden');
+}
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+function showErr(err){ $('progress').classList.add('hidden'); $('err').textContent = /Failed to fetch/.test(err.message) ? 'Не удалось связаться с сервером. Проверь интернет.' : err.message; $('err').classList.remove('hidden'); console.error(err); }
+
+$('f').onsubmit = async e => {
+  e.preventDefault(); const id = parseId($('q').value);
+  if(!id){ showErr(new Error('Не вижу ID. Вставь число из профиля Dota 2 или ссылку на Dotabuff/Stratz/Steam.')); return; }
+  $('go').disabled = true;
+  try{ await runPlayer(id); history.replaceState(null, '', '#' + id); }catch(err){ showErr(err); }finally{ $('go').disabled = false; }
+};
+$('fm').onsubmit = async e => {
+  e.preventDefault(); const m = $('qm').value.match(/(\d{6,12})/); $('err').classList.add('hidden');
+  if(!m){ showErr(new Error('Не вижу Match ID.')); return; }
+  $('gom').disabled = true;
+  try{ await analyzeMatch(m[1]); $('mout').classList.remove('hidden'); history.replaceState(null, '', '#m' + m[1]); }
+  catch(err){ showErr(/404/.test(err.message) ? new Error('Матч не найден. Проверь Match ID.') : err); }finally{ $('gom').disabled = false; }
+};
+function fromHash(){
+  const h0 = location.hash.slice(1);
+  if(h0.startsWith('m')){ showTab('match'); $('qm').value = h0.slice(1); $('fm').requestSubmit(); window.scrollTo(0,0); }
+  else if(h0){ $('q').value = h0; $('f').requestSubmit(); }
+}
+window.addEventListener('hashchange', fromHash);
+fromHash();
+</script>
+</body>
+</html>
