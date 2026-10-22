@@ -135,6 +135,10 @@ details.more>summary::after{content:' ▾';color:var(--muted)} details.more[open
   <div id="tab-player">
     <form id="f">
       <input id="q" placeholder="Steam ID, Friend ID или ссылка на профиль Dotabuff/Stratz/OpenDota" autocomplete="off">
+      <select id="period" title="За какой период считать роли и героев">
+        <option value="0" selected>За всё время</option>
+        <option value="365">За год</option>
+      </select>
       <button id="go">Разобрать</button>
     </form>
     <div class="hint">Нужна открытая статистика матчей: Dota 2 → Настройки → «Открыть доступ к данным матчей». Первый разбор занимает до минуты, повторный — секунды.</div>
@@ -211,12 +215,12 @@ details.more>summary::after{content:' ▾';color:var(--muted)} details.more[open
 
     <div class="grid g32">
       <div class="card">
-        <h3>Психотип · год против месяца</h3>
+        <h3 id="radarH">Психотип · период против месяца</h3>
         <canvas id="radar" height="300"></canvas>
         <div class="hint" id="radarNote"></div>
       </div>
       <div class="card">
-        <h3>Роли за год</h3>
+        <h3 id="rolesH">Роли</h3>
         <div id="roleBars"></div>
         <div class="hint">Ширина — доля игр, справа — винрейт и средний IMP (оценка вклада Stratz: 0 — норма для героя на этой позиции, выше — лучше).</div>
       </div>
@@ -224,7 +228,7 @@ details.more>summary::after{content:' ▾';color:var(--muted)} details.more[open
 
     <div class="grid g2">
       <div class="card"><h3>Винрейт по месяцам</h3><canvas id="trend" height="220"></canvas></div>
-      <div class="card"><h3>Год в цифрах</h3><div id="yearFacts"></div></div>
+      <div class="card"><h3 id="factsH">В цифрах</h3><div id="yearFacts"></div></div>
     </div>
     </details>
   </div>
@@ -342,19 +346,32 @@ function myLaneResult(m, me){
   const radWon = o.startsWith('RADIANT'); return (radWon === side ? 1 : -1) * (o.endsWith('STOMP') ? 2 : 1);
 }
 
-// ───────── СЛОЙ «ГОД» ─────────
+// ───────── СЛОЙ «ПЕРИОД»: год или всё время ─────────
+// Подпись периода для всего текста страницы; задаётся в runPlayer
+let PERIOD = {label: 'за всё время', short: 'всё время', cap: 'Всё время'};
 const LIGHT = `id didRadiantWin durationSeconds startDateTime analysisOutcome bottomLaneOutcome midLaneOutcome topLaneOutcome averageRank
   me: players(steamAccountId: $ID) { heroId position lane isRadiant isVictory kills deaths assists goldPerMinute networth numLastHits heroDamage towerDamage imp award partyId }`;
-async function yearLayer(id, posTable){
-  const since = Math.floor(Date.now()/1000) - 365*86400, raw = [];
-  for(let skip = 0; skip < 1500; skip += 100){
-    prog('Год', `Матчи ${skip + 1}–${skip + 100}…`, 0.03 + 0.1*skip/1000);
+// Список матчей кэшируется: повторный разбор докачивает только новые игры.
+// full — в кэше вся история игрока (нужно для «всего времени»).
+async function yearLayer(id, posTable, days){
+  const since = days ? Math.floor(Date.now()/1000) - days*86400 : 0, ck = 'st_matches_' + id;
+  let cache = lsGet(ck);
+  if(cache && !days && !cache.full) cache = null;
+  const cached = cache ? cache.v : [], known = new Set(cached.map(m => m.id)), fresh = [];
+  let full = cache ? cache.full : false;
+  for(let skip = 0; skip < 6000; skip += 100){
+    prog(PERIOD.cap, `Матчи ${skip + 1}–${skip + 100}…`, 0.03 + Math.min(0.12, 0.12*skip/2000));
     const d = await gql(`{ player(steamAccountId: ${id}) { matches(request: {take: 100, skip: ${skip}, lobbyTypeIds: [0,7], gameModeIds: [1,22]}) { ${LIGHT.replace('$ID', id)} } } }`);
-    const page = d.player.matches || []; raw.push(...page);
-    if(page.length < 100 || page[page.length-1].startDateTime < since) break;
+    const page = d.player.matches || [], news = page.filter(m => !known.has(m.id));
+    fresh.push(...news);
+    if(news.length < page.length) break;                     // дошли до уже сохранённых матчей
+    if(page.length < 100){ full = true; break; }
+    if(page[page.length-1].startDateTime < since) break;
   }
+  const raw = [...fresh, ...cached];
+  lsSet(ck, {t: Date.now(), full, v: raw});
   const list = raw.filter(m => m.startDateTime >= since && m.me && m.me[0]);
-  if(!list.length) throw new Error('За год матчей не видно — статистика скрыта в настройках Dota 2 или профиль не тот.');
+  if(!list.length) throw new Error(`Матчей ${PERIOD.label} не видно — статистика скрыта в настройках Dota 2 или профиль не тот.`);
   return list.map(m => { const me = m.me[0];
     return {id: m.id, t: m.startDateTime, dur: m.durationSeconds, win: me.isVictory, hero: me.heroId, party: me.partyId != null ? 2 : 1, parsed: !!me.position,
       pos: posNum(me.position) || estimatePos(me.heroId, me.lane, me.goldPerMinute, posTable), lane: myLaneResult(m, me), outcome: m.analysisOutcome,
@@ -565,7 +582,7 @@ function recommendHeroes(yearGames, wp, pos, posTable){
 }
 function heroCard(x, why, cls = ''){
   const g = x.my ? x.my.n : 0;
-  const badge = g ? `<span class="badge">${x.my.w}–${g - x.my.w} за год</span>` : '<span class="badge new">ни разу за год</span>';
+  const badge = g ? `<span class="badge">${x.my.w}–${g - x.my.w} ${PERIOD.label}</span>` : `<span class="badge new">ни разу ${PERIOD.label}</span>`;
   return `<div class="hcard ${cls}"><div class="himg"><img src="${CDN + x.h.img}" alt="">${badge}</div><div class="hb"><div class="hn">${x.h.localized_name}</div><div class="hr">${why}</div></div></div>`;
 }
 
@@ -610,7 +627,7 @@ function renderReport(S){
   $('pname').innerHTML = `<b style="color:var(--text);font-size:18px">${player.steamAccount.name}</b> · ${rt ? `${RANKS[Math.floor(rt/10)]} ${rt%10 || ''}` : 'без ранга'} · ${player.matchCount} матчей за всё время`;
   $('archName').textContent = arch.name;
   $('archText').innerHTML = arch.lines.slice(0,2).map(t => `<div style="margin-top:4px">${t}</div>`).join('');
-  $('headTiles').innerHTML = [[`${tr.w}–${tr.n-tr.w}`, `${rn} · год`, wrClass(tr.wr)],
+  $('headTiles').innerHTML = [[`${tr.w}–${tr.n-tr.w}`, `${rn} · ${PERIOD.short}`, wrClass(tr.wr)],
     [`${fw}–${focus.length-fw}`, focus === mRole ? `${rn} · месяц` : 'месяц', wrClass(fw/focus.length)],
     [impFmt(tr.imp), `IMP · ${rn}`, impClass(tr.imp)],
     [tr.laneN >= 5 ? pct0(tr.lane) : '—', 'линия выиграна', tr.lane >= .5 ? 'good' : tr.lane < .4 ? 'bad' : '']]
@@ -619,7 +636,7 @@ function renderReport(S){
   // ── Совет: одна позиция и почему. Весь разбор ниже — по ней, пока игрок сам не выберет другую.
   // Роли оцениваются по профилю побед: фарм и смерти — какими они бывают в твоих победах
   const ranked = rankRoles(S, S.wp.aw), recR = ranked.find(r => r.p === S.recommended);
-  const statsOf = r => [r.n ? `${r.w}–${r.n-r.w} за год (${pct0(r.wr)})` : 'за год не играл', r.n >= 5 ? `IMP ${impFmt(r.imp)}` : null, r.laneN >= 10 ? `линия выиграна в ${pct0(r.lane)} игр` : null].filter(Boolean).join(', ');
+  const statsOf = r => [r.n ? `${r.w}–${r.n-r.w} ${PERIOD.label} (${pct0(r.wr)})` : `не играл ${PERIOD.label}`, r.n >= 5 ? `IMP ${impFmt(r.imp)}` : null, r.laneN >= 10 ? `линия выиграна в ${pct0(r.lane)} игр` : null].filter(Boolean).join(', ');
   const bestWr = rolesY.filter(r => r.n >= 30).sort((a,b) => b.wr - a.wr)[0];
   const fitText = r => r.fit >= .55 ? 'в твоих победах это есть' : r.fit >= .45 ? 'у тебя это на среднем уровне' : 'это у тебя слабее';
   const roleKey = 'dc_role_' + S.id;   // выбор хранится для каждого игрока отдельно
@@ -664,17 +681,17 @@ function renderReport(S){
 
   // ── Главное: до 4 пунктов, всё про выбранную роль
   const V = [], better = pickTrainRole(rolesY);
-  let roleText = `${tr.w}–${tr.n-tr.w} за год (${pct0(tr.wr)})${focus === mRole ? `, за месяц ${fw}–${focus.length-fw}` : `, за месяц на ней почти не играл (${mRole.length} игр)`}, IMP ${impFmt(tr.imp)}.`;
+  let roleText = `${tr.w}–${tr.n-tr.w} ${PERIOD.label} (${pct0(tr.wr)})${focus === mRole ? `, за месяц ${fw}–${focus.length-fw}` : `, за месяц на ней почти не играл (${mRole.length} игр)`}, IMP ${impFmt(tr.imp)}.`;
   if(better.p !== tr.p) roleText += ` На ${POS[better.p]} у тебя ${pct0(better.wr)} — если цель только рейтинг, там быстрее. Если цель ${rn.toLowerCase()} — ниже то, что на нём чинить.`;
   V.push([S.manual ? `Ты качаешь: ${rn.toLowerCase()}` : `Позиция: ${rn.toLowerCase()}`, roleText]);
   if(tr.laneN >= 10){
     const duel = mean(focus.map(g => g.duel));
-    if(tr.lane < 0.4) V.push(['Линия — главное, что чинить', `Выиграна только в ${pct0(tr.lane)} игр за год${duel != null ? `, к 10-й минуте ты в среднем ${duel > 0 ? '+' : ''}${fmtK(duel)} нетворса против своего оппонента` : ''}. ${LANE_FIX[tr.p]}${hard.length ? ` Тяжелее всего было против: ${hard.slice(0,3).map(x => H(x.h).localized_name).join(', ')}.` : ''}`]);
+    if(tr.lane < 0.4) V.push(['Линия — главное, что чинить', `Выиграна только в ${pct0(tr.lane)} игр ${PERIOD.label}${duel != null ? `, к 10-й минуте ты в среднем ${duel > 0 ? '+' : ''}${fmtK(duel)} нетворса против своего оппонента` : ''}. ${LANE_FIX[tr.p]}${hard.length ? ` Тяжелее всего было против: ${hard.slice(0,3).map(x => H(x.h).localized_name).join(', ')}.` : ''}`]);
     else if(tr.lane >= 0.55) V.push(['Линия — твоя сила', `Выиграна в ${pct0(tr.lane)} игр. Проблемы начинаются после неё — смотри следующий пункт.`]);
   }
   const topCause = order.filter(([c]) => c !== 'unknown')[0];
   if(topCause && topCause[1].length >= 2) V.push([`Почему проигрываешь: ${CAUSES[topCause[0]][0].toLowerCase()}`, `${topCause[1].length} из ${losses.length} поражений за месяц. ${FIX[topCause[0]][0].toUpperCase() + FIX[topCause[0]].slice(1)}.`]);
-  if(sessY.afterTwo.n >= 6 && sessY.afterTwo.wr <= 0.38) V.push(['Тильт', `После двух поражений подряд ты ${sessY.afterTwo.w}–${sessY.afterTwo.n-sessY.afterTwo.w} за год. Правило: два поражения — выход на час.`]);
+  if(sessY.afterTwo.n >= 6 && sessY.afterTwo.wr <= 0.38) V.push(['Тильт', `После двух поражений подряд ты ${sessY.afterTwo.w}–${sessY.afterTwo.n-sessY.afterTwo.w} ${PERIOD.label}. Правило: два поражения — выход на час.`]);
   const ind = diffs.find(d => d.label !== 'IMP' && (d.lowerBetter ? d.a < d.b : d.a > d.b));   // IMP растёт в победах по определению — не индикатор
   if(ind && W.length >= 3 && L.length >= 3) V.push([`Твой индикатор: ${ind.label.toLowerCase()}`, `В победах ${ind.fmt(ind.a)}, в поражениях ${ind.fmt(ind.b)}. Если по ходу игры он проседает — играй от обороны и не форсируй.`]);
   $('verdict').innerHTML = V.slice(0,4).map(([t,d], i) => `<div class="step"><div class="num">${i+1}</div><div><div class="t">${t}</div><div class="muted">${d}</div></div></div>`).join('');
@@ -724,6 +741,9 @@ function renderReport(S){
   ].filter(Boolean).map(([k,v]) => `<div class="kv"><span>${k}</span><b>${v}</b></div>`).join('');
   $('radarNote').textContent = `Оси — ты против средних показателей того же героя на той же позиции в твоём ранге (${bracket.replace('_', '–').toLowerCase()}). Карта и часть ментала — только по разобранным матчам. Риск: больше — хуже.`;
 
+  $('radarH').textContent = `Психотип · ${PERIOD.short} против месяца`;
+  $('rolesH').textContent = `Роли ${PERIOD.label} · ${year.length} игр`;
+  $('factsH').textContent = `${PERIOD.cap} в цифрах`;
   $('report').classList.remove('hidden');
   if($('more').open) drawCharts(S);
 }
@@ -732,7 +752,7 @@ function renderReport(S){
 function drawCharts(S){
   const {year, axY, axM} = S, keys = Object.keys(AX);
   chart('radar', {type:'radar', data:{labels: keys.map(k => AX[k]), datasets:[
-      {label:'Год', data: keys.map(k => axY[k] ?? axM[k] ?? 50), borderColor:'#4f8ef7', backgroundColor:'rgba(79,142,247,.15)', pointRadius:3, borderWidth:2},
+      {label: PERIOD.cap, data: keys.map(k => axY[k] ?? axM[k] ?? 50), borderColor:'#4f8ef7', backgroundColor:'rgba(79,142,247,.15)', pointRadius:3, borderWidth:2},
       {label:'Месяц', data: keys.map(k => axM[k] ?? 50), borderColor:'#ff5e3a', backgroundColor:'rgba(255,94,58,.18)', pointRadius:3, borderWidth:2}]},
     options:{scales:{r:{min:0, max:100, ticks:{display:false, stepSize:25}, grid:{color:'#262b36'}, angleLines:{color:'#262b36'}, pointLabels:{color:'#e9ebf0', font:{size:12}}}},
       plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{label: c => `${c.dataset.label}: ${Math.round(c.raw)}/100`}}}}});
@@ -813,7 +833,9 @@ async function runPlayer(id){
   const bracket = bracketOf(player.steamAccount.seasonRank);
   prog('Справочник', 'Средние по героям и позициям в твоём ранге…', 0.02);
   const posTable = await loadPosTable(bracket);
-  const year = await yearLayer(id, posTable);
+  const days = +$('period').value || 0;
+  PERIOD = days ? {label: 'за год', short: 'год', cap: 'Год'} : {label: 'за всё время', short: 'всё время', cap: 'Всё время'};
+  const year = await yearLayer(id, posTable, days);
   const cnt = {}; year.forEach(g => cnt[g.hero] = (cnt[g.hero]||0) + 1);
   const refTime = await loadRefTime(Object.entries(cnt).filter(([,n]) => n >= 2).map(([h]) => +h), bracket);
   year.forEach(g => { g.bench = benchOf(g.raw, g.pos, g.dur, refTime); delete g.raw; });
