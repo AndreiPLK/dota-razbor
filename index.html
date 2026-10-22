@@ -125,7 +125,7 @@ details.more>summary::after{content:' ▾';color:var(--muted)} details.more[open
 <body>
 <div class="wrap">
   <h1>Dota Разбор</h1>
-  <p class="sub">Год твоих игр целиком и последний месяц под микроскопом: тип игрока, роль, почему проигрываешь, кого качать. Данные — Stratz.</p>
+  <p class="sub">Все твои игры и последний месяц под микроскопом: тип игрока, роль, почему проигрываешь, кого качать. Данные — Stratz.</p>
 
   <div class="tabs">
     <button class="tab active" data-tab="player">Игрок</button>
@@ -243,7 +243,6 @@ details.more>summary::after{content:' ▾';color:var(--muted)} details.more[open
 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
-const ODOTA = 'https://api.opendota.com/api';
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
 const STEAM64_BASE = 76561197960265728n;
 const RANKS = ['','Herald','Guardian','Crusader','Archon','Legend','Ancient','Divine','Immortal'];
@@ -254,6 +253,7 @@ let heroes = {}, state = null, charts = {};
 // ───────── утилиты ─────────
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const smooth = (w, n) => (w + 5) / (n + 10);
+const solid = (w, n) => (w + 10) / (n + 20);   // для героев: 50–28 должно быть выше, чем 11–5
 const pct = x => (x * 100).toFixed(1) + '%';
 const pct0 = x => Math.round(x*100) + '%';
 const wrClass = x => x >= 0.53 ? 'good' : x <= 0.47 ? 'bad' : '';
@@ -572,7 +572,9 @@ function recommendHeroes(yearGames, wp, pos, posTable){
     x.metaS = clamp(((x.metaWr ?? .5) - .44)/.12, 0, 1); x.total = 0.4*x.fit + 0.3*x.tagS + 0.3*x.metaS; });
   const onPos = all.filter(x => x.share >= 0.2);
   const impOf = x => mean(x.my.imp) || 0;
-  const strong = onPos.filter(x => x.my && x.my.pn >= 6).sort((a,b) => (smooth(b.my.pw, b.my.pn) + impOf(b)/100) - (smooth(a.my.pw, a.my.pn) + impOf(a)/100)).slice(0,2);
+  // Свои сильные — любой герой, сыгранный на этой позиции 6+ раз, даже если в мете его тут не берут (Снайпер на миде и т. п.)
+  const strong = Object.entries(yr).filter(([,o]) => o.pn >= 6).map(([id, o]) => all.find(x => x.h.id === +id) || {h: H(+id), my: o, fit: .5, share: 0})
+    .sort((a,b) => (solid(b.my.pw, b.my.pn) + impOf(b)/100) - (solid(a.my.pw, a.my.pn) + impOf(a)/100)).slice(0,2);
   const fresh = onPos.filter(x => !x.my || x.my.pn < 6);
   const medianPick = onPos.map(x => x.pick).sort((a,b) => a-b)[Math.floor(onPos.length/2)] || 0.008;
   const meta = fresh.filter(x => x.pick >= medianPick).sort((a,b) => b.total - a.total).slice(0,2);
@@ -640,12 +642,18 @@ function renderReport(S){
   const bestWr = rolesY.filter(r => r.n >= 30).sort((a,b) => b.wr - a.wr)[0];
   const fitText = r => r.fit >= .55 ? 'в твоих победах это есть' : r.fit >= .45 ? 'у тебя это на среднем уровне' : 'это у тебя слабее';
   const roleKey = 'dc_role_' + S.id;   // выбор хранится для каждого игрока отдельно
+  // Лучшие герои за период на любой позиции — чтобы любимый герой не терялся, если совет про другую роль
+  const byHero = {};
+  year.forEach(g => { const o = byHero[g.hero] = byHero[g.hero] || {n:0, w:0, pos:{}}; o.n++; o.w += g.win; o.pos[g.pos] = (o.pos[g.pos] || 0) + 1; });
+  const bestHeroes = Object.entries(byHero).filter(([,o]) => o.n >= 15 && o.w/o.n > 0.5).sort((a,b) => solid(b[1].w, b[1].n) - solid(a[1].w, a[1].n)).slice(0, 3)
+    .map(([h,o]) => `${H(+h).localized_name} ${o.w}–${o.n-o.w} (${roleShort(+Object.entries(o.pos).sort((a,b) => b[1]-a[1])[0][0]).toLowerCase()})`);
   if(!S.manual){
     $('offerTitle').innerHTML = `Наш совет: <span class="accent">${POS[tr.p]}</span>`;
     $('offerWhy').innerHTML = [
       `Результат: ${statsOf(recR)}${bestWr && bestWr.p === tr.p ? ' — лучший среди твоих позиций' : ''}.`,
       `Позиции нужны ${recR.needs.join(' и ')} (из 100) — ${fitText(recR)}.`,
       recR.n < 30 ? 'Игр на ней мало — совет больше по стилю, чем по результатам.' : null,
+      bestHeroes.length ? `Твои лучшие герои на любой позиции: ${bestHeroes.join(', ')}.` : null,
     ].filter(Boolean).map(t => `<li>${t}</li>`).join('');
     const alts = ranked.filter(r => r.p !== tr.p).slice(0, 2);
     $('offerAlt').innerHTML = `Ещё подходят: ${alts.map(r => `<button class="linkbtn" data-p="${r.p}">${roleShort(r.p)}</button>`).join(' и ')}`;
@@ -860,12 +868,29 @@ const EXP = {
   4:{gpm:320, dmg:.13, kp:.65, dp10:2.4, wards:8,  w:{gpm:.05, dmg:.15, kp:.25, deaths:.3, wards:.25}},
   5:{gpm:270, dmg:.09, kp:.65, dp10:2.4, wards:14, w:{dmg:.1, kp:.25, deaths:.3, wards:.35}},
 };
-async function od(path){ const r = await fetch(ODOTA + path); if(!r.ok) throw new Error(`OpenDota ответил ${r.status}`); return r.json(); }
+// Матч из Stratz, приведённый к полям, с которыми работает разбор матча
+async function stratzMatch(id){
+  const d = await gql(`{ match(id: ${id}) { id didRadiantWin durationSeconds parsedDateTime radiantNetworthLeads
+    players { isRadiant heroId position lane kills deaths assists goldPerMinute numLastHits heroDamage towerDamage steamAccount { name }
+      stats { networthPerMinute lastHitsPerMinute wards { type } } } } }`);
+  const m = d.match;
+  if(!m || !m.players) throw new Error('Матч не найден. Проверь Match ID.');
+  const cum = a => { let s = 0; return a.map(x => s += x); };   // добивания по минутам → накопительно
+  const players = m.players.map(p => { const st = p.stats || {}, w = st.wards || null;
+    return {player_slot: p.isRadiant ? 0 : 128, hero_id: p.heroId, pos: posNum(p.position), lane_role: {SAFE_LANE:1, MID_LANE:2, OFF_LANE:3, JUNGLE:4}[p.lane] || null,
+      kills: p.kills, deaths: p.deaths, assists: p.assists, gold_per_min: p.goldPerMinute, last_hits: p.numLastHits, hero_damage: p.heroDamage, tower_damage: p.towerDamage,
+      personaname: p.steamAccount && p.steamAccount.name, obs_placed: w ? w.filter(x => x.type === 0).length : null, sentry_placed: w ? w.filter(x => x.type === 1).length : null,
+      gold_t: st.networthPerMinute || null, lh_t: st.lastHitsPerMinute ? cum(st.lastHitsPerMinute) : null}; });
+  const score = rad => players.filter(p => (p.player_slot < 128) === rad).reduce((s,p) => s + (p.kills||0), 0);
+  return {match_id: m.id, radiant_win: m.didRadiantWin, duration: m.durationSeconds, version: m.parsedDateTime || null,
+    radiant_gold_adv: m.radiantNetworthLeads, radiant_score: score(true), dire_score: score(false), players};
+}
 function assignPositions(team){
   const val = p => (p.gold_per_min||0) + (p.last_hits||0)*0.3;
   const byVal = [...team].sort((a,b) => val(b) - val(a));
   const free = new Set([1,2,3,4,5]), pos = new Map();
   const take = (p,n) => { if(p && free.has(n) && !pos.has(p)){ pos.set(p,n); free.delete(n); } };
+  team.forEach(p => take(p, p.pos));   // позиция от Stratz, если он её определил
   const lane = l => byVal.filter(p => p.lane_role === l);
   take(lane(2)[0], 2); take(lane(1)[0], 1); take(lane(1)[1], 5); take(lane(3)[0], 3); take(lane(3)[1], 4);
   byVal.filter(p => !pos.has(p)).forEach(p => take(p, Math.min(...free)));
@@ -915,7 +940,7 @@ function teamHtml(t, showScore){
 }
 async function analyzeMatch(id){
   await ensureHeroes();
-  const m = await od(`/matches/${id}`);
+  const m = await stratzMatch(id);
   if(!m.players || m.players.length !== 10) throw new Error('Нет данных игроков этого матча.');
   const dur = m.duration || 1;
   const mk = radiant => { const players = m.players.filter(p => (p.player_slot < 128) === radiant), pos = assignPositions(players), byPos = {}; pos.forEach((n,p) => byPos[n] = p);
@@ -925,7 +950,7 @@ async function analyzeMatch(id){
   $('mhead').innerHTML = `<div class="teams"><div><span class="muted">Radiant</span><div class="score ${m.radiant_win ? 'good' : 'bad'}">${m.radiant_score}</div></div><div class="muted">:</div>
     <div><span class="muted">Dire</span><div class="score ${m.radiant_win ? 'bad' : 'good'}">${m.dire_score}</div></div>
     <div style="margin-left:auto;text-align:right">Победа <b>${W.name}</b><br><span class="muted">${Math.floor(dur/60)}:${String(dur%60).padStart(2,'0')} · матч ${m.match_id}</span></div></div>
-    ${m.version ? '' : `<p class="warn" style="margin:12px 0 0">Матч не разобран OpenDota: нет линий, вардов и графика золота.</p>`}`;
+    ${m.version ? '' : `<p class="warn" style="margin:12px 0 0">Stratz ещё не разобрал реплей этого матча: нет линий, вардов и графика золота. Попробуй через несколько минут.</p>`}`;
   $('whyTitle').textContent = `Почему проиграли ${L.name}`; $('why').innerHTML = defeatReasons(m, L, W).map(t => `<li>${t}</li>`).join('');
   $('loseTitle').textContent = `${L.name} · проиграли · ожидания по роли`; $('loseTeam').innerHTML = teamHtml(L, true);
   $('winTitle').textContent = `${W.name} · победили`; $('winTeam').innerHTML = teamHtml(W, false);
