@@ -94,20 +94,12 @@ canvas{max-width:100%}
 .rp{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:8px 14px;font-weight:500}
 .rp.active{background:var(--accent);border-color:var(--accent);font-weight:700}
 .rp small{color:var(--muted);margin-left:4px} .rp.active small{color:#fff}
-#offerCard .rolepick{padding:14px 0 0}
+#offerCard .rolepick{padding:14px 0 0} #offerCard .rolepick.hidden{display:none}
 #offerTitle{font-size:22px;line-height:1.3}
 .accent{color:var(--accent)}
-.offers{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:4px}
-@media(max-width:860px){.offers{grid-template-columns:1fr}}
-.offer{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:14px 16px;cursor:pointer;transition:border-color .15s}
-.offer:hover{border-color:#3a4150} .offer.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
-.offer .olabel{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:700}
-.offer .oname{font-size:20px;font-weight:800;margin:2px 0 6px}
-.offer .owhy{font-size:13px;color:var(--muted)}
-.oheroes{display:flex;gap:8px;margin:12px 0 8px}
-.oheroes div{flex:1;min-width:0} .oheroes img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;display:block}
-.oheroes span{font-size:11px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
-.offer .ogo{font-size:12px;font-weight:600}
+#offerWhy li{margin:4px 0}
+.offerbar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.linkbtn{background:none;border:0;padding:0;color:var(--text);font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .hgroups{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 @media(max-width:860px){.hgroups{grid-template-columns:1fr 1fr}} @media(max-width:520px){.hgroups{grid-template-columns:1fr}}
 .hcol{display:grid;gap:10px;align-content:start}
@@ -174,9 +166,10 @@ details.more>summary::after{content:' ▾';color:var(--muted)} details.more[open
 
     <div class="card" id="offerCard">
       <h2 id="offerTitle"></h2>
-      <p class="muted" id="winLine" style="margin:-6px 0 14px"></p>
-      <div class="offers" id="offers"></div>
-      <div class="rolepick" id="rolePick"></div>
+      <ul class="ins" id="offerWhy"></ul>
+      <p class="muted" id="winLine" style="margin:12px 0 0"></p>
+      <div class="offerbar"><span id="offerAlt" class="muted"></span><button class="ghost" id="changeRole">Хочу другую позицию</button></div>
+      <div class="rolepick hidden" id="rolePick"></div>
     </div>
 
     <div class="card"><h2>Главное</h2><div class="steps" id="verdict"></div></div>
@@ -623,31 +616,34 @@ function renderReport(S){
     [tr.laneN >= 5 ? pct0(tr.lane) : '—', 'линия выиграна', tr.lane >= .5 ? 'good' : tr.lane < .4 ? 'bad' : '']]
     .map(([b,s,c]) => `<div class="tile"><b class="${c}">${b}</b><span>${s}</span></div>`).join('');
 
-  // ── Предложения: 3 лучшие позиции с причинами и героями; клик переключает разбор на позицию
+  // ── Совет: одна позиция и почему. Весь разбор ниже — по ней, пока игрок сам не выберет другую.
   // Роли оцениваются по профилю побед: фарм и смерти — какими они бывают в твоих победах
-  const ranked = rankRoles(S, S.wp.aw), top3 = ranked.slice(0, 3);
-  const label = p => `${roleShort(p).toLowerCase()} (поз. ${p})`;
-  $('offerTitle').innerHTML = `Ты — ${arch.name.toLowerCase()}. Тебе лучше всего: <span class="accent">${label(top3[0].p)}</span> или <span class="accent">${label(top3[1].p)}</span>.`;
+  const ranked = rankRoles(S, S.wp.aw), recR = ranked.find(r => r.p === S.recommended);
+  const statsOf = r => [r.n ? `${r.w}–${r.n-r.w} за год (${pct0(r.wr)})` : 'за год не играл', r.n >= 5 ? `IMP ${impFmt(r.imp)}` : null, r.laneN >= 10 ? `линия выиграна в ${pct0(r.lane)} игр` : null].filter(Boolean).join(', ');
+  const bestWr = rolesY.filter(r => r.n >= 30).sort((a,b) => b.wr - a.wr)[0];
+  const fitText = r => r.fit >= .55 ? 'в твоих победах это есть' : r.fit >= .45 ? 'у тебя это на среднем уровне' : 'это у тебя слабее';
+  const roleKey = 'dc_role_' + S.id;   // выбор хранится для каждого игрока отдельно
+  if(!S.manual){
+    $('offerTitle').innerHTML = `Наш совет: <span class="accent">${POS[tr.p]}</span>`;
+    $('offerWhy').innerHTML = [
+      `Результат: ${statsOf(recR)}${bestWr && bestWr.p === tr.p ? ' — лучший среди твоих позиций' : ''}.`,
+      `Позиции нужны ${recR.needs.join(' и ')} (из 100) — ${fitText(recR)}.`,
+      recR.n < 30 ? 'Игр на ней мало — совет больше по стилю, чем по результатам.' : null,
+    ].filter(Boolean).map(t => `<li>${t}</li>`).join('');
+    const alts = ranked.filter(r => r.p !== tr.p).slice(0, 2);
+    $('offerAlt').innerHTML = `Ещё подходят: ${alts.map(r => `<button class="linkbtn" data-p="${r.p}">${roleShort(r.p)}</button>`).join(' и ')}`;
+  } else {
+    $('offerTitle').innerHTML = `Ты выбрал: <span class="accent">${POS[tr.p]}</span>`;
+    $('offerWhy').innerHTML = [`Весь разбор ниже — для этой позиции: ${statsOf(tr)}.`,
+      `Наш совет был ${POS[S.recommended]}: ${statsOf(recR)}.`].map(t => `<li>${t}</li>`).join('');
+    $('offerAlt').innerHTML = `<button class="linkbtn" data-p="0">← Вернуть совет: ${roleShort(S.recommended)}</button>`;
+  }
   $('winLine').textContent = winLineText(S.wp);
-  $('offers').innerHTML = top3.map((r, i) => {
-    const hr = recommendHeroes(year, S.wp, r.p, posTable), seen = new Set();
-    const picks = [...hr.pool, ...hr.meta, ...hr.off].filter(x => !seen.has(x.h.id) && seen.add(x.h.id)).slice(0, 3);
-    const stats = [r.n ? `${r.w}–${r.n-r.w} за год (${pct0(r.wr)})` : 'за год не играл', r.n >= 5 ? `IMP ${impFmt(r.imp)}` : null, r.laneN >= 10 ? `линия ${pct0(r.lane)}` : null].filter(Boolean).join(' · ');
-    const fitText = r.fit >= .55 ? 'у тебя есть' : r.fit >= .45 ? 'у тебя средне' : 'у тебя слабее';
-    return `<div class="offer ${r.p === tr.p ? 'active' : ''}" data-p="${r.p}">
-      <div class="olabel">${['Лучший выбор', 'Второй вариант', 'Ещё вариант'][i]}</div>
-      <div class="oname">${POS[r.p]}</div>
-      <div class="owhy">${stats}</div>
-      <div class="owhy">Нужно: ${r.needs.join(', ')} — ${fitText}${r.n < 30 ? ' · мало игр, оценка по стилю' : ''}</div>
-      <div class="oheroes">${picks.map(x => `<div><img src="${CDN + x.h.img}" alt=""><span>${x.h.localized_name}</span></div>`).join('')}</div>
-      <div class="ogo ${r.p === tr.p ? 'accent' : 'muted'}">${r.p === tr.p ? 'Разбор ниже — по этой роли' : 'Показать разбор по этой роли →'}</div></div>`; }).join('');
-  document.querySelectorAll('#offers .offer').forEach(el => el.onclick = () => { const p = +el.dataset.p; lsSet('dc_role', p); setRole(p, true); });
-
-  $('rolePick').innerHTML = `<span class="muted" style="margin-right:4px">Или выбери сам:</span>` + [0,1,2,3,4,5].map(p => {
-    const active = p ? (S.manual && tr.p === p) : !S.manual;
-    const label = p ? `${roleShort(p)}<small>${rolesY.find(r => r.p === p).n}</small>` : `Авто · ${roleShort(S.autoRole)}`;
-    return `<button class="rp ${active ? 'active' : ''}" data-p="${p}">${label}</button>`; }).join('');
-  document.querySelectorAll('#rolePick .rp').forEach(b => b.onclick = () => { const p = +b.dataset.p; lsSet('dc_role', p || null); setRole(p || S.autoRole, !!p); });
+  $('rolePick').innerHTML = [1,2,3,4,5].map(p => { const r = rolesY.find(x => x.p === p);
+    return `<button class="rp ${p === tr.p ? 'active' : ''}" data-p="${p}">${roleShort(p)}<small>${r.n ? `${r.n} игр · ${pct0(r.wr)}` : 'нет игр'}</small></button>`; }).join('');
+  const pick = p => { p = +p; lsSet(roleKey, p && p !== S.recommended ? p : null); setRole(p || S.recommended, !!p && p !== S.recommended); };
+  document.querySelectorAll('#rolePick .rp, #offerAlt .linkbtn').forEach(b => b.onclick = () => pick(b.dataset.p));
+  $('changeRole').onclick = () => $('rolePick').classList.toggle('hidden');
 
   // ── причины поражений, победы vs поражения, матчапы — по фокусу
   const losses = focus.filter(g => !g.win), byCause = {};
@@ -668,9 +664,9 @@ function renderReport(S){
 
   // ── Главное: до 4 пунктов, всё про выбранную роль
   const V = [], better = pickTrainRole(rolesY);
-  let roleText = `${tr.w}–${tr.n-tr.w} за год (${pct0(tr.wr)}), за месяц ${fw}–${focus.length-fw}, IMP ${impFmt(tr.imp)}.`;
+  let roleText = `${tr.w}–${tr.n-tr.w} за год (${pct0(tr.wr)})${focus === mRole ? `, за месяц ${fw}–${focus.length-fw}` : `, за месяц на ней почти не играл (${mRole.length} игр)`}, IMP ${impFmt(tr.imp)}.`;
   if(better.p !== tr.p) roleText += ` На ${POS[better.p]} у тебя ${pct0(better.wr)} — если цель только рейтинг, там быстрее. Если цель ${rn.toLowerCase()} — ниже то, что на нём чинить.`;
-  V.push([S.manual ? `Ты качаешь: ${rn.toLowerCase()}` : `Твоя роль сейчас: ${rn.toLowerCase()}`, roleText]);
+  V.push([S.manual ? `Ты качаешь: ${rn.toLowerCase()}` : `Позиция: ${rn.toLowerCase()}`, roleText]);
   if(tr.laneN >= 10){
     const duel = mean(focus.map(g => g.duel));
     if(tr.lane < 0.4) V.push(['Линия — главное, что чинить', `Выиграна только в ${pct0(tr.lane)} игр за год${duel != null ? `, к 10-й минуте ты в среднем ${duel > 0 ? '+' : ''}${fmtK(duel)} нетворса против своего оппонента` : ''}. ${LANE_FIX[tr.p]}${hard.length ? ` Тяжелее всего было против: ${hard.slice(0,3).map(x => H(x.h).localized_name).join(', ')}.` : ''}`]);
@@ -826,13 +822,12 @@ async function runPlayer(id){
   const sessY = sessionStats(year), sessM = sessionStats(month);
   const axY = psychotype(year, sessY), axM = psychotype(month, sessM);
   const rolesY = roleTable(year);
-  const recent = year.filter(g => g.t >= Date.now()/1000 - 60*86400);
-  const autoRole = roleTable(recent.length >= 15 ? recent : year).sort((a,b) => b.n - a.n)[0].p;
   const wp = winProfile(year, sessY, axM.parsedN >= 15 ? axM : axY);
-  state = {id, player, year, month, axY, axM, rolesY, sessY, sessM, posTable, bracket, autoRole, wp};
+  state = {id, player, year, month, axY, axM, rolesY, sessY, sessM, posTable, bracket, wp};
+  state.recommended = rankRoles(state, wp.aw)[0].p;
   $('progress').classList.add('hidden');
-  const saved = lsGet('dc_role');
-  setRole(saved || autoRole, !!saved);
+  const saved = lsGet('dc_role_' + id);
+  setRole(saved || state.recommended, !!saved);
 }
 
 // ───────── разбор одного матча (OpenDota) ─────────
