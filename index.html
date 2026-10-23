@@ -150,6 +150,11 @@ canvas{max-width:100%}
 .sh img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
 .sh .cap{padding:6px 8px 8px} .sh .nm{font-weight:800;font-size:14px} .sh .sub{font-size:12px;color:var(--muted)}
 .sh .big{position:absolute;top:6px;right:6px;font-weight:800;font-size:15px;padding:1px 7px;border-radius:8px;background:rgba(0,0,0,.7)}
+.grow-row,.grow-head{display:grid;grid-template-columns:56px 1fr 230px;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.grow-head{border:0;padding:0;font-size:12px} .grow-head span:last-child{text-align:right}
+.grow-row img{width:56px;height:32px;object-fit:cover;border-radius:4px}
+.gpath{display:flex;justify-content:flex-end;align-items:baseline;gap:8px;font-size:16px;font-variant-numeric:tabular-nums} .gpath b{font-size:22px} .gpath i{color:var(--muted);font-style:normal}
+@media(max-width:600px){.grow-row{grid-template-columns:56px 1fr}.gpath{grid-column:1/3;justify-content:flex-start}.grow-head{display:none}}
 details.more{margin-top:16px}
 details.more>summary{cursor:pointer;list-style:none;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 20px;font-weight:700}
 details.more>summary::-webkit-details-marker{display:none}
@@ -209,6 +214,8 @@ details.more>summary::after{content:' ▾';color:var(--muted)} details.more[open
       <div class="sumrow good-row"><div class="sumlbl">Бери их — будешь выигрывать чаще</div><div class="sumheroes" id="sumTake"></div></div>
       <div class="sumrow fun-row"><div class="sumlbl">По фану попробуй</div><div class="sumheroes" id="sumFun"></div></div>
     </div>
+
+    <div class="card" id="growCard"><h2>Перспектива: как тебе расти</h2><p id="growNote" style="margin-top:0"></p><div id="grow"></div></div>
 
     <details class="more" id="moreAll">
     <summary>Подробный разбор: позиции, ошибки, драфт, обучение</summary>
@@ -946,7 +953,8 @@ function setRole(p, manual){
   renderReport(S);
   renderPros(S);
   renderDraft(S);
-  renderLearn(S);
+  renderLearn(S);   // до прогноза: прогноз берёт из неё скорость обучения
+  renderGrowth(S);
 }
 
 // ───────── кривая обучения ─────────
@@ -1191,6 +1199,77 @@ async function renderInsights(S){
     const n = S.year.filter(g => drafts[g.id]).length;
     draw(findInsights(S, drafts), `Проверил ${S.year.length} игр (${n} — с составами команд) по десяткам срезов: герой × длина игры, враги, союзники, состав врага, время, линия. Показываю только то, что заметно отличается от твоего среднего и вряд ли случайность.`);
   }catch(e){ if(S.insToken === token) $('insNote').textContent = 'Составы команд не загрузились (Stratz сбоит) — показываю находки без врагов и союзников. Нажми «Разобрать» ещё раз позже.'; }
+}
+
+// ───────── перспектива: прогноз роста ─────────
+// Для каждого героя на позиции (300+ игр в ранге) — прогноз твоего винрейта сейчас → через 50 → через 100 игр:
+//   потолок = сила героя на позиции в твоём ранге + твои типичные драфты + совпадение со стилем + твои результаты на героях такого типа;
+//   старт   = твой текущий результат на герое (или провал первых игр по твоей кривой обучения, если не играл);
+//   путь к потолку — с твоей скоростью обучения (сколько игр тебе обычно нужно, чтобы герой «пошёл»).
+// «На ранг выше» — как герой держится в следующем ранге: проседает — тащит только внизу, держится — герой на вырост.
+const NEXT_BRACKET = {HERALD_GUARDIAN: 'CRUSADER_ARCHON', CRUSADER_ARCHON: 'LEGEND_ANCIENT', LEGEND_ANCIENT: 'DIVINE_IMMORTAL', DIVINE_IMMORTAL: 'DIVINE_IMMORTAL', ALL: 'ALL'};
+const MEDALS = ['Herald','Guardian','Crusader','Archon','Legend','Ancient','Divine','Immortal'];
+// Ранг ↔ примерный рейтинг: медаль ≈ 770, звезда ≈ 154 (приближение, у Valve шкала неровная)
+const rankToMmr = r => r ? (Math.floor(r/10) - 1)*770 + (Math.max(1, r % 10) - 1)*154 : null;
+const mmrToRank = m => { const i = clamp(Math.floor(m/770), 0, 7), s = clamp(Math.floor((m - i*770)/154) + 1, 1, 5); return i >= 7 ? 'Immortal' : `${MEDALS[i]} ${s}`; };
+
+async function renderGrowth(S){
+  const token = {}; S.growToken = token;
+  const p = S.trainRole.p, dis = prefs().heroes;
+  $('growNote').textContent = 'Считаю прогноз…'; $('grow').innerHTML = '';
+  const [cur, next] = await Promise.all([loadPosTable(S.bracket), loadPosTable(NEXT_BRACKET[S.bracket])]);
+  const cand = Object.keys(cur).map(Number).filter(h => cur[h][p] && cur[h][p].n >= 300 && dis[h] !== -1);
+  const mu = await loadMatchups(cand, S.bracket, t => { if(S.growToken === token) $('growNote').textContent = t; });
+  if(S.growToken !== token) return;
+  // Твои типичные драфты на этой позиции (составы за всё время, если уже докачаны; иначе — месяц)
+  const drafts = (lsGet('st_draft_' + S.id) || {}).v || {};
+  let sit = S.year.filter(g => g.pos === p && drafts[g.id]).map(g => drafts[g.id]);
+  if(sit.length < 20) sit = S.month.filter(g => g.pos === p && g.enemies).map(g => [g.allies, g.enemies]);
+  const draftAdj = h => { const v = mu[h]; if(!v || !sit.length) return 0;
+    return sit.reduce((s,[al, en]) => s + en.reduce((a,e) => a + (v.vs[e] ?? 0), 0) + 0.5*al.reduce((a,x) => a + (v.with[x] ?? 0), 0), 0)/sit.length/100; };
+  // Стиль и тип героя — из того же профиля побед, что и подбор героев
+  const fitAll = recommendHeroes(S.year, S.wp, p, cur).all, fitOf = h => fitAll.find(x => x.h.id === h);
+  // Твоя кривая обучения: насколько первые игры на новом герое ниже твоего обычного уровня и сколько игр до «пошёл»
+  const overall = S.year.filter(g => g.win).length/S.year.length;
+  const byHero = {}; [...S.year].sort((a,b) => a.t - b.t).forEach(g => (byHero[g.hero] = byHero[g.hero] || []).push(g));
+  const firsts = Object.values(byHero).flatMap(gs => gs.slice(0, 5)), firstWr = firsts.length ? firsts.filter(g => g.win).length/firsts.length : overall - 0.03;
+  const need = S.learnNeed || 40, newPenalty = Math.min(0, firstWr - overall);
+
+  const rows = cand.map(h => {
+    const r = cur[h][p], tot = Object.values(cur[h]).reduce((a,x) => a + x.n, 0), share = r.n/tot;
+    // Редкий на позиции герой берут в основном те, кто на нём специализируется, — его винрейт там завышен, ужимаем к 50%
+    const meta = share >= 0.2 ? r.w/r.n : 0.5 + (r.w/r.n - 0.5)*share/0.2;
+    const nx = next[h] && next[h][p] && next[h][p].n >= 200 ? next[h][p].w/next[h][p].n : null;
+    const f = fitOf(h), style = f ? (f.fit - 0.6)*0.10 + (f.tagS - 0.5)*0.06 : 0;
+    const ceil = clamp(meta + draftAdj(h) + 0.03 + style, 0.3, 0.7);            // «чуть лучше среднего» = +3%
+    const mine = S.year.filter(g => g.pos === p && g.hero === h), n = mine.length, w = mine.filter(g => g.win).length;
+    const start = meta + newPenalty, now = (w + 20*start)/(n + 20);   // твой результат, сглаженный к старту новичка на этом герое
+    const top = n >= 20 ? Math.max(ceil, now) : ceil;                    // если ты на герое уже лучше «чуть выше среднего» — это и есть твой уровень
+    const at = k => now + (top - now)*clamp((n + k)/need, 0, 1);
+    return {h, n, w, now, w20: at(20), w50: at(50), ceil: top, meta, share, scale: nx != null ? nx - r.w/r.n : null, style: f ? f.fit : null};
+  }).sort((a,b) => b.w50 - a.w50);
+
+  // Прогноз рейтинга: ±25 за игру, темп — твои игры за последние 3 месяца
+  const recent = S.year.filter(g => g.t > Date.now()/1000 - 90*86400), perMonth = Math.max(10, Math.round(recent.length/3));
+  const atPos = S.year.filter(g => g.pos === p), nowWr = atPos.length ? atPos.filter(g => g.win).length/atPos.length : overall;
+  // Герои на вырост — те, кто не проседает на ранг выше; совет «учи X» — первый из них
+  const grow = rows.filter(x => x.scale == null || x.scale > -0.02).slice(0, 5);
+  const trap = rows.filter(x => x.n >= 10 && x.now < nowWr && x.w50 < nowWr + 0.01).sort((a,b) => b.n - a.n).slice(0, 3);
+  const mmr = rankToMmr(S.player.steamAccount.seasonRank), best = grow.find(x => x.share >= 0.2) || grow[0] || rows[0];
+  // Средний винрейт за 3 месяца: путь от «сейчас» до потолка, потом — на потолке
+  const games3 = perMonth*3, learnN = Math.min(games3, Math.max(0, need - best.n)), avgW = (learnN*(best.now + best.ceil)/2 + (games3 - learnN)*best.ceil)/games3;
+  const gainNow = Math.round(games3*25*(2*nowWr - 1)), gainBest = Math.round(games3*25*(2*avgW - 1));
+  const sgnN = x => (x >= 0 ? '+' : '') + x;
+  $('growNote').innerHTML = `Сейчас на позиции ${roleShort(p).toLowerCase()} ты <b class="${wrClass(nowWr)}">${pct0(nowWr)}</b> — это около <b>${sgnN(Math.round(25*(2*nowWr - 1)))}</b> рейтинга за игру. `
+    + `В твоём темпе (~${perMonth} игр в месяц) за 3 месяца это <b class="${gainNow >= 0 ? 'good' : 'bad'}">${sgnN(gainNow)}</b>${mmr != null ? ` → ${mmrToRank(mmr + gainNow)}` : ''}. `
+    + `Если эти 3 месяца учить <b>${H(best.h).localized_name}</b>: <b class="${gainBest >= 0 ? 'good' : 'bad'}">${sgnN(gainBest)}</b>${mmr != null ? ` → <b>${mmrToRank(mmr + gainBest)}</b>` : ''}.`
+    + `<br><span style="font-size:12px">Прогноз: сила героя в твоём ранге + твои типичные враги и союзники + твой стиль + твоя скорость обучения (герой у тебя «идёт» примерно с ${need}-й игры). Рейтинг — приближение: ±25 за игру, медаль ≈ 770, звезда ≈ 154. Учитывать стоит направление, а не точное число.</span>`;
+  const row = x => `<div class="grow-row"><img src="${CDN + H(x.h).img}" alt=""><div><b>${H(x.h).localized_name}</b>
+      <div class="muted" style="font-size:12px">${x.n ? `у тебя ${x.w}–${x.n - x.w} на позиции` : 'не играл на позиции'} · на ранг выше: ${x.scale == null ? '—' : x.scale >= 0.005 ? '<span class="good">растёт</span>' : x.scale <= -0.02 ? '<span class="bad">проседает</span>' : 'держится'}${x.share < 0.2 ? ` · <span class="warn">на эту позицию берут редко (${pct0(x.share)})</span>` : ''}</div></div>
+      <div class="gpath"><span class="${wrClass(x.now)}">${pct0(x.now)}</span><i>→</i><span class="${wrClass(x.w20)}">${pct0(x.w20)}</span><i>→</i><b class="${wrClass(x.w50)}">${pct0(x.w50)}</b></div></div>`;
+  $('grow').innerHTML = `<div class="grow-head"><span></span><span></span><span class="muted">сейчас → через 20 игр → через 50 игр</span></div>`
+    + `<h3 style="margin-top:6px">Герои на вырост</h3>` + grow.map(row).join('')
+    + (trap.length ? `<h3 style="margin-top:14px">Тупики: много играешь, но дальше не вырастешь</h3>` + trap.map(row).join('') : '');
 }
 
 // ───────── на какого про ты похож ─────────
