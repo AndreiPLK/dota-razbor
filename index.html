@@ -1448,8 +1448,9 @@ async function renderFocus(m, p, team, foes){
   $('counter').innerHTML = '';
   const bracket = bracketOf(m.avg_rank || p.rank);
   const posTable = await loadPosTable(bracket);
-  const cand = Object.keys(posTable).map(Number).filter(h => { const t = posTable[h], r = t[pos], tot = Object.values(t).reduce((a,x) => a + x.n, 0);
-    return r && r.n >= 300 && r.n/tot >= 0.3; });
+  // Все герои, которых в этом ранге играют на этой позиции (300+ игр), — даже если чаще их берут на другую
+  const shareAt = h => { const t = posTable[h] || {}, tot = Object.values(t).reduce((a,x) => a + x.n, 0); return tot && t[pos] ? t[pos].n/tot : 0; };
+  const cand = Object.keys(posTable).map(Number).filter(h => posTable[h][pos] && posTable[h][pos].n >= 300);
   if(!cand.includes(p.hero_id)) cand.push(p.hero_id);
   const [mu, perf] = await Promise.all([loadMatchups(cand, bracket),
     p.account_id ? gql(`{ player(steamAccountId: ${p.account_id}) { heroesPerformance(request: {positionIds: [POSITION_${pos}], take: 3000}, take: 80) { heroId matchCount winCount } } }`).catch(() => null) : null]);
@@ -1457,19 +1458,20 @@ async function renderFocus(m, p, team, foes){
   const mine = {}; ((perf && perf.player && perf.player.heroesPerformance) || []).forEach(x => mine[x.heroId] = x);
   const rows = cand.map(h => { const v = mu[h] || {vs: {}, with: {}};
     const vs = enemies.map(e => ({h: e.hero_id, s: v.vs[e.hero_id] ?? 0})), wi = allies.map(a => v.with[a.hero_id] ?? 0);
-    return {h, vs, withSum: wi.reduce((s,x) => s + x, 0), score: vs.reduce((s,x) => s + x.s, 0) + 0.5*wi.reduce((s,x) => s + x, 0), my: mine[h]}; })
+    const r = posTable[h] && posTable[h][pos], meta = r ? 100*r.w/r.n - 50 : 0;   // сила героя на позиции в этом ранге относительно 50%
+    return {h, vs, meta, withSum: wi.reduce((s,x) => s + x, 0), score: meta + vs.reduce((s,x) => s + x.s, 0) + 0.5*wi.reduce((s,x) => s + x, 0), my: mine[h]}; })
     .sort((a,b) => b.score - a.score);
   const place = rows.findIndex(r => r.h === p.hero_id) + 1, pick = rows[place - 1];
   const sgn = x => (x > 0 ? '+' : '') + x.toFixed(1), cls = x => x >= 1 ? 'ok' : x <= -1 ? 'no' : '';
   const row = (r, mineRow) => `<div class="crow ${mineRow ? 'mine' : ''}"><img src="${CDN + H(r.h).img}" alt="">
-    <div><b>${H(r.h).localized_name}</b>${mineRow ? ' <span class="accent">← твой пик</span>' : ''}<div class="muted" style="font-size:13px">${r.my ? `у тебя на этой позиции ${r.my.winCount}–${r.my.matchCount - r.my.winCount}` : 'ты на нём тут не играл'}</div></div>
+    <div><b>${H(r.h).localized_name}</b>${mineRow ? ' <span class="accent">← твой пик</span>' : ''}<div class="muted" style="font-size:13px">${r.my ? `у тебя на этой позиции ${r.my.winCount}–${r.my.matchCount - r.my.winCount}` : 'ты на нём тут не играл'}${shareAt(r.h) < 0.15 ? ` · <span class="warn">на эту позицию его берут редко (${pct0(shareAt(r.h))} игр)</span>` : ''}</div></div>
     <div class="sc ${r.score >= 2 ? 'good' : r.score <= -2 ? 'bad' : ''}">${sgn(r.score)}</div>
-    <div class="chips">${r.vs.map(x => `<span class="chip ${cls(x.s)}">против ${H(x.h).localized_name}: <b>${sgn(x.s)}</b></span>`).join('')}<span class="chip ${cls(r.withSum)}">с союзниками: <b>${sgn(r.withSum)}</b></span></div></div>`;
+    <div class="chips"><span class="chip ${cls(r.meta)}">сам герой на позиции: <b>${sgn(r.meta)}</b></span>${r.vs.map(x => `<span class="chip ${cls(x.s)}">против ${H(x.h).localized_name}: <b>${sgn(x.s)}</b></span>`).join('')}<span class="chip ${cls(r.withSum)}">с союзниками: <b>${sgn(r.withSum)}</b></span></div></div>`;
   const best = rows.slice(0, 3), familiar = rows.filter(r => r.my && r.my.matchCount >= 5 && r.score > 0 && !best.includes(r)).slice(0, 2);
   const bestMine = rows.find(r => r.my && r.my.matchCount >= 5 && r.my.winCount/r.my.matchCount >= 0.5 && r.score > 0);
   $('cpNote').innerHTML = `Ты взял <b>${me.localized_name}</b>: <b class="${pick.score >= 0 ? 'good' : 'bad'}">${sgn(pick.score)}</b> — ${place}-е место из ${rows.length} героев, которых в этом ранге играют на этой позиции. `
     + (bestMine && bestMine.h !== p.hero_id ? `Лучший вариант из твоих героев: <b>${H(bestMine.h).localized_name}</b> (${sgn(bestMine.score)}, у тебя ${bestMine.my.winCount}–${bestMine.my.matchCount - bestMine.my.winCount}). ` : '')
-    + `<br><span style="font-size:12px">Число — сумма преимуществ героя против каждого врага и половины синергии с союзниками в ранге ${bracket.replace('_', '–').toLowerCase()} (Stratz): +1 ≈ +1% к шансу на победу. Порядок пиков неизвестен — видел ли ты врагов, когда выбирал, сайт не знает.</span>`;
+    + `<br><span style="font-size:12px">Число — на сколько процентов шанс выше 50%: сила самого героя на этой позиции + преимущества против каждого врага + половина синергии с союзниками (Stratz, ранг ${bracket.replace('_', '–').toLowerCase()}). Порядок пиков неизвестен — видел ли ты врагов, когда выбирал, сайт не знает.</span>`;
   $('counter').innerHTML = best.map(r => row(r, r.h === p.hero_id)).join('')
     + (familiar.length ? `<h3 style="margin-top:14px">Из твоих героев тоже подходили</h3>` + familiar.map(r => row(r, false)).join('') : '')
     + (place > 3 ? `<h3 style="margin-top:14px">Твой пик</h3>` + row(pick, true) : '');
