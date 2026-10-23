@@ -139,6 +139,17 @@ canvas{max-width:100%}
 .ins-row:last-child{border-bottom:0} .ins-row .t{font-weight:800;font-size:16px;margin-bottom:2px}
 .ins-num{display:flex;flex-direction:column;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:8px 0;line-height:1.15}
 .ins-num b{font-size:22px} .ins-num span{font-size:11px}
+#sumTitle{font-size:24px;margin-bottom:6px}
+.sumrow{display:grid;grid-template-columns:190px 1fr;gap:16px;align-items:center;padding:14px 0;border-top:1px solid var(--line)}
+@media(max-width:700px){.sumrow{grid-template-columns:1fr}}
+.sumlbl{font-weight:800;font-size:17px;line-height:1.25}
+.good-row .sumlbl{color:var(--good)} .fun-row .sumlbl{color:var(--warn)}
+.sumheroes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media(max-width:700px){.sumheroes{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.sh{position:relative;border-radius:12px;overflow:hidden;background:var(--panel2);border:1px solid var(--line)}
+.sh img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+.sh .cap{padding:6px 8px 8px} .sh .nm{font-weight:800;font-size:14px} .sh .sub{font-size:12px;color:var(--muted)}
+.sh .big{position:absolute;top:6px;right:6px;font-weight:800;font-size:15px;padding:1px 7px;border-radius:8px;background:rgba(0,0,0,.7)}
 details.more{margin-top:16px}
 details.more>summary{cursor:pointer;list-style:none;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 20px;font-weight:700}
 details.more>summary::-webkit-details-marker{display:none}
@@ -191,6 +202,16 @@ details.more>summary::after{content:' ▾';color:var(--muted)} details.more[open
       <div class="tiles" id="headTiles"></div>
     </div>
 
+    <div class="card" id="sumCard">
+      <h2 id="sumTitle"></h2>
+      <div class="sumrow"><div class="sumlbl">Ты чаще всего берёшь</div><div class="sumheroes" id="sumPick"></div></div>
+      <div class="sumrow"><div class="sumlbl">Выигрываешь лучше всего на</div><div class="sumheroes" id="sumWin"></div></div>
+      <div class="sumrow good-row"><div class="sumlbl">Бери их — будешь выигрывать чаще</div><div class="sumheroes" id="sumTake"></div></div>
+      <div class="sumrow fun-row"><div class="sumlbl">По фану попробуй</div><div class="sumheroes" id="sumFun"></div></div>
+    </div>
+
+    <details class="more" id="moreAll">
+    <summary>Подробный разбор: позиции, ошибки, драфт, обучение</summary>
     <div class="card" id="offerCard">
       <h2 id="offerTitle"></h2>
       <ul class="ins" id="offerWhy"></ul>
@@ -267,6 +288,7 @@ details.more>summary::after{content:' ▾';color:var(--muted)} details.more[open
       <div class="card"><h3>Винрейт по месяцам</h3><canvas id="trend" height="220"></canvas></div>
       <div class="card"><h3 id="factsH">В цифрах</h3><div id="yearFacts"></div></div>
     </div>
+    </details>
     </details>
   </div>
 
@@ -715,6 +737,37 @@ function rankRoles(S, ax){
   }).sort((a,b) => (a.disliked - b.disliked) || (b.score - a.score));
 }
 
+// ── Итог одной картинкой: что берёшь, на ком выигрываешь, кого брать, что попробовать по фану
+function renderSummary(S){
+  const {year, rec, trainRole: tr} = S, dis = prefs().heroes, ok = h => dis[h] !== -1;
+  const sh = (h, big, cls, sub) => `<div class="sh"><img src="${CDN + H(h).img}" alt=""><span class="big ${cls}">${big}</span><div class="cap"><div class="nm">${H(h).localized_name}</div><div class="sub">${sub}</div></div></div>`;
+  const stat = gs => ({n: gs.length, w: gs.filter(g => g.win).length});
+  const group = (gs, key = g => g.hero) => { const o = {}; gs.forEach(g => (o[key(g)] = o[key(g)] || []).push(g)); return Object.entries(o).map(([h, a]) => [+h, stat(a)]); };
+  $('sumTitle').innerHTML = `Мы разобрали ${year.length} твоих игр. Твоя позиция — <span class="accent">${roleShort(tr.p)}</span>.`;
+
+  const recent = year.filter(g => g.t > Date.now()/1000 - 90*86400);
+  $('sumPick').innerHTML = group(recent.length >= 20 ? recent : year.slice(0, 60)).sort((a,b) => b[1].n - a[1].n).slice(0, 4)
+    .map(([h, s]) => sh(h, pct0(s.w/s.n), wrClass(s.w/s.n), `${s.n} игр за 3 месяца`)).join('');
+
+  const best = group(year).filter(([h, s]) => s.n >= 15 && ok(h)).sort((a,b) => solid(b[1].w, b[1].n) - solid(a[1].w, a[1].n)).slice(0, 4);
+  $('sumWin').innerHTML = best.map(([h, s]) => sh(h, pct0(s.w/s.n), 'good', `${s.w}–${s.n - s.w} ${PERIOD.label}`)).join('');
+
+  // Кого брать: твои герои на этой позиции, где твой результат выше твоего обычного на ней; если таких мало — добираем из меты
+  const atPos = year.filter(g => g.pos === tr.p), base = atPos.length ? atPos.filter(g => g.win).length/atPos.length : .5;
+  const take = group(atPos).filter(([h, s]) => s.n >= 10 && ok(h)).map(([h, s]) => ({h, s, est: solid(s.w, s.n)}))
+    .filter(x => x.est > base + 0.02).sort((a,b) => b.est - a.est).slice(0, 4);
+  const takeHtml = take.map(x => sh(x.h, '+' + Math.round((x.est - base)*100) + '%', 'good', `${x.s.w}–${x.s.n - x.s.w} на позиции ${roleShort(tr.p).toLowerCase()}`));
+  rec.meta.filter(x => !take.some(t => t.h === x.h.id)).slice(0, 4 - take.length)
+    .forEach(x => takeHtml.push(sh(x.h.id, 'мета', '', `${x.metaWr != null ? pct0(x.metaWr) : ''} в твоём ранге · подходит под твой стиль`)));
+  $('sumTake').innerHTML = takeHtml.join('');
+
+  // По фану: новые для тебя герои, которые подходят под профиль побед
+  const fun = [rec.wild, ...rec.off, ...rec.meta].filter(x => x && (!x.my || x.my.n < 5)).filter((x, i, a) => a.findIndex(y => y.h.id === x.h.id) === i).slice(0, 4);
+  const funWhy = x => { const t = (x.h.roles || []).map(r => [r, S.wp.tagWr[r]]).filter(([r, o]) => o && TAG_RU[r] && o.wr > S.wp.overall).sort((a,b) => b[1].wr - a[1].wr)[0];
+    return t ? `${TAG_RU[t[0]]} — твоё (${pct0(t[1].wr)})` : 'подходит под твой стиль'; };
+  $('sumFun').innerHTML = fun.map(x => sh(x.h.id, x.my && x.my.n ? `${x.my.n} игр` : 'новый', 'warn', funWhy(x))).join('') || '<p class="muted">—</p>';
+}
+
 function renderReport(S){
   const {player, year, month, axY, axM, rolesY, sessY, sessM, rec, trainRole: tr, posTable, bracket} = S;
   const rt = player.steamAccount.seasonRank;
@@ -863,6 +916,7 @@ function renderReport(S){
   $('radarH').textContent = `Психотип · ${PERIOD.short} против месяца`;
   $('rolesH').textContent = `Роли ${PERIOD.label} · ${year.length} игр`;
   $('factsH').textContent = `${PERIOD.cap} в цифрах`;
+  renderSummary(S);
   $('report').classList.remove('hidden');
   if($('more').open) drawCharts(S);
 }
