@@ -108,7 +108,7 @@ canvas{max-width:100%}
 #offerWhy li{margin:4px 0}
 .offerbar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
 .linkbtn{background:none;border:0;padding:0;color:var(--text);font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
-.hgroups{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.hgroups{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 @media(max-width:860px){.hgroups{grid-template-columns:1fr 1fr}} @media(max-width:520px){.hgroups{grid-template-columns:1fr}}
 .hcol{display:grid;gap:10px;align-content:start}
 .hcard{background:var(--panel2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
@@ -266,9 +266,8 @@ details.more>summary::after{content:' ▾';color:var(--muted)} details.more[open
       <div id="likedWrap" class="hidden" style="margin-bottom:20px"><h3>Ты хочешь играть</h3><div class="hgroups" id="hLiked"></div></div>
       <div class="hgroups">
         <div><h3>Твои сильные</h3><div class="hcol" id="hStrong"></div></div>
-        <div><h3>Мета под тебя</h3><div class="hcol" id="hMeta"></div></div>
-        <div><h3>Вне меты</h3><div class="hcol" id="hOff"></div></div>
-        <div><h3>Дикий вариант</h3><div class="hcol" id="hWild"></div></div>
+        <div><h3>Растут по твоей кривой</h3><div class="hcol" id="hMeta"></div></div>
+        <div><h3>Новые, похожие на твоих</h3><div class="hcol" id="hOff"></div></div>
       </div>
     </div>
 
@@ -637,16 +636,6 @@ function roleTable(games){
       lane: lk.length ? lk.filter(g => g.lane > 0).length/lk.length : null, laneN: lk.length}; });
 }
 
-// ───────── герои под психотип ─────────
-function styleFit(hv0, norm, ax){
-  const z = k => norm[k].max > norm[k].min ? (hv0[k] - norm[k].min)/(norm[k].max - norm[k].min) : .5;
-  const hv = {aggr: (z('k')+z('hd'))/2, farm: (z('nw')+z('cs'))/2, team: z('a'), push: z('td'), safe: 1 - z('d')};
-  const me = {aggr: ax.aggr/100, farm: ax.farm/100, team: ax.team/100, push: ax.push/100, safe: 1 - ax.risk/100};
-  const w = {aggr: 1, farm: 1, team: .7, push: .6, safe: ax.risk >= 60 ? 1.2 : .4};
-  let s = 0, ws = 0;
-  for(const k in w){ const d = k === 'safe' ? Math.max(0, me.safe - hv.safe) : Math.abs(me[k] - hv[k]); s += w[k]*(1-d); ws += w[k]; }
-  return s/ws;
-}
 // ───────── профиль побед: как ты играешь, когда выигрываешь ─────────
 // Не «что ты делаешь чаще всего», а чем твои победы отличаются от поражений —
 // по этому профилю подбираются роль и герои.
@@ -671,14 +660,38 @@ function winLineText(wp){
   if(best.length && worst) s += ` Лучше всего заходят герои на ${best.map(([t,o]) => `${TAG_RU[t]} (${pct0(o.wr)})`).join(' и ')}, хуже — на ${TAG_RU[worst[0]]} (${pct0(worst[1].wr)}).`;
   return s;
 }
-function tagScore(h, wp){ const t = (h.roles || []).map(r => wp.tagWr[r]).filter(Boolean); return t.length ? mean(t.map(x => x.wr)) : wp.overall; }
 function whyHero(x, wp){
-  const parts = [];
   const good = (x.h.roles || []).map(r => [r, wp.tagWr[r]]).filter(([r,t]) => t && t.n >= 30 && TAG_RU[r] && t.wr > wp.overall + 0.015).sort((a,b) => b[1].wr - a[1].wr)[0];
-  if(good) parts.push(`${TAG_RU[good[0]][0].toUpperCase() + TAG_RU[good[0]].slice(1)} — с такими героями ты выигрываешь ${pct0(good[1].wr)}.`);
-  if(x.fit >= .7) parts.push('По цифрам похож на то, как ты играешь в победах.');
-  if(x.metaWr != null) parts.push(`${pct(x.metaWr)} на этой позиции в твоём ранге.`);
-  return parts.join(' ');
+  return good ? `${TAG_RU[good[0]][0].toUpperCase() + TAG_RU[good[0]].slice(1)} — с такими героями ты выигрываешь ${pct0(good[1].wr)}.` : '';
+}
+
+// ───────── личная модель драфта ─────────
+// Только по твоей истории с составами команд: как ТЫ выигрываешь героями с ролью t против врага, у которого признак u
+// (3+ контроля, 2+ живучих и т. д.), — в процентах к твоему обычному винрейту. Плюс твой опыт на конкретном герое на позиции.
+function draftModel(S){
+  const drafts = (lsGet('st_draft_' + S.id) || {}).v || {}, G = S.year.filter(g => drafts[g.id]);
+  const feats = en => Object.entries(TAG_PHRASE).filter(([u, [, k]]) => tagCount(en, u) >= k).map(([u]) => u);
+  const base = G.length ? G.filter(g => g.win).length/G.length : 0.5, acc = {};
+  G.forEach(g => { const fs = feats(drafts[g.id][1]); (H(g.hero).roles || []).forEach(t => fs.forEach(u => { const o = acc[t + '|' + u] = acc[t + '|' + u] || {n:0, w:0}; o.n++; o.w += g.win; })); });
+  const delta = {}; Object.entries(acc).forEach(([k, o]) => { if(o.n >= 15) delta[k] = 100*((o.w + 20*base)/(o.n + 20) - base); });
+  const rec = {}, posT = {};
+  S.year.forEach(g => { const k = g.pos + '_' + g.hero, o = rec[k] = rec[k] || {n:0, w:0}, t = posT[g.pos] = posT[g.pos] || {n:0, w:0}; o.n++; o.w += g.win; t.n++; t.w += g.win; });
+  return {
+    ready: G.length >= 100, feats, rec,
+    skill: (h, p) => { const o = rec[p + '_' + h], t = posT[p]; return o && t ? 100*(solid(o.w, o.n) - solid(t.w, t.n)) : 0; },
+    draft: (h, enemies) => { const fs = feats(enemies), rs = H(h).roles || []; return rs.length && fs.length ? mean(rs.map(t => fs.reduce((s,u) => s + (delta[t + '|' + u] || 0), 0))) || 0 : 0; },
+  };
+}
+
+// Новые для тебя герои (меньше 5 игр), похожие на тех, на ком ты выигрываешь: роли, тип атаки, сложность
+function similarHeroes(S, k = 4){
+  const dis = prefs().heroes, rec = {};
+  S.year.forEach(g => { const o = rec[g.hero] = rec[g.hero] || {n:0, w:0}; o.n++; o.w += g.win; });
+  const best = Object.entries(rec).filter(([h, o]) => o.n >= 15 && dis[h] !== -1).sort((a,b) => solid(b[1].w, b[1].n) - solid(a[1].w, a[1].n)).slice(0, 5).map(([h]) => +h);
+  const sim = (a, b) => { const ra = new Set(H(a).roles || []), rb = H(b).roles || [], inter = rb.filter(r => ra.has(r)).length, uni = new Set([...ra, ...rb]).size || 1;
+    return inter/uni + (H(a).attack && H(a).attack === H(b).attack ? 0.2 : 0) + (H(a).complexity === H(b).complexity ? 0.1 : 0); };
+  return Object.keys(heroes).map(Number).filter(h => (rec[h] ? rec[h].n : 0) < 5 && dis[h] !== -1).map(h => { const twin = best.map(b => [b, sim(h, b)]).sort((x,y) => y[1] - x[1])[0];
+    return {h, twin: twin && twin[0], s: twin ? twin[1] : 0, n: rec[h] ? rec[h].n : 0}; }).sort((a,b) => b.s - a.s).slice(0, k);
 }
 
 // ───────── отметки игрока: «хочу / не хочу» героев и позиций ─────────
@@ -696,32 +709,19 @@ function setPref(kind, key, v){
 const prefBtns = (attr, key, cur, likeTitle, dislikeTitle) =>
   `<button class="hp ${cur === 1 ? 'on' : ''}" ${attr}="${key}" data-v="1" title="${likeTitle}">👍</button><button class="hp no ${cur === -1 ? 'on' : ''}" ${attr}="${key}" data-v="-1" title="${dislikeTitle}">👎</button>`;
 
-// Подбор героев на позицию: 2 твоих сильных, 2 из меты, 2 вне меты и 1 «дикий» — нетипичный для позиции,
-// но совпадающий с профилем побед. Оценка новых: стиль побед 40% + герои того же типа, на которых ты выигрываешь 30% + мета 30%.
-// Герои с отметкой «не хочу» в советы не попадают.
-function recommendHeroes(yearGames, wp, pos, posTable){
-  const dis = prefs().heroes, ok = id => dis[id] !== -1;
-  const yr = {};
-  yearGames.forEach(g => { const o = yr[g.hero] = yr[g.hero] || {n:0,w:0,pn:0,pw:0,imp:[]}; o.n++; o.w += g.win; if(g.pos === pos){ o.pn++; o.pw += g.win; o.imp.push(g.imp); } });
-  const totalAll = Object.values(posTable).reduce((s,t) => s + Object.values(t).reduce((a,x) => a + x.n, 0), 0);
-  const all = Object.keys(heroes).map(id => { const t = posTable[id] || {}, tot = Object.values(t).reduce((a,x) => a + x.n, 0), r = t[pos];
-    return {h: H(+id), share: tot && r ? r.n/tot : 0, metaWr: r && r.n > 100 ? r.w/r.n : null, pick: tot/totalAll, row: r, my: yr[id]}; })
-    .filter(x => x.row && x.row.n >= 100 && x.share >= 0.06);
-  const keys = ['k','d','a','nw','cs','hd','td'], norm = {};
-  keys.forEach(k => { const v = all.map(x => x.row[k]).filter(x => x != null); norm[k] = {min: Math.min(...v), max: Math.max(...v)}; });
-  all.forEach(x => { x.fit = styleFit(x.row, norm, wp.aw); x.tagS = clamp(0.5 + (tagScore(x.h, wp) - wp.overall)/0.12, 0, 1);
-    x.metaS = clamp(((x.metaWr ?? .5) - .44)/.12, 0, 1); x.total = 0.4*x.fit + 0.3*x.tagS + 0.3*x.metaS; });
-  const onPos = all.filter(x => x.share >= 0.2 && ok(x.h.id));
+// Подбор героев на позицию — только по твоим играм, без меты:
+//   сильные — твои лучшие на этой позиции (6+ игр); растут — у кого по твоей кривой самый большой рост за 50 игр;
+//   похожие — новые для тебя герои, похожие на тех, на ком ты выигрываешь. «Не хочу» в советы не попадает.
+function recommendHeroes(S, pos){
+  const dis = prefs().heroes, ok = id => dis[id] !== -1, yr = {};
+  S.year.forEach(g => { const o = yr[g.hero] = yr[g.hero] || {n:0,w:0,pn:0,pw:0,imp:[]}; o.n++; o.w += g.win; if(g.pos === pos){ o.pn++; o.pw += g.win; o.imp.push(g.imp); } });
   const impOf = x => mean(x.my.imp) || 0;
-  // Свои сильные — любой герой, сыгранный на этой позиции 6+ раз, даже если в мете его тут не берут (Снайпер на миде и т. п.)
-  const strong = Object.entries(yr).filter(([id, o]) => o.pn >= 6 && ok(id)).map(([id, o]) => all.find(x => x.h.id === +id) || {h: H(+id), my: o, fit: .5, share: 0})
+  const strong = Object.entries(yr).filter(([id, o]) => o.pn >= 6 && ok(id)).map(([id, o]) => ({h: H(+id), my: o}))
     .sort((a,b) => (solid(b.my.pw, b.my.pn) + impOf(b)/100) - (solid(a.my.pw, a.my.pn) + impOf(a)/100)).slice(0,2);
-  const fresh = onPos.filter(x => !x.my || x.my.pn < 6);
-  const medianPick = onPos.map(x => x.pick).sort((a,b) => a-b)[Math.floor(onPos.length/2)] || 0.008;
-  const meta = fresh.filter(x => x.pick >= medianPick).sort((a,b) => b.total - a.total).slice(0,2);
-  const off = fresh.filter(x => x.pick < medianPick).sort((a,b) => b.total - a.total).slice(0,2);
-  const wild = all.filter(x => x.share < 0.2 && ok(x.h.id) && (!x.my || x.my.n < 3) && x.metaWr != null && x.metaWr >= 0.47).sort((a,b) => (b.fit + b.tagS) - (a.fit + a.tagS))[0] || null;
-  return {strong, meta, off, wild, pool: strong, all, yr};
+  const rising = S.F.rows.filter(x => (x.pos[pos] || 0) >= 3 && ok(x.h) && !strong.some(s => s.h.id === x.h) && x.w50 > x.now)
+    .sort((a,b) => (b.w50 - b.now) - (a.w50 - a.now)).slice(0,2).map(x => ({h: H(x.h), my: yr[x.h], f: x}));
+  const similar = similarHeroes(S, 2).map(x => ({h: H(x.h), my: yr[x.h], twin: x.twin}));
+  return {strong, rising, similar, pool: strong, yr};
 }
 function heroCard(x, why, cls = ''){
   const g = x.my ? x.my.n : 0;
@@ -729,18 +729,18 @@ function heroCard(x, why, cls = ''){
   const pb = prefBtns('data-h', x.h.id, prefs().heroes[x.h.id], 'Хочу играть — проверить, подходит ли он мне', 'Не хочу — убрать из советов');
   return `<div class="hcard ${cls}"><div class="himg"><img src="${CDN + x.h.img}" alt="">${badge}<span class="hpref">${pb}</span></div><div class="hb"><div class="hn">${x.h.localized_name}</div><div class="hr">${why}</div></div></div>`;
 }
-// Честная оценка героя, которого игрок отметил «хочу»: где его играют, как он у тебя идёт и подходит ли под твой профиль побед
+// Честная оценка героя, которого игрок отметил «хочу» — по твоей кривой обучения, без меты
 function likedCard(hid, S){
-  const t = S.posTable[hid] || {}, tot = Object.values(t).reduce((a,x) => a + x.n, 0);
-  const mainPos = tot ? +Object.entries(t).sort((a,b) => b[1].n - a[1].n)[0][0] : S.trainRole.p;
-  const r = recommendHeroes(S.year, S.wp, mainPos, S.posTable);
-  const x = r.all.find(y => y.h.id === hid) || {h: H(hid), my: r.yr[hid], fit: .5, tagS: .5, total: .5, share: tot ? t[mainPos].n/tot : 0, metaWr: null};
-  const verdict = x.total >= .62 ? ['Да, твой герой', 'good'] : x.total >= .5 ? ['Можно качать', 'warn'] : ['Пойдёт тяжело', 'bad'];
-  const my = x.my;
-  const txt = `<b class="${verdict[1]}">${verdict[0]}.</b> Его играют в основном на позиции ${roleShort(mainPos).toLowerCase()} (${pct0(x.share)} игр). `
-    + (my ? `У тебя ${my.w}–${my.n - my.w}${my.pn ? `, на этой позиции ${my.pw}–${my.pn - my.pw}` : ''}. ` : 'Ты на нём ещё не играл. ')
-    + whyHero(x, S.wp) + (mainPos !== S.trainRole.p ? ` <button class="linkbtn" data-go="${mainPos}">Разбор для позиции ${roleShort(mainPos).toLowerCase()} →</button>` : '');
-  return heroCard(x, txt, 'liked');
+  const F = S.F, ov = F.overall, row = F.rows.find(x => x.h === hid), x = {h: H(hid)};
+  const verdict = w => w >= ov + 0.05 ? ['Да, твой герой', 'good'] : w >= ov ? ['Можно качать', 'warn'] : ['Пойдёт тяжело', 'bad'];
+  if(row){
+    const v = verdict(row.w50), mainPos = +Object.entries(row.pos).sort((a,b) => b[1] - a[1])[0][0];
+    x.my = {n: row.n, w: row.w};
+    return heroCard(x, `<b class="${v[1]}">${v[0]}.</b> Сейчас ${pct0(row.now)} → через 50 игр ${pct0(row.w50)} по твоей кривой (${CPLX[row.cplx]} герой). Чаще всего ты на нём — ${roleShort(mainPos).toLowerCase()}. `
+      + whyHero(x, S.wp) + (mainPos !== S.trainRole.p ? ` <button class="linkbtn" data-go="${mainPos}">Разбор для позиции ${roleShort(mainPos).toLowerCase()} →</button>` : ''), 'liked');
+  }
+  const c = H(hid).complexity || 2, cv = F.curves[c] || F.curveAll, a = curveAt(cv, 1), b = curveAt(cv, 50), v = verdict(b);
+  return heroCard(x, `<b class="${v[1]}">${v[0]}.</b> Новый для тебя ${CPLX[c]} герой: на таких у тебя первые игры ~${pct0(a)}, к 50-й ~${pct0(b)}. ` + whyHero(x, S.wp), 'liked');
 }
 
 // ───────── рендер ─────────
@@ -789,17 +789,11 @@ function renderSummary(S){
   $('sumWin').innerHTML = best.map(([h, s]) => sh(h, pct0(s.w/s.n), 'good', `${s.w}–${s.n - s.w} ${PERIOD.label}`)).join('');
 
   // Кого брать: твои герои этой позиции с лучшим прогнозом по твоей же кривой обучения (без меты)
-  const F = heroForecasts(S);
-  const take = F.rows.filter(x => (x.pos[tr.p] || 0) >= 3 && ok(x.h)).sort((a,b) => b.w50 - a.w50).slice(0, 4);
+  const take = S.F.rows.filter(x => (x.pos[tr.p] || 0) >= 3 && ok(x.h)).sort((a,b) => b.w50 - a.w50).slice(0, 4);
   $('sumTake').innerHTML = take.map(x => sh(x.h, pct0(x.w50), 'good', `сейчас ${pct0(x.now)} → через 50 игр · у тебя ${x.w}–${x.n - x.w}`)).join('');
 
   // По фану: новые для тебя герои, похожие на тех, на ком ты выигрываешь (роли, тип атаки, сложность)
-  const mine = {}; year.forEach(g => mine[g.hero] = (mine[g.hero] || 0) + 1);
-  const sim = (a, b) => { const ra = new Set(H(a).roles || []), rb = H(b).roles || [], inter = rb.filter(r => ra.has(r)).length, uni = new Set([...ra, ...rb]).size || 1;
-    return inter/uni + (H(a).attack && H(a).attack === H(b).attack ? 0.2 : 0) + (H(a).complexity === H(b).complexity ? 0.1 : 0); };
-  const fun = Object.keys(heroes).map(Number).filter(h => (mine[h] || 0) < 5 && ok(h)).map(h => { const twin = best.map(([b]) => [b, sim(h, b)]).sort((x,y) => y[1] - x[1])[0];
-    return {h, twin: twin && twin[0], s: twin ? twin[1] : 0}; }).sort((a,b) => b.s - a.s).slice(0, 4);
-  $('sumFun').innerHTML = fun.map(x => sh(x.h, mine[x.h] ? `${mine[x.h]} игр` : 'новый', 'warn', `похож на ${H(x.twin).localized_name} — на нём ты выигрываешь`)).join('') || '<p class="muted">—</p>';
+  $('sumFun').innerHTML = similarHeroes(S, 4).map(x => sh(x.h, x.n ? `${x.n} игр` : 'новый', 'warn', `похож на ${H(x.twin).localized_name} — на нём ты выигрываешь`)).join('') || '<p class="muted">—</p>';
 }
 
 function renderReport(S){
@@ -897,9 +891,8 @@ function renderReport(S){
   const why = x => whyHero(x, S.wp);
   $('heroTitle').textContent = `Герои · ${POS[tr.p]}`;
   $('hStrong').innerHTML = rec.strong.map(x => heroCard(x, `${x.my.pw}–${x.my.pn - x.my.pw} на этой позиции, IMP ${impFmt(mean(x.my.imp))}. Тут ты уже выигрываешь — это база.`)).join('') || '<p class="muted">Нет героев с 6+ играми на этой позиции.</p>';
-  $('hMeta').innerHTML = rec.meta.map(x => heroCard(x, why(x))).join('') || '<p class="muted">—</p>';
-  $('hOff').innerHTML = rec.off.map(x => heroCard(x, why(x))).join('') || '<p class="muted">—</p>';
-  $('hWild').innerHTML = rec.wild ? heroCard(rec.wild, `На эту позицию его берут только в ${pct0(rec.wild.share)} игр — враг к такому не готов. ${why(rec.wild)}`, 'wild') : '<p class="muted">—</p>';
+  $('hMeta').innerHTML = rec.rising.map(x => heroCard(x, `Сейчас ${pct0(x.f.now)} → через 50 игр <b class="good">${pct0(x.f.w50)}</b> по твоей кривой (${CPLX[x.f.cplx]} герой). ${why(x)}`)).join('') || '<p class="muted">—</p>';
+  $('hOff').innerHTML = rec.similar.map(x => heroCard(x, `Похож на ${H(x.twin).localized_name} — на нём ты выигрываешь. ${why(x)}`, 'wild')).join('') || '<p class="muted">—</p>';
   const ph = prefs().heroes, liked = Object.keys(ph).filter(h => ph[h] === 1).map(Number), hidden = Object.keys(ph).filter(h => ph[h] === -1).length;
   $('hLiked').innerHTML = liked.map(h => likedCard(h, S)).join('');
   $('likedWrap').classList.toggle('hidden', !liked.length);
@@ -976,7 +969,8 @@ $('more').addEventListener('toggle', () => { if($('more').open && state) drawCha
 function setRole(p, manual){
   const S = state;
   S.manual = manual; S.trainRole = S.rolesY.find(r => r.p === p);
-  S.rec = recommendHeroes(S.year, S.wp, p, S.posTable);
+  S.F = S.F || heroForecasts(S);   // прогнозы по героям не зависят от выбранной роли — считаются один раз
+  S.rec = recommendHeroes(S, p);
   renderReport(S);
   renderPros(S);
   renderDraft(S);
@@ -1034,26 +1028,21 @@ function renderLearn(S){
 // ───────── пики за месяц ─────────
 // Профиль, пул и личные результаты на героях — за весь выбранный период; каждый матч месяца — отдельно.
 // В каждом матче месяца твой пик сравнивается с твоими основными героями на той же позиции (до 10 героев с 10+ играми).
-// Сила варианта в матче = драфт (сумма преимуществ против 5 врагов + половина синергии с 4 союзниками, Stratz, твой ранг)
-//                       + твой опыт на герое (насколько твой винрейт на нём выше твоего обычного на этой позиции, ×0.5).
+// Сила варианта в матче = личная модель драфта (как ты выигрываешь героями такого типа против такого состава врага)
+//                       + твой опыт на герое (насколько твой винрейт на нём выше твоего обычного на этой позиции). Без меты.
 // И то и другое в процентах шанса на победу, так что «41% → 45%» — твой фактический винрейт плюс средняя разница вариантов.
 const matchWord = n => n % 10 === 1 && n % 100 !== 11 ? 'матч' : [2,3,4].includes(n % 10) && ![12,13,14].includes(n % 100) ? 'матча' : 'матчей';
 async function renderDraft(S){
-  const token = {}; S.draftToken = token;
   const games = S.month.filter(g => g.enemies && g.enemies.length === 5 && g.allies);
   if(!games.length){ $('draftNote').textContent = 'Нет разобранных матчей за месяц.'; $('draft').innerHTML = ''; return; }
-  const dis = prefs().heroes, recPos = {}, posTot = {};
-  S.year.forEach(g => { const k = g.pos + '_' + g.hero, o = recPos[k] = recPos[k] || {n:0, w:0}, t = posTot[g.pos] = posTot[g.pos] || {n:0, w:0};
-    o.n++; o.w += g.win; t.n++; t.w += g.win; });
+  const dis = prefs().heroes, recPos = {};
+  S.year.forEach(g => { const k = g.pos + '_' + g.hero, o = recPos[k] = recPos[k] || {n:0, w:0}; o.n++; o.w += g.win; });
   const poolOf = p => Object.entries(recPos).map(([k,o]) => [k.split('_').map(Number), o.n]).filter(([[kp,h],n]) => kp === p && n >= 10 && dis[h] !== -1)
     .sort((a,b) => b[1] - a[1]).slice(0, 10).map(([[,h]]) => h);
-  // опыт на герое: на сколько процентов твой винрейт на нём на этой позиции выше твоего обычного (сглажено, вес 0.5)
-  const skill = (h, p) => { const o = recPos[p + '_' + h], t = posTot[p]; return o && t ? 50*(solid(o.w, o.n) - solid(t.w, t.n)) : 0; };
-  const need = new Set(); games.forEach(g => { need.add(g.hero); poolOf(g.pos).forEach(h => need.add(h)); });
-  $('draftNote').textContent = 'Считаю…'; $('draft').innerHTML = '';
-  const mu = await loadMatchups([...need], S.bracket, t => { if(S.draftToken === token) $('draftNote').textContent = t; });
-  if(S.draftToken !== token) return;
-  const draftOf = (h, g) => { const v = mu[h] || {vs: {}, with: {}}; return g.enemies.reduce((s,e) => s + (v.vs[e] ?? 0), 0) + 0.5*g.allies.reduce((s,a) => s + (v.with[a] ?? 0), 0); };
+  // Личная модель: твой опыт на герое на позиции + как ты выигрываешь героями такого типа против такого состава врага
+  const M = draftModel(S);
+  if(!M.ready){ $('draftNote').textContent = 'Составы команд ещё докачиваются (см. «Неочевидное») — нажми «Разобрать» ещё раз через минуту.'; $('draft').innerHTML = ''; return; }
+  const draftOf = (h, g) => M.draft(h, g.enemies), skill = (h, p) => M.skill(h, p);
   const power = (h, g) => draftOf(h, g) + skill(h, g.pos);
   const sgn = x => (x >= 0 ? '+' : '') + x.toFixed(1);
   const wrOf = a => `${a.filter(g => g.win).length}–${a.length - a.filter(g => g.win).length}`;
@@ -1098,7 +1087,7 @@ async function renderDraft(S){
   $('draftNote').innerHTML = `Пул и твои результаты на героях — ${PERIOD.label}, каждый матч месяца (${games.length}) — отдельно: враги, союзники, твоя позиция. `
     + `С сильным пиком ты ${wrOf(strong)}, со слабым — ${wrOf(weak)}. `
     + (w(strong) - w(weak) >= 0.08 ? '<b>Пик решает</b> — смотри на врагов и союзников перед выбором.' : '<b>Пик почти не меняет твой результат</b> — проигрываешь ты по ходу игры (см. «Главное»).')
-    + `<br><span style="font-size:12px">Шанс = твой фактический винрейт на позиции за месяц + разница вариантов: драфт (преимущество против 5 врагов и половина синергии с союзниками, Stratz, твой ранг) и твой опыт на герое (насколько ты на нём выигрываешь чаще обычного). Это оценка: порядок пиков неизвестен, а игру решают не только герои.</span>`;
+    + `<br><span style="font-size:12px">Шанс = твой фактический винрейт на позиции за месяц + разница вариантов по твоей истории: как ты выигрываешь героями такого типа против такого состава врага и насколько ты выигрываешь на этом герое чаще обычного. Без меты — только твои игры.</span>`;
   $('draft').innerHTML = sections || '<p class="muted">Нужна позиция с 6+ играми за месяц и 2+ героями с 10+ играми на ней.</p>';
 }
 
@@ -1565,21 +1554,6 @@ async function abilityNames(ids){
   }
   return v;
 }
-// Матчапы героя в ранге: vs[герой] и with[герой] — на сколько процентов меняется винрейт (Stratz synergy)
-async function loadMatchups(heroIds, bracket, note = t => $('cpNote').textContent = t){
-  const out = {}, need = [];
-  heroIds.forEach(h => { const c = lsGet(`st_mu_${bracket}_${h}`); if(c && Date.now() - c.t < 3*86400e3) out[h] = c.v; else need.push(h); });
-  for(let i = 0; i < need.length; i += 6){
-    const part = need.slice(i, i+6);
-    note(`Считаю матчапы: ${Math.min(i+6, need.length)} из ${need.length} героев…`);
-    const d = await gql(`{ heroStats { ${part.map(h => `h${h}: heroVsHeroMatchup(heroId: ${h}, bracketBasicIds: ${bracket}, take: 200) { advantage { vs { heroId2 synergy } with { heroId2 synergy } } }`).join(' ')} } }`);
-    part.forEach(h => { const a = ((d.heroStats['h' + h] || {}).advantage || [])[0] || {}, v = {vs: {}, with: {}};
-      (a.vs || []).forEach(x => v.vs[x.heroId2] = x.synergy); (a.with || []).forEach(x => v.with[x.heroId2] = x.synergy);
-      out[h] = v; lsSet(`st_mu_${bracket}_${h}`, {t: Date.now(), v}); });
-  }
-  return out;
-}
-
 async function renderFocus(m, p, team, foes){
   const token = {}; renderFocus.token = token;
   const pos = team.pos.get(p), me = heroOf(p), mm = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
@@ -1607,38 +1581,36 @@ async function renderFocus(m, p, team, foes){
         <span class="muted" style="text-align:right;font-size:13px">мёртв ${e.timeDead}с<br>−${e.goldLost} золота</span></div>`; }).join('');
   }
 
-  // ── Кто был бы сильнее на этой позиции
-  $('cpTitle').textContent = `Кто был бы сильнее на позиции ${roleShort(pos).toLowerCase()}`;
+  // ── Кто был бы сильнее на этой позиции — только по истории самого игрока, без меты
+  $('cpTitle').textContent = `Кто из твоих героев был бы сильнее на позиции ${roleShort(pos).toLowerCase()}`;
   $('counter').innerHTML = '';
-  const bracket = bracketOf(m.avg_rank || p.rank);
-  const posTable = await loadPosTable(bracket);
-  // Все герои, которых в этом ранге играют на этой позиции (300+ игр), — даже если чаще их берут на другую
-  const shareAt = h => { const t = posTable[h] || {}, tot = Object.values(t).reduce((a,x) => a + x.n, 0); return tot && t[pos] ? t[pos].n/tot : 0; };
-  const cand = Object.keys(posTable).map(Number).filter(h => posTable[h][pos] && posTable[h][pos].n >= 300);
-  if(!cand.includes(p.hero_id)) cand.push(p.hero_id);
-  const [mu, perf] = await Promise.all([loadMatchups(cand, bracket),
-    p.account_id ? gql(`{ player(steamAccountId: ${p.account_id}) { heroesPerformance(request: {positionIds: [POSITION_${pos}], take: 3000}, take: 80) { heroId matchCount winCount } } }`).catch(() => null) : null]);
-  if(renderFocus.token !== token) return;
-  const mine = {}; ((perf && perf.player && perf.player.heroesPerformance) || []).forEach(x => mine[x.heroId] = x);
-  const rows = cand.map(h => { const v = mu[h] || {vs: {}, with: {}};
-    const vs = enemies.map(e => ({h: e.hero_id, s: v.vs[e.hero_id] ?? 0})), wi = allies.map(a => v.with[a.hero_id] ?? 0);
-    const r = posTable[h] && posTable[h][pos], meta = r ? 100*r.w/r.n - 50 : 0;   // сила героя на позиции в этом ранге относительно 50%
-    return {h, vs, meta, withSum: wi.reduce((s,x) => s + x, 0), score: meta + vs.reduce((s,x) => s + x.s, 0) + 0.5*wi.reduce((s,x) => s + x, 0), my: mine[h]}; })
-    .sort((a,b) => b.score - a.score);
-  const place = rows.findIndex(r => r.h === p.hero_id) + 1, pick = rows[place - 1];
   const sgn = x => (x > 0 ? '+' : '') + x.toFixed(1), cls = x => x >= 1 ? 'ok' : x <= -1 ? 'no' : '';
-  const row = (r, mineRow) => `<div class="crow ${mineRow ? 'mine' : ''}"><img src="${CDN + H(r.h).img}" alt="">
-    <div><b>${H(r.h).localized_name}</b>${mineRow ? ' <span class="accent">← твой пик</span>' : ''}<div class="muted" style="font-size:13px">${r.my ? `у тебя на этой позиции ${r.my.winCount}–${r.my.matchCount - r.my.winCount}` : 'ты на нём тут не играл'}${shareAt(r.h) < 0.15 ? ` · <span class="warn">на эту позицию его берут редко (${pct0(shareAt(r.h))} игр)</span>` : ''}</div></div>
-    <div class="sc ${r.score >= 2 ? 'good' : r.score <= -2 ? 'bad' : ''}">${sgn(r.score)}</div>
-    <div class="chips"><span class="chip ${cls(r.meta)}">сам герой на позиции: <b>${sgn(r.meta)}</b></span>${r.vs.map(x => `<span class="chip ${cls(x.s)}">против ${H(x.h).localized_name}: <b>${sgn(x.s)}</b></span>`).join('')}<span class="chip ${cls(r.withSum)}">с союзниками: <b>${sgn(r.withSum)}</b></span></div></div>`;
-  const best = rows.slice(0, 3), familiar = rows.filter(r => r.my && r.my.matchCount >= 5 && r.score > 0 && !best.includes(r)).slice(0, 2);
-  const bestMine = rows.find(r => r.my && r.my.matchCount >= 5 && r.my.winCount/r.my.matchCount >= 0.5 && r.score > 0);
-  $('cpNote').innerHTML = `Ты взял <b>${me.localized_name}</b>: <b class="${pick.score >= 0 ? 'good' : 'bad'}">${sgn(pick.score)}</b> — ${place}-е место из ${rows.length} героев, которых в этом ранге играют на этой позиции. `
-    + (bestMine && bestMine.h !== p.hero_id ? `Лучший вариант из твоих героев: <b>${H(bestMine.h).localized_name}</b> (${sgn(bestMine.score)}, у тебя ${bestMine.my.winCount}–${bestMine.my.matchCount - bestMine.my.winCount}). ` : '')
-    + `<br><span style="font-size:12px">Число — на сколько процентов шанс выше 50%: сила самого героя на этой позиции + преимущества против каждого врага + половина синергии с союзниками (Stratz, ранг ${bracket.replace('_', '–').toLowerCase()}). Порядок пиков неизвестен — видел ли ты врагов, когда выбирал, сайт не знает.</span>`;
-  $('counter').innerHTML = best.map(r => row(r, r.h === p.hero_id)).join('')
-    + (familiar.length ? `<h3 style="margin-top:14px">Из твоих героев тоже подходили</h3>` + familiar.map(r => row(r, false)).join('') : '')
-    + (place > 3 ? `<h3 style="margin-top:14px">Твой пик</h3>` + row(pick, true) : '');
+  const enemyIds = enemies.map(e => e.hero_id);
+  const own = state && String(state.id) === String(p.account_id) ? draftModel(state) : null;
+  if(own && own.ready){
+    // Разобранный на сайте игрок: его герои на позиции (5+ игр) — опыт на герое + личная модель драфта против этого состава
+    const cand = [...new Set([p.hero_id, ...Object.entries(own.rec).filter(([k, o]) => +k.split('_')[0] === pos && o.n >= 5).map(([k]) => +k.split('_')[1])])];
+    const rows = cand.map(h => { const o = own.rec[pos + '_' + h], sk = own.skill(h, pos), dr = own.draft(h, enemyIds);
+      return {h, my: o, sk, dr, score: sk + dr}; }).sort((a,b) => b.score - a.score);
+    const place = rows.findIndex(r => r.h === p.hero_id) + 1, pick = rows[place - 1], fs = own.feats(enemyIds).map(u => TAG_PHRASE[u][0]);
+    const row = (r, mineRow) => `<div class="crow ${mineRow ? 'mine' : ''}"><img src="${CDN + H(r.h).img}" alt="">
+      <div><b>${H(r.h).localized_name}</b>${mineRow ? ' <span class="accent">← твой пик</span>' : ''}<div class="muted" style="font-size:13px">${r.my ? `у тебя на этой позиции ${r.my.w}–${r.my.n - r.my.w}` : 'ты на нём тут почти не играл'}</div></div>
+      <div class="sc ${r.score >= 2 ? 'good' : r.score <= -2 ? 'bad' : ''}">${sgn(r.score)}</div>
+      <div class="chips"><span class="chip ${cls(r.sk)}">твой опыт на нём: <b>${sgn(r.sk)}</b></span><span class="chip ${cls(r.dr)}">ты против такого состава: <b>${sgn(r.dr)}</b></span></div></div>`;
+    $('cpNote').innerHTML = `Ты взял <b>${me.localized_name}</b>: <b class="${pick.score >= 0 ? 'good' : 'bad'}">${sgn(pick.score)}</b> — ${place}-е место из ${rows.length} твоих героев на этой позиции. `
+      + (fs.length ? `У врага: ${fs.join(', ')}.` : 'В составе врага ничего, что тебе особенно мешает или помогает.')
+      + `<br><span style="font-size:12px">Число — на сколько процентов шанс выше твоего обычного: опыт на герое (насколько ты на нём выигрываешь чаще обычного) + как ты по своей истории выигрываешь героями такого типа против такого состава. Без меты.</span>`;
+    $('counter').innerHTML = rows.slice(0, 3).map(r => row(r, r.h === p.hero_id)).join('') + (place > 3 ? `<h3 style="margin-top:14px">Твой пик</h3>` + row(pick, true) : '');
+    return;
+  }
+  // Другой игрок: только его собственные результаты на героях этой позиции
+  const perf = p.account_id ? await gql(`{ player(steamAccountId: ${p.account_id}) { heroesPerformance(request: {positionIds: [POSITION_${pos}], take: 3000}, take: 80) { heroId matchCount winCount } } }`).catch(() => null) : null;
+  if(renderFocus.token !== token) return;
+  const list = ((perf && perf.player && perf.player.heroesPerformance) || []).filter(x => x.matchCount >= 5).sort((a,b) => solid(b.winCount, b.matchCount) - solid(a.winCount, a.matchCount)).slice(0, 4);
+  $('cpNote').innerHTML = list.length ? 'Лучшие герои этого игрока на этой позиции по его собственным играм. Полный разбор с моделью драфта — когда игрок разобран на вкладке «Игрок».'
+    : 'Профиль игрока скрыт или мало игр на этой позиции. Полный разбор — после разбора игрока на вкладке «Игрок».';
+  $('counter').innerHTML = list.map(x => `<div class="crow ${x.heroId === p.hero_id ? 'mine' : ''}"><img src="${CDN + H(x.heroId).img}" alt=""><div><b>${H(x.heroId).localized_name}</b>
+    <div class="muted" style="font-size:13px">${x.winCount}–${x.matchCount - x.winCount} на этой позиции</div></div><div class="sc ${wrClass(x.winCount/x.matchCount)}">${pct0(x.winCount/x.matchCount)}</div></div>`).join('');
 }
 
 // ───────── общее ─────────
