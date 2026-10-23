@@ -167,6 +167,9 @@ canvas{max-width:100%}
 .lbar .mark.bad{top:40px;color:var(--bad)} .lbar .mark.bad::after{bottom:calc(100% + 15px);background:var(--bad)}
 .lbar .mark.good{bottom:22px;color:var(--good)} .lbar .mark.good::after{top:calc(100% + 1px);background:var(--good)}
 .lbar .mark.good.up{bottom:22px}
+.lbar .goal{position:absolute;top:40px;transform:translateX(-50%);font-size:12px;white-space:nowrap;text-align:center;line-height:1.25;color:var(--text)}
+.lbar .goal b{display:block;color:var(--good);font-size:13px}
+.lbar .goal::before{content:'⚑';position:absolute;left:50%;top:-36px;transform:translateX(-30%);color:var(--good);font-size:18px}
 .gcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
 .gcard{background:var(--panel2);border:1px solid var(--line);border-radius:14px;overflow:hidden}
 .gcard.top{border-color:var(--good);box-shadow:0 0 0 1px var(--good) inset}
@@ -393,12 +396,12 @@ async function gqlMatches(query){
 }
 async function ensureHeroes(){
   if(Object.keys(heroes).length) return;
-  const c = lsGet('st_heroes');
+  const c = lsGet('st_heroes2');
   if(c && Date.now() - c.t < 7*86400e3){ heroes = c.v; return; }
-  const d = await gql('{ constants { heroes { id displayName shortName roles { roleId level } } } }');
+  const d = await gql('{ constants { heroes { id displayName shortName roles { roleId level } stats { complexity attackType } } } }');
   d.constants.heroes.forEach(h => heroes[h.id] = {id: h.id, localized_name: h.displayName, img: `/apps/dota2/images/dota_react/heroes/${h.shortName}.png`,
-    roles: h.roles.map(r => r.roleId[0] + r.roleId.slice(1).toLowerCase())});
-  lsSet('st_heroes', {t: Date.now(), v: heroes});
+    roles: h.roles.map(r => r.roleId[0] + r.roleId.slice(1).toLowerCase()), complexity: h.stats && h.stats.complexity, attack: h.stats && h.stats.attackType});
+  lsSet('st_heroes2', {t: Date.now(), v: heroes});
 }
 const bracketOf = rank => { const m = rank ? Math.floor(rank/10) : 0; return m <= 0 ? 'ALL' : m <= 2 ? 'HERALD_GUARDIAN' : m <= 4 ? 'CRUSADER_ARCHON' : m <= 6 ? 'LEGEND_ANCIENT' : 'DIVINE_IMMORTAL'; };
 
@@ -785,20 +788,18 @@ function renderSummary(S){
   const best = group(year).filter(([h, s]) => s.n >= 15 && ok(h)).sort((a,b) => solid(b[1].w, b[1].n) - solid(a[1].w, a[1].n)).slice(0, 4);
   $('sumWin').innerHTML = best.map(([h, s]) => sh(h, pct0(s.w/s.n), 'good', `${s.w}–${s.n - s.w} ${PERIOD.label}`)).join('');
 
-  // Кого брать: твои герои на этой позиции, где твой результат выше твоего обычного на ней; если таких мало — добираем из меты
-  const atPos = year.filter(g => g.pos === tr.p), base = atPos.length ? atPos.filter(g => g.win).length/atPos.length : .5;
-  const take = group(atPos).filter(([h, s]) => s.n >= 10 && ok(h)).map(([h, s]) => ({h, s, est: solid(s.w, s.n)}))
-    .filter(x => x.est > base + 0.02).sort((a,b) => b.est - a.est).slice(0, 4);
-  const takeHtml = take.map(x => sh(x.h, '+' + Math.round((x.est - base)*100) + '%', 'good', `${x.s.w}–${x.s.n - x.s.w} на позиции ${roleShort(tr.p).toLowerCase()}`));
-  rec.meta.filter(x => !take.some(t => t.h === x.h.id)).slice(0, 4 - take.length)
-    .forEach(x => takeHtml.push(sh(x.h.id, 'мета', '', `${x.metaWr != null ? pct0(x.metaWr) : ''} в твоём ранге · подходит под твой стиль`)));
-  $('sumTake').innerHTML = takeHtml.join('');
+  // Кого брать: твои герои этой позиции с лучшим прогнозом по твоей же кривой обучения (без меты)
+  const F = heroForecasts(S);
+  const take = F.rows.filter(x => (x.pos[tr.p] || 0) >= 3 && ok(x.h)).sort((a,b) => b.w50 - a.w50).slice(0, 4);
+  $('sumTake').innerHTML = take.map(x => sh(x.h, pct0(x.w50), 'good', `сейчас ${pct0(x.now)} → через 50 игр · у тебя ${x.w}–${x.n - x.w}`)).join('');
 
-  // По фану: новые для тебя герои, которые подходят под профиль побед
-  const fun = [rec.wild, ...rec.off, ...rec.meta].filter(x => x && (!x.my || x.my.n < 5)).filter((x, i, a) => a.findIndex(y => y.h.id === x.h.id) === i).slice(0, 4);
-  const funWhy = x => { const t = (x.h.roles || []).map(r => [r, S.wp.tagWr[r]]).filter(([r, o]) => o && TAG_RU[r] && o.wr > S.wp.overall).sort((a,b) => b[1].wr - a[1].wr)[0];
-    return t ? `${TAG_RU[t[0]]} — твоё (${pct0(t[1].wr)})` : 'подходит под твой стиль'; };
-  $('sumFun').innerHTML = fun.map(x => sh(x.h.id, x.my && x.my.n ? `${x.my.n} игр` : 'новый', 'warn', funWhy(x))).join('') || '<p class="muted">—</p>';
+  // По фану: новые для тебя герои, похожие на тех, на ком ты выигрываешь (роли, тип атаки, сложность)
+  const mine = {}; year.forEach(g => mine[g.hero] = (mine[g.hero] || 0) + 1);
+  const sim = (a, b) => { const ra = new Set(H(a).roles || []), rb = H(b).roles || [], inter = rb.filter(r => ra.has(r)).length, uni = new Set([...ra, ...rb]).size || 1;
+    return inter/uni + (H(a).attack && H(a).attack === H(b).attack ? 0.2 : 0) + (H(a).complexity === H(b).complexity ? 0.1 : 0); };
+  const fun = Object.keys(heroes).map(Number).filter(h => (mine[h] || 0) < 5 && ok(h)).map(h => { const twin = best.map(([b]) => [b, sim(h, b)]).sort((x,y) => y[1] - x[1])[0];
+    return {h, twin: twin && twin[0], s: twin ? twin[1] : 0}; }).sort((a,b) => b.s - a.s).slice(0, 4);
+  $('sumFun').innerHTML = fun.map(x => sh(x.h, mine[x.h] ? `${mine[x.h]} игр` : 'новый', 'warn', `похож на ${H(x.twin).localized_name} — на нём ты выигрываешь`)).join('') || '<p class="muted">—</p>';
 }
 
 function renderReport(S){
@@ -1228,75 +1229,110 @@ async function renderInsights(S){
 }
 
 // ───────── перспектива: прогноз роста ─────────
-// Для каждого героя на позиции (300+ игр в ранге) — прогноз твоего винрейта сейчас → через 50 → через 100 игр:
-//   потолок = сила героя на позиции в твоём ранге + твои типичные драфты + совпадение со стилем + твои результаты на героях такого типа;
-//   старт   = твой текущий результат на герое (или провал первых игр по твоей кривой обучения, если не играл);
-//   путь к потолку — с твоей скоростью обучения (сколько игр тебе обычно нужно, чтобы герой «пошёл»).
-// «На ранг выше» — как герой держится в следующем ранге: проседает — тащит только внизу, держится — герой на вырост.
-const NEXT_BRACKET = {HERALD_GUARDIAN: 'CRUSADER_ARCHON', CRUSADER_ARCHON: 'LEGEND_ANCIENT', LEGEND_ANCIENT: 'DIVINE_IMMORTAL', DIVINE_IMMORTAL: 'DIVINE_IMMORTAL', ALL: 'ALL'};
+// Только по твоим играм, без меты. Для каждого героя игры выстраиваются по порядку (1-я, 2-я…):
+//   твой тип обучения — как растёт твой винрейт по номеру игры на герое, отдельно для простых / средних / сложных героев;
+//   уровень сейчас — последние игры на герое, сглаженные к твоей кривой для героев этой сложности;
+//   прогноз на 20 и 50 игр — сколько тебе обычно добавляли следующие игры на героях этой сложности + твой собственный тренд на этом герое.
 const MEDALS = ['Herald','Guardian','Crusader','Archon','Legend','Ancient','Divine','Immortal'];
 // Ранг ↔ примерный рейтинг: медаль ≈ 770, звезда ≈ 154 (приближение, у Valve шкала неровная)
 const rankToMmr = r => r ? (Math.floor(r/10) - 1)*770 + (Math.max(1, r % 10) - 1)*154 : null;
 const mmrToRank = m => { const i = clamp(Math.floor(m/770), 0, 7), s = clamp(Math.floor((m - i*770)/154) + 1, 1, 5); return i >= 7 ? 'Immortal' : `${MEDALS[i]} ${s}`; };
+const CPLX = {1: 'простой', 2: 'средний', 3: 'сложный'}, CPLX_PL = {1: 'простые', 2: 'средние', 3: 'сложные'}, CPLX_LOC = {1: 'простых', 2: 'средних', 3: 'сложных'};
+const CURVE_AT = [[1,10,5.5], [11,20,15.5], [21,40,30.5], [41,80,60.5], [81,1e9,120]];   // отрезки «номер игры на герое» и их середины
 
-async function renderGrowth(S){
-  const token = {}; S.growToken = token;
-  const p = S.trainRole.p, dis = prefs().heroes;
-  $('growNote').textContent = 'Считаю прогноз…'; $('grow').innerHTML = '';
-  const [cur, next] = await Promise.all([loadPosTable(S.bracket), loadPosTable(NEXT_BRACKET[S.bracket])]);
-  const cand = Object.keys(cur).map(Number).filter(h => cur[h][p] && cur[h][p].n >= 300 && dis[h] !== -1);
-  const mu = await loadMatchups(cand, S.bracket, t => { if(S.growToken === token) $('growNote').textContent = t; });
-  if(S.growToken !== token) return;
-  // Твои типичные драфты на этой позиции (составы за всё время, если уже докачаны; иначе — месяц)
-  const drafts = (lsGet('st_draft_' + S.id) || {}).v || {};
-  let sit = S.year.filter(g => g.pos === p && drafts[g.id]).map(g => drafts[g.id]);
-  if(sit.length < 20) sit = S.month.filter(g => g.pos === p && g.enemies).map(g => [g.allies, g.enemies]);
-  const draftAdj = h => { const v = mu[h]; if(!v || !sit.length) return 0;
-    return sit.reduce((s,[al, en]) => s + en.reduce((a,e) => a + (v.vs[e] ?? 0), 0) + 0.5*al.reduce((a,x) => a + (v.with[x] ?? 0), 0), 0)/sit.length/100; };
-  // Стиль и тип героя — из того же профиля побед, что и подбор героев
-  const fitAll = recommendHeroes(S.year, S.wp, p, cur).all, fitOf = h => fitAll.find(x => x.h.id === h);
-  // Твоя кривая обучения: насколько первые игры на новом герое ниже твоего обычного уровня и сколько игр до «пошёл»
-  const overall = S.year.filter(g => g.win).length/S.year.length;
-  const byHero = {}; [...S.year].sort((a,b) => a.t - b.t).forEach(g => (byHero[g.hero] = byHero[g.hero] || []).push(g));
-  const firsts = Object.values(byHero).flatMap(gs => gs.slice(0, 5)), firstWr = firsts.length ? firsts.filter(g => g.win).length/firsts.length : overall - 0.03;
-  const need = S.learnNeed || 40, newPenalty = Math.min(0, firstWr - overall);
-
-  const rows = cand.map(h => {
-    const r = cur[h][p], tot = Object.values(cur[h]).reduce((a,x) => a + x.n, 0), share = r.n/tot;
-    // Редкий на позиции герой берут в основном те, кто на нём специализируется, — его винрейт там завышен, ужимаем к 50%
-    const meta = share >= 0.2 ? r.w/r.n : 0.5 + (r.w/r.n - 0.5)*share/0.2;
-    const nx = next[h] && next[h][p] && next[h][p].n >= 200 ? next[h][p].w/next[h][p].n : null;
-    const f = fitOf(h), style = f ? (f.fit - 0.6)*0.10 + (f.tagS - 0.5)*0.06 : 0;
-    const ceil = clamp(meta + draftAdj(h) + 0.03 + style, 0.3, 0.7);            // «чуть лучше среднего» = +3%
-    const mine = S.year.filter(g => g.pos === p && g.hero === h), n = mine.length, w = mine.filter(g => g.win).length;
-    const start = meta + newPenalty, now = (w + 20*start)/(n + 20);   // твой результат, сглаженный к старту новичка на этом герое
-    const top = n >= 20 ? Math.max(ceil, now) : ceil;                    // если ты на герое уже лучше «чуть выше среднего» — это и есть твой уровень
-    const at = k => now + (top - now)*clamp((n + k)/need, 0, 1);
-    return {h, n, w, now, w20: at(20), w50: at(50), ceil: top, meta, share, scale: nx != null ? nx - r.w/r.n : null, style: f ? f.fit : null};
-  }).sort((a,b) => b.w50 - a.w50);
-
-  // Прогноз рейтинга: ±25 за игру, темп — твои игры за последние 3 месяца
-  const recent = S.year.filter(g => g.t > Date.now()/1000 - 90*86400), perMonth = Math.max(10, Math.round(recent.length/3));
-  const atPos = S.year.filter(g => g.pos === p), nowWr = atPos.length ? atPos.filter(g => g.win).length/atPos.length : overall;
-  // Герои на вырост — те, кто не проседает на ранг выше; совет «учи X» — первый из них
-  const grow = rows.filter(x => x.scale == null || x.scale > -0.02).slice(0, 5);
-  const trap = rows.filter(x => x.n >= 10 && x.now < nowWr && x.w50 < nowWr + 0.01).sort((a,b) => b.n - a.n).slice(0, 3);
-  const mmr = rankToMmr(S.player.steamAccount.seasonRank), best = grow.find(x => x.share >= 0.2) || grow[0] || rows[0];
-  // Средний винрейт за 3 месяца: путь от «сейчас» до потолка, потом — на потолке
-  const games3 = perMonth*3, learnN = Math.min(games3, Math.max(0, need - best.n)), avgW = (learnN*(best.now + best.ceil)/2 + (games3 - learnN)*best.ceil)/games3;
-  const gainNow = Math.round(games3*25*(2*nowWr - 1)), gainBest = Math.round(games3*25*(2*avgW - 1));
-  const sgnN = x => (x >= 0 ? '+' : '') + x;
-  $('growNote').innerHTML = `<span class="muted">Позиция: ${roleShort(p).toLowerCase()} · сейчас ты ${pct0(nowWr)} (${sgnN(Math.round(25*(2*nowWr - 1)))} рейтинга за игру) · ~${perMonth} игр в месяц</span>`;
-  $('grow').innerHTML = (mmr != null ? rankLadder(mmr, [[gainNow, 'bad', 'Ничего не менять'], [gainBest, 'good', `Учить ${H(best.h).localized_name}`]]) : '')
-    + `<h3 style="margin-top:20px">Герои на вырост <span class="muted" style="text-transform:none;letter-spacing:0">· твой винрейт: сейчас → через 20 игр → через 50 игр</span></h3>`
-    + `<div class="gcards">${grow.map(x => growCard(x, x === best)).join('')}</div>`
-    + (trap.length ? `<h3 style="margin-top:20px">Тупики: много играешь, но дальше не вырастешь</h3><div class="gcards">${trap.map(x => growCard(x, false, true)).join('')}</div>` : '')
-    + `<p class="hint" style="margin-top:14px">Прогноз: сила героя в твоём ранге + твои типичные враги и союзники + твой стиль + скорость обучения (герой у тебя «идёт» примерно с ${need}-й игры). Рейтинг приблизительный: ±25 за игру, медаль ≈ 770, звезда ≈ 154 — смотри на направление, а не на точное число.</p>`;
+// Кривая обучения по номеру игры на герое для набора героев: [{x, wr, n}]
+function learnCurve(seqs){
+  return CURVE_AT.map(([lo, hi, mid]) => { const gs = seqs.flatMap(s => s.slice(lo - 1, Math.min(hi, s.length)));
+    return {x: mid, n: gs.length, wr: gs.length ? gs.filter(g => g.win).length/gs.length : null}; }).filter(p => p.n >= 25);
+}
+// Значение кривой в точке k (линейно между серединами отрезков, за краями — плоско)
+function curveAt(c, k){
+  if(!c.length) return null;
+  if(k <= c[0].x) return c[0].wr;
+  for(let i = 1; i < c.length; i++) if(k <= c[i].x) return c[i-1].wr + (c[i].wr - c[i-1].wr)*(k - c[i-1].x)/(c[i].x - c[i-1].x);
+  return c[c.length - 1].wr;
 }
 
-// Шкала рангов: ты сейчас и куда приведёт каждый вариант за 3 месяца
-function rankLadder(mmr, opts){
-  const vals = [mmr, ...opts.map(([g]) => mmr + g)], lo = Math.max(0, Math.min(...vals) - 350), hi = Math.max(...vals) + 350;
+function heroForecasts(S){
+  const all = [...S.year].sort((a,b) => a.t - b.t), overall = all.filter(g => g.win).length/all.length, start = all[0].t;
+  const seq = {}; all.forEach(g => (seq[g.hero] = seq[g.hero] || []).push(g));
+  // Кривые строим только по героям, начатым на наших глазах: у остальных настоящие первые игры могли быть раньше истории
+  const fresh = Object.entries(seq).filter(([,gs]) => gs[0].t > start + 60*86400);
+  const curveAll = learnCurve(fresh.map(([,gs]) => gs)), curves = {};
+  [1,2,3].forEach(c => { const cv = learnCurve(fresh.filter(([h]) => (H(+h).complexity || 2) === c).map(([,gs]) => gs)); curves[c] = cv.length >= 3 ? cv : curveAll; });
+  const cv = h => curves[H(h).complexity || 2] || curveAll;
+  const rows = Object.entries(seq).map(([h, gs]) => { h = +h;
+    const n = gs.length, w = gs.filter(g => g.win).length, c = cv(h), base = curveAt(c, n) ?? overall;
+    const last = gs.slice(-20), lw = last.filter(g => g.win).length;
+    const now = (lw + 10*base)/(last.length + 10);                                  // последние игры, сглаженные к твоей кривой
+    // твой тренд на этом герое: наклон винрейта по последним 40 играм (на игру), с осторожностью
+    const tail = gs.slice(-40); let slope = 0;
+    if(tail.length >= 15){ const m = (tail.length - 1)/2, wm = tail.filter(g => g.win).length/tail.length;
+      let num = 0, den = 0; tail.forEach((g, i) => { num += (i - m)*((g.win ? 1 : 0) - wm); den += (i - m)**2; }); slope = clamp(num/den, -0.004, 0.004); }
+    // тренд по 40 играм — сигнал, а не закон: берём четверть и не больше ±5% за весь прогноз
+    const at = k => clamp(now + ((curveAt(c, n + k) ?? base) - base) + clamp(0.25*slope*k, -0.05, 0.05), 0.25, 0.75);
+    // с какой игры герой «пошёл»: дальше винрейт стабильно выше твоего обычного
+    let br = null; if(n >= 30) for(let i = 10; i <= n - 15; i += 5){ const a = gs.slice(0, i), b = gs.slice(i), wa = a.filter(g => g.win).length/a.length, wb = b.filter(g => g.win).length/b.length;
+      if(wb >= overall + 0.05 && wb - wa >= 0.1){ br = {i, wa, wb}; break; } }
+    const pos = {}; gs.forEach(g => pos[g.pos] = (pos[g.pos] || 0) + 1);
+    return {h, n, w, now, w20: at(20), w50: at(50), slope, br, cplx: H(h).complexity || 2, pos};
+  });
+  return {rows, curves, curveAll, overall};
+}
+
+// Твой тип обучения словами: сравнение старта и игр после 40-й на героях каждой сложности
+function learnTypeText(F){
+  const parts = [1,2,3].map(c => { const cv = F.curves[c]; if(!cv || cv === F.curveAll || cv.length < 3) return null;
+    const a = cv[0].wr, b = curveAt(cv, 60); return {c, a, b, d: b - a}; }).filter(Boolean);
+  if(!parts.length) return '';
+  const best = parts.slice().sort((x,y) => y.d - x.d)[0];
+  const txt = parts.map(p => `${CPLX_PL[p.c]} герои: первые 10 игр <b class="${wrClass(p.a)}">${pct0(p.a)}</b> → после 40-й <b class="${wrClass(p.b)}">${pct0(p.b)}</b>`).join(' · ');
+  const verdict = best.d >= 0.06 ? `Ты медленно стартуешь, но на <b>${CPLX_LOC[best.c]}</b> героях потом тащишь: +${Math.round(best.d*100)}% к 40-й игре.`
+    : 'Ты выходишь на свой уровень почти сразу — дальше растёшь мало: выигрывает не новый герой, а углубление в своих.';
+  return `${verdict}<br><span class="muted" style="font-size:13px">${txt}</span>`;
+}
+
+async function renderGrowth(S){
+  const p = S.trainRole.p, dis = prefs().heroes;
+  const F = heroForecasts(S);
+  // Герои этой позиции: хотя бы 3 игры на ней и не отмечены «не хочу»
+  const rows = F.rows.filter(x => (x.pos[p] || 0) >= 3 && dis[x.h] !== -1).sort((a,b) => b.w50 - a.w50);
+  const recent = S.year.filter(g => g.t > Date.now()/1000 - 90*86400), perMonth = Math.max(10, Math.round(recent.length/3));
+  const atPos = S.year.filter(g => g.pos === p), nowWr = atPos.length ? atPos.filter(g => g.win).length/atPos.length : F.overall;
+  const grow = rows.slice(0, 5);
+  const trap = rows.filter(x => x.n >= 25 && x.w50 < F.overall && !grow.includes(x)).sort((a,b) => b.n - a.n).slice(0, 3);
+  const best = grow[0];
+  if(!best){ $('growNote').textContent = 'Мало игр на этой позиции для прогноза.'; $('grow').innerHTML = ''; return; }
+  // Рейтинг: ±25 за игру; путь к цели — сначала 50 игр роста от «сейчас» до прогноза на 50 игр, дальше на этом уровне
+  const games3 = perMonth*3, rise = Math.min(games3, 50), avgW = (rise*(best.now + best.w50)/2 + (games3 - rise)*best.w50)/games3;
+  const gainNow = Math.round(games3*25*(2*nowWr - 1)), gainBest = Math.round(games3*25*(2*avgW - 1));
+  const gamesTo = target => { const p1 = 25*(2*(best.now + best.w50)/2 - 1), p2 = 25*(2*best.w50 - 1);
+    if(50*p1 >= target) return p1 > 0 ? Math.ceil(target/p1) : null;
+    return p2 > 0 ? Math.ceil(50 + (target - 50*Math.max(p1, 0))/p2) : null; };
+  const goals = [1000, 2000].map(t => { const g = gamesTo(t); return {t, months: g == null ? null : Math.max(1, Math.round(g/perMonth))}; });
+  const mmr = rankToMmr(S.player.steamAccount.seasonRank), sgnN = x => (x >= 0 ? '+' : '') + x;
+
+  // Факты про твоё обучение: на каких героях был перелом
+  const breaks = F.rows.filter(x => x.br).sort((a,b) => (b.br.wb - b.br.wa) - (a.br.wb - a.br.wa)).slice(0, 2);
+  // Самый частый сложный герой, на котором ты пока ниже своего уровня: это старт (растёт) или потолок (не растёт)?
+  const hard = F.rows.filter(x => x.n >= 20 && x.now < F.overall && x.cplx === 3).sort((a,b) => b.n - a.n)[0];
+  const hardText = !hard ? '' : hard.w50 - hard.now >= 0.05
+    ? `<br>На <b>${H(hard.h).localized_name}</b> у тебя ${hard.w}–${hard.n - hard.w}, но это сложный герой, и по твоему типу он ещё растёт: ${pct0(hard.now)} → <b class="good">${pct0(hard.w50)}</b> за 50 игр.`
+    : `<br>На <b>${H(hard.h).localized_name}</b> у тебя ${hard.w}–${hard.n - hard.w} — и по твоим играм это не старт, а потолок: за 50 игр ${pct0(hard.now)} → ${pct0(hard.w50)}. Время лучше вложить в героев выше.`;
+  $('growNote').innerHTML = learnTypeText(F)
+    + (breaks.length ? `<br>${breaks.map(x => `На <b>${H(x.h).localized_name}</b> первые ${x.br.i} игр — ${pct0(x.br.wa)}, после — <b class="good">${pct0(x.br.wb)}</b>`).join('. ')}.` : '')
+    + hardText
+    + `<br><span class="muted" style="font-size:13px">Позиция: ${roleShort(p).toLowerCase()} · сейчас ${pct0(nowWr)} (${sgnN(Math.round(25*(2*nowWr - 1)))} за игру) · ~${perMonth} игр в месяц</span>`;
+  $('grow').innerHTML = (mmr != null ? rankLadder(mmr, [[gainNow, 'bad', 'Ничего не менять'], [gainBest, 'good', `Играть ${H(best.h).localized_name}`]], goals) : '')
+    + `<h3 style="margin-top:20px">Герои на вырост <span class="muted" style="text-transform:none;letter-spacing:0">· твой винрейт: сейчас → через 20 игр → через 50 игр</span></h3>`
+    + `<div class="gcards">${grow.map(x => growCard(x, x === best)).join('')}</div>`
+    + (trap.length ? `<h3 style="margin-top:20px">Тупики: много играешь, но по твоей кривой дальше не вырастешь</h3><div class="gcards">${trap.map(x => growCard(x, false, true)).join('')}</div>` : '')
+    + `<p class="hint" style="margin-top:14px">Только твои игры, без меты: уровень сейчас — последние 20 игр на герое; рост — сколько тебе обычно добавляли следующие игры на героях той же сложности, плюс твой тренд на этом герое. Рейтинг приблизительный: ±25 за игру, медаль ≈ 770, звезда ≈ 154.</p>`;
+}
+
+// Шкала рангов: ты сейчас, куда приведёт каждый вариант за 3 месяца и цели +1000 / +2000 со сроками
+function rankLadder(mmr, opts, goals = []){
+  const vals = [mmr, ...opts.map(([g]) => mmr + g), ...goals.map(x => mmr + x.t)], lo = Math.max(0, Math.min(...vals) - 300), hi = Math.max(...vals) + 250;
   const x = v => (100*(v - lo)/(hi - lo)).toFixed(2) + '%';
   const ticks = []; for(let m = Math.ceil(lo/154)*154; m <= hi; m += 154){ const medal = m % 770 === 0;
     ticks.push(`<i class="tick ${medal ? 'medal' : ''}" style="left:${x(m)}"></i>` + (medal ? `<span class="tlbl" style="left:${x(m)}">${MEDALS[clamp(m/770, 0, 7)]}</span>` : '')); }
@@ -1305,20 +1341,20 @@ function rankLadder(mmr, opts){
     <div class="lbar">${ticks.join('')}${opts.map(([g, cls]) => fill(mmr, mmr + g, cls)).join('')}
       <span class="mark me" style="left:${x(mmr)}"><b>Ты сейчас</b>${mmrToRank(mmr)}</span>
       ${opts.map(([g, cls, label], i) => `<span class="mark ${cls} ${i ? 'up' : ''}" style="left:${x(mmr + g)}"><b>${label}</b>${mmrToRank(mmr + g)} · ${(g >= 0 ? '+' : '') + g}</span>`).join('')}
-    </div><div class="muted" style="font-size:12px;text-align:center;margin-top:44px">куда ты придёшь через 3 месяца</div></div>`;
+      ${goals.map(gl => `<span class="goal" style="left:${x(mmr + gl.t)}"><b>+${gl.t}</b>${mmrToRank(mmr + gl.t)}<br>${gl.months == null ? '<span class="bad">с этим героем не дойти</span>' : `≈ ${gl.months} мес.`}</span>`).join('')}
+    </div><div class="muted" style="font-size:12px;text-align:center;margin-top:${goals.length ? 92 : 52}px">метки — где ты будешь через 3 месяца; флажки +1000 и +2000 — за сколько дойдёшь с лучшим героем</div></div>`;
 }
 // Карточка героя: портрет, мини-график винрейта «сейчас → 20 → 50 игр» с линией 50%
 function growCard(x, top, trap){
-  const pts = [x.now, x.w20, x.w50], X = [14, 90, 166], Y = v => (62 - (clamp(v, .34, .70) - .34)/.36*52).toFixed(1);
+  const pts = [x.now, x.w20, x.w50], X = [16, 90, 162], Y = v => (60 - (clamp(v, .25, .75) - .25)/.5*42).toFixed(1);   // сверху запас под подписи
   const up = x.w50 - x.now >= 0.01, col = trap ? 'var(--bad)' : up ? 'var(--good)' : 'var(--accent2)';
-  const scale = x.scale == null ? '' : x.scale >= 0.005 ? '<span class="gtag good">на ранг выше растёт</span>' : x.scale <= -0.02 ? '<span class="gtag bad">на ранг выше проседает</span>' : '<span class="gtag">на ранг выше держится</span>';
   return `<div class="gcard ${top ? 'top' : ''} ${trap ? 'trap' : ''}">
     <div class="gimg"><img src="${CDN + H(x.h).img}" alt="">${top ? '<span class="gbest">лучший выбор</span>' : ''}<span class="gname">${H(x.h).localized_name}</span></div>
     <svg viewBox="0 0 180 70" class="gsvg"><line x1="6" x2="174" y1="${Y(.5)}" y2="${Y(.5)}" class="g50"/><text x="174" y="${(+Y(.5) - 3).toFixed(1)}" class="g50t">50%</text>
       <polyline points="${pts.map((v, i) => `${X[i]},${Y(v)}`).join(' ')}" style="stroke:${col}" class="gline"/>
       ${pts.map((v, i) => `<circle cx="${X[i]}" cy="${Y(v)}" r="${i === 2 ? 4.5 : 3}" style="fill:${col}"/><text x="${X[i]}" y="${(+Y(v) - 8).toFixed(1)}" class="gval ${i === 2 ? 'last' : ''}">${pct0(v)}</text>`).join('')}
-      <text x="14" y="69" class="gax">сейчас</text><text x="90" y="69" class="gax">20 игр</text><text x="166" y="69" class="gax">50 игр</text></svg>
-    <div class="gfoot">${x.n ? `у тебя ${x.w}–${x.n - x.w}` : '<span class="warn">новый герой</span>'} ${scale}${x.share < 0.2 ? '<span class="gtag warn">редко на этой позиции</span>' : ''}</div></div>`;
+      <text x="16" y="69" class="gax">сейчас</text><text x="90" y="69" class="gax">+20 игр</text><text x="162" y="69" class="gax">+50 игр</text></svg>
+    <div class="gfoot">у тебя ${x.w}–${x.n - x.w} <span class="gtag">${CPLX[x.cplx]}</span>${x.br ? `<span class="gtag good">пошёл с ${x.br.i}-й игры</span>` : ''}${x.slope >= 0.002 ? '<span class="gtag good">растёшь</span>' : x.slope <= -0.002 ? '<span class="gtag bad">проседаешь</span>' : ''}</div></div>`;
 }
 
 // ───────── на какого про ты похож ─────────
