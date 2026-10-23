@@ -169,6 +169,55 @@ canvas{max-width:100%}
 .ftrack::after{content:'';position:absolute;left:50%;top:-3px;width:1px;height:16px;background:var(--muted)}
 .ftrack i{position:absolute;top:0;height:10px;border-radius:5px} .ftrack i.pos{background:var(--good)} .ftrack i.neg{background:var(--bad)}
 .fbar b{text-align:right;font-variant-numeric:tabular-nums}
+.scan{list-style:none;padding:6px 0;margin:0;display:flex;flex-direction:column;gap:12px}
+.scan li{display:flex;gap:12px;align-items:center;color:var(--muted);opacity:.4;transition:opacity .3s}
+.scan li i{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);flex:none;box-sizing:border-box}
+.scan li.run,.scan li.done{opacity:1;color:var(--text)}
+.scan li.run i{border-top-color:var(--accent);animation:spin .8s linear infinite}
+.scan li.done i{background:var(--good);border-color:var(--good)}
+.scan li.done b{color:var(--good)}
+.reveal>*{opacity:0;transform:translateY(10px);animation:rise .6s ease forwards}
+.reveal>*:nth-child(2){animation-delay:.12s} .reveal>*:nth-child(3){animation-delay:.9s} .reveal>*:nth-child(4){animation-delay:1.1s}
+.reveal>*:nth-child(5){animation-delay:1.3s} .reveal>*:nth-child(6){animation-delay:1.4s} .reveal>*:nth-child(7){animation-delay:1.5s}
+@keyframes rise{to{opacity:1;transform:none}}
+.futures{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.futures{grid-template-columns:1fr}}
+.fut{border-radius:16px;padding:16px 18px;background:var(--panel2);border:1px solid var(--line);display:flex;flex-direction:column;gap:3px}
+.fut.bad{background:linear-gradient(160deg,rgba(255,77,77,.10),var(--panel2) 60%)}
+.fut.good{border-color:rgba(62,207,110,.55);background:linear-gradient(160deg,rgba(62,207,110,.16),var(--panel2) 60%);box-shadow:0 0 32px rgba(62,207,110,.13)}
+.fut>span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.fut>b{font-size:42px;line-height:1.1;font-variant-numeric:tabular-nums} .fut.good>b{color:var(--good)} .fut.bad>b{color:var(--bad)}
+.fut>em{font-style:normal;font-size:19px;font-weight:800} .fut small{color:var(--muted);font-size:12px}
+.fut .fgoals{color:var(--text);font-size:13px;margin-top:6px;line-height:1.5}
+.fan{width:100%;height:auto;display:block;margin-top:12px}
+.fgrid{stroke:rgba(255,255,255,.05)} .fgrid.medal{stroke:rgba(255,255,255,.18)}
+.fylab{fill:var(--muted);font-size:10px;text-anchor:end} .fylab.medal{fill:var(--text);font-weight:700;font-size:11px}
+.fxlab{fill:var(--muted);font-size:11px;text-anchor:middle}
+.fband{opacity:0;animation:fade 1.2s .5s ease forwards} .fband.now{fill:rgba(255,77,77,.13)} .fband.path{fill:rgba(62,207,110,.18)}
+.fline{fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;animation:draw 2s ease forwards}
+.fline.now{stroke:var(--bad)} .fline.path{stroke:var(--good);stroke-width:3.5;filter:drop-shadow(0 0 6px rgba(62,207,110,.55))}
+.fme{fill:var(--text)}
+.fgoal{stroke:var(--warn);stroke-dasharray:5 5;opacity:.75} .fgoalt{fill:var(--warn);font-size:11px;font-weight:700}
+.fdot{fill:var(--warn);stroke:var(--bg);stroke-width:2} .fcrosst{fill:var(--warn);font-size:12px;font-weight:800;text-anchor:middle}
+.flate{opacity:0;animation:fade .6s 2s forwards}
+.fan.narrow .fylab,.fan.narrow .fendr{font-size:12px} .fan.narrow .fylab.medal,.fan.narrow .fxlab,.fan.narrow .fgoalt{font-size:13px} .fan.narrow .fend{font-size:12.5px} .fan.narrow .fcrosst{font-size:13px}
+@media(prefers-reduced-motion:reduce){.reveal>*,.fband,.flate{animation:none;opacity:1;transform:none} .fline{animation:none;stroke-dashoffset:0}}
+.fend{font-size:12px;font-weight:800} .fend.now{fill:var(--bad)} .fend.path{fill:var(--good)} .fendr{font-size:11px;fill:var(--text)}
+@keyframes draw{to{stroke-dashoffset:0}} @keyframes fade{to{opacity:1}}
+.psteps{display:flex;flex-direction:column;gap:8px}
+.pstep{display:grid;grid-template-columns:28px 56px 1fr auto;gap:12px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+.pstep>i{width:28px;height:28px;border-radius:50%;background:var(--good);color:#06240f;font-style:normal;font-weight:800;display:flex;align-items:center;justify-content:center}
+.pstep img{width:56px;height:32px;object-fit:cover;border-radius:6px} .pstep .ico{font-size:26px;text-align:center}
+.pstep>div>b{display:block;font-size:15px} .pstep>div>span{font-size:12px;color:var(--muted)}
+.pstep em{font-style:normal;font-weight:800;color:var(--good);font-size:18px;white-space:nowrap} .pstep em small{font-size:11px;color:var(--muted);font-weight:400}
+@media(max-width:600px){.pstep{grid-template-columns:28px 44px 1fr}.pstep img{width:44px;height:25px}.pstep em{grid-column:3}}
+.proof{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:12px;align-items:start}
+@media(max-width:700px){.proof{grid-template-columns:1fr}}
+.ptype{background:linear-gradient(160deg,rgba(79,142,247,.18),var(--panel2) 70%);border:1px solid rgba(79,142,247,.4);border-radius:14px;padding:14px 16px}
+.ptype>b{font-size:22px;display:block;margin:2px 0 6px}
+.pproof{display:flex;flex-direction:column;gap:8px}
+.pp{display:grid;grid-template-columns:72px 1fr;gap:12px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:8px 12px}
+.pp img{width:72px;height:41px;object-fit:cover;border-radius:6px} .pp .jump{font-size:20px;font-weight:800}
 .ladder{padding:34px 8px 0}
 .lbar{position:relative;height:12px;border-radius:6px;background:linear-gradient(90deg,#2a2f3a,#343b4a)}
 .lbar .tick{position:absolute;top:0;width:1px;height:12px;background:rgba(255,255,255,.12)} .lbar .tick.medal{width:2px;height:20px;top:-4px;background:rgba(255,255,255,.35)}
@@ -258,7 +307,7 @@ details.more>summary::after{content:' ▾';color:var(--muted)} details.more[open
       <div class="sumrow fun-row"><div class="sumlbl">По фану попробуй</div><div class="sumheroes" id="sumFun"></div></div>
     </div>
 
-    <div class="card" id="growCard"><h2>Перспектива: как тебе расти</h2><p id="growNote" style="margin-top:0"></p><div id="grow"></div></div>
+    <div class="card" id="growCard"><h2>Твоё будущее</h2><p id="growNote" style="margin-top:0"></p><div id="grow"></div></div>
 
     <details class="more" id="moreAll">
     <summary>Подробный разбор: позиции, ошибки, драфт, обучение</summary>
@@ -1404,17 +1453,22 @@ function mlBuild(S){
   const model = mlTrain(X, y, quality.lambda);
   // Эффект фактора: изменение шанса при сдвиге признака на одно стандартное отклонение (в процентных пунктах)
   const p0 = mean(y), effects = ML_FEATS.map(([k, label], j) => ({k, label, eff: 100*model.w[j]*p0*(1 - p0)}));
-  return {model, mu, sd, z, quality, effects, st, ctxs, total};
+  const pred = X.map(x => mlPredict(model, x));   // шанс по итоговой модели для каждой твоей игры — для проверки правил
+  return {model, mu, sd, z, quality, effects, st, ctxs, total, raw, pred};
 }
 
-// Монте-Карло: hero = null — «ничего не менять»: герой и позиция тоже берутся из твоих последних 200 игр, как ты реально играешь
-function mlSimulate(ML, hero, pos, games, perMonth, runs = 250){
-  const recentCtx = ML.ctxs.slice(-200);
+// Монте-Карло: hero = null — «ничего не менять»: герой и позиция тоже берутся из твоих последних 200 игр, как ты реально играешь.
+// rules — правила из mlRules: ситуации, которых игрок избегает (ночь, 4-я игра сессии, пати/соло), и перерыв после 2 поражений.
+function mlSimulate(ML, hero, pos, games, perMonth, runs = 250, rules = []){
+  const has = k => rules.some(r => r.k === k), party = rules.find(r => r.k === 'party');
+  const ok = c => !(has('night') && c.hour < 6) && !(has('sess4') && c.sessIdx >= 4) && !(party && (party.bad ? c.party > 1 : c.party === 1));
+  let recentCtx = ML.ctxs.slice(-200); if(recentCtx.filter(ok).length >= 30) recentCtx = recentCtx.filter(ok);
   const cp = st => ({...st, hero: Object.fromEntries(Object.entries(st.hero).map(([k, v]) => [k, {...v, seq: v.seq.slice()}])), last: st.last.slice()});
-  const out = {wins: [], p5: 0, p20: 0, p50: 0, cross: {1000: [], 2000: []}};
+  const out = {wins: [], p5: 0, p20: 0, p50: 0, cross: {1000: [], 2000: []}, traj: []};   // traj[m] — рейтинг после m-го месяца во всех прогонах
   for(let r = 0; r < runs; r++){
     const st = cp(ML.st); let wins = 0, mmr = 0, t = Date.now()/1000; const reached = {};
     for(let g = 0; g < games; g++){
+      if(has('lose2') && st.streakL >= 2) st.streakL = 0;   // перерыв: следующая игра уже не «сразу после двух поражений»
       const base = recentCtx[Math.floor(Math.random()*recentCtx.length)];
       t += 86400*30/perMonth;
       const ctx = hero == null ? {...base, t} : {...base, pos, t, hero};
@@ -1423,12 +1477,71 @@ function mlSimulate(ML, hero, pos, games, perMonth, runs = 250){
       if(r < R){ if(g < 5) out.p5 += p/(5*R); else if(g >= 15 && g < 25) out.p20 += p/(10*R); else if(g >= 45 && g < 55) out.p50 += p/(10*R); }
       const win = Math.random() < p ? 1 : 0; wins += win; mmr += win ? 25 : -25; mlUpdate(st, ctx, win);
       [1000, 2000].forEach(k => { if(!reached[k] && mmr >= k) reached[k] = g + 1; });
+      if((g + 1) % perMonth === 0) (out.traj[(g + 1)/perMonth] = out.traj[(g + 1)/perMonth] || []).push(mmr);
     }
     out.wins.push(wins); [1000, 2000].forEach(k => out.cross[k].push(reached[k] || null));
   }
   return out;
 }
 const quant = (a, q) => { const s = a.slice().sort((x,y) => x - y); return s[Math.min(s.length - 1, Math.floor(q*s.length))]; };
+
+// Правила, которые модель нашла про тебя: ситуации, где ты стабильно слабее. Правило показываем, только если
+// сходятся и модель (на последних 400 играх), и факт (вся история, разница заметна: z ≥ 1.5), и выигрыш ощутим.
+const ML_RULES = [
+  {k: 'night',   bad: 1, icon: '🌙', text: 'Не садись играть ночью', sub: 'с 0 до 6 часов'},
+  {k: 'sess4',   bad: 1, icon: '⏱', text: 'Максимум 3 игры подряд', sub: 'дальше — перерыв'},
+  {k: 'lose2',   bad: 1, icon: '✋', text: 'Два поражения подряд — стоп', sub: 'на сегодня хватит'},
+  {k: 'newHero', bad: 1, icon: '🧪', text: 'Новых героев — не в рейтинге', sub: 'первые 5 игр — в обычных матчах'},
+  {k: 'party',   bad: 1, icon: '👤', text: 'Рейтинг — соло', sub: 'в пати ты выигрываешь реже'},
+  {k: 'party',   bad: 0, icon: '👥', text: 'Рейтинг — в пати', sub: 'соло ты выигрываешь реже'},
+];
+function mlRules(ML, perMonth){
+  const n = ML.ctxs.length, all = [...Array(n).keys()], rec = all.slice(-400);
+  const wr = ids => mean(ids.map(i => ML.ctxs[i].win)), pm = ids => mean(ids.map(i => ML.pred[i]));
+  return ML_RULES.map(r => { const j = ML_FEATS.findIndex(f => f[0] === r.k), isBad = i => ML.raw[i][j] === r.bad;
+    const bad = all.filter(isBad), good = all.filter(i => !isBad(i)), rb = rec.filter(isBad), rg = rec.filter(i => !isBad(i));
+    if(bad.length < 30 || good.length < 30 || rb.length < 8 || rg.length < 8) return null;
+    const fb = wr(bad), fg = wr(good), pp = (fb*bad.length + fg*good.length)/n, se = Math.sqrt(pp*(1 - pp)*(1/bad.length + 1/good.length));
+    const gainMonth = Math.round(perMonth*rb.length/rec.length*50*(pm(rg) - pm(rb)));   // такие игры заменяются обычными: 50 рейтинга за каждый процент разницы шанса
+    if((fg - fb)/se < 1.5 || pm(rg) <= pm(rb) || gainMonth < 5) return null;
+    return {...r, fb, fg, nb: bad.length, gainMonth};
+  }).filter(Boolean).sort((a,b) => b.gainMonth - a.gainMonth).slice(0, 3);
+}
+
+// Веер будущего: медиана и 8 из 10 прогонов (10–90%) по месяцам, «как сейчас» против «твоего пути», цели +1000/+2000
+const MONTHS = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+const MON_SHORT = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+const monthAt = m => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + Math.round(m)); return d; };
+const monthName = m => { const d = monthAt(m); return MONTHS[d.getMonth()] + ' ' + d.getFullYear(); };
+function fanChart(now, path, base, months, crossM){
+  const narrow = ($('grow').clientWidth || 800) < 600;   // на телефоне — уже холст, чтобы подписи не стали мелкими
+  const W = narrow ? 420 : 760, Hh = narrow ? 300 : 330, L = narrow ? 84 : 92, R = narrow ? 92 : 128, T = 16, B = 30, pw = W - L - R, ph = Hh - T - B, ms = [...Array(months + 1).keys()];
+  const q = (s, m, k) => m === 0 ? 0 : quant(s.traj[m], k);
+  const vals = ms.flatMap(m => [q(now, m, .1), q(now, m, .9), q(path, m, .1), q(path, m, .9)]);
+  const goals = [1000, 2000].filter(t => t <= Math.max(...vals) + 400);
+  const lo = Math.min(...vals) - 120, hi = Math.max(...vals, ...goals) + 120;
+  const X = m => L + pw*m/months, Y = v => T + ph*(1 - (v - lo)/(hi - lo)), f = v => v.toFixed(1);
+  const P = pts => pts.map(([a, b]) => `${f(X(a))},${f(Y(b))}`).join(' ');
+  const band = (s, cls) => `<polygon class="fband ${cls}" points="${P(ms.map(m => [m, q(s, m, .9)]))} ${P(ms.slice().reverse().map(m => [m, q(s, m, .1)]))}"/>`;
+  const line = (s, cls) => `<polyline class="fline ${cls}" pathLength="1" points="${P(ms.map(m => [m, q(s, m, .5)]))}"/>`;
+  const sgn = v => (v >= 0 ? '+' : '') + v;
+  // Сетка: границы званий (медаль — жирная) или шаг 250, если ранга нет
+  const grid = [];
+  if(base != null){ const step = (hi - lo)/154 > 14 ? 770 : 154;
+    for(let a = Math.ceil((base + lo)/step)*step; a <= base + hi; a += step){ const v = a - base, medal = a % 770 === 0;
+      grid.push(`<line x1="${L}" x2="${L + pw}" y1="${f(Y(v))}" y2="${f(Y(v))}" class="fgrid ${medal ? 'medal' : ''}"/><text x="${L - 8}" y="${f(Y(v) + 4)}" class="fylab ${medal ? 'medal' : ''}">${mmrToRank(a + 1)}</text>`); } }
+  else for(let v = Math.ceil(lo/250)*250; v <= hi; v += 250) grid.push(`<line x1="${L}" x2="${L + pw}" y1="${f(Y(v))}" y2="${f(Y(v))}" class="fgrid ${v === 0 ? 'medal' : ''}"/><text x="${L - 8}" y="${f(Y(v) + 4)}" class="fylab">${sgn(v)}</text>`);
+  const goalSvg = goals.map(t => `<line x1="${L}" x2="${L + pw}" y1="${f(Y(t))}" y2="${f(Y(t))}" class="fgoal"/><text x="${L + 6}" y="${f(Y(t) - 6)}" class="fgoalt">⚑ +${t}${base != null ? ' · ' + mmrToRank(base + t) : ''}</text>`).join('');
+  // Отметка «+1000 к такому-то месяцу» — тот же срок, что в карточке «Твой путь»
+  const cross = crossM != null && crossM <= months ? `<g class="flate"><circle cx="${f(X(crossM))}" cy="${f(Y(1000))}" r="7" class="fdot"/><text x="${f(X(crossM) + (crossM > months*0.7 ? 8 : 0))}" y="${f(Y(1000) + 22)}" class="fcrosst" style="${crossM > months*0.7 ? 'text-anchor:end' : ''}">${monthName(crossM)}</text></g>` : '';
+  const xl = ms.filter(m => m % 3 === 0).map(m => `<text x="${f(X(m))}" y="${Hh - 8}" class="fxlab">${m === 0 ? 'сейчас' : MON_SHORT[monthAt(m).getMonth()] + ' ' + String(monthAt(m).getFullYear()).slice(2)}</text>`).join('');
+  // Подписи на концах линий, разведённые, чтобы не наезжали
+  let yN = Y(q(now, months, .5)), yP = Y(q(path, months, .5)); if(Math.abs(yN - yP) < 34){ const c = (yN + yP)/2, s = yP <= yN ? -1 : 1; yP = c + s*17; yN = c - s*17; }
+  const endLbl = (y, cls, title, v) => `<g class="flate"><text x="${L + pw + 10}" y="${f(y - 2)}" class="fend ${cls}">${title}</text><text x="${L + pw + 10}" y="${f(y + 12)}" class="fendr">${base != null ? mmrToRank(Math.max(0, base + v)) : sgn(v)}</text></g>`;
+  return `<svg viewBox="0 0 ${W} ${Hh}" class="fan ${narrow ? 'narrow' : ''}">${grid.join('')}${goalSvg}${band(now, 'now')}${band(path, 'path')}${line(now, 'now')}${line(path, 'path')}
+    <circle cx="${f(X(0))}" cy="${f(Y(0))}" r="6" class="fme"/>${cross}
+    ${endLbl(yN, 'now', 'Как сейчас', q(now, months, .5))}${endLbl(yP, 'path', 'Твой путь', q(path, months, .5))}${xl}</svg>`;
+}
 
 // Панель модели: качество на отложенных играх и главные факторы
 function renderModelPanel(ML){
@@ -1445,56 +1558,61 @@ function renderModelPanel(ML){
 }
 
 async function renderGrowth(S){
-  const p = S.trainRole.p, dis = prefs().heroes;
-  const F = heroForecasts(S);
-  $('growNote').textContent = 'Обучаю модель на твоих играх…'; $('grow').innerHTML = '';
-  await sleep(30);
-  const ML = S.ML = S.ML || mlBuild(S);
-  const recent = S.year.filter(g => g.t > Date.now()/1000 - 90*86400), perMonth = Math.max(10, Math.round(recent.length/3)), games3 = perMonth*3;
-  // Герои позиции: хотя бы 3 игры на ней и не «не хочу» — каждому прогон 55 игр вперёд, винрейт сейчас → +20 → +50 из симуляции
-  const rows = F.rows.filter(x => (x.pos[p] || 0) >= 3 && dis[x.h] !== -1).map(x => {
-    const s = mlSimulate(ML, x.h, p, 55, perMonth, 60); return {...x, now: s.p5, w20: s.p20, w50: s.p50}; }).sort((a,b) => b.w50 - a.w50);
-  const grow = rows.slice(0, 5), best = grow[0];
-  const trap = rows.filter(x => x.n >= 25 && x.w50 < F.overall && !grow.includes(x)).sort((a,b) => b.n - a.n).slice(0, 3);
-  if(!best){ $('growNote').textContent = 'Мало игр на этой позиции для прогноза.'; return; }
-  // Рейтинг: Монте-Карло 3 месяцев «как сейчас» и «учить лучшего героя»; цели — горизонт 12 месяцев
-  const simNow = mlSimulate(ML, null, p, games3, perMonth, 300), simBest = mlSimulate(ML, best.h, p, games3, perMonth, 300);
-  const gain = (s, q) => 25*(2*quant(s.wins, q) - games3);
-  const simLong = mlSimulate(ML, best.h, p, perMonth*12, perMonth, 200);
-  const goals = [1000, 2000].map(t => { const c = simLong.cross[t].filter(v => v != null), prob = c.length/simLong.cross[t].length;
-    return {t, prob, months: prob >= 0.5 ? Math.max(1, Math.round(quant(c, 0.5)/perMonth)) : null}; });
+  const token = {}; S.growToken = token; const alive = () => S.growToken === token;
+  const p = S.trainRole.p, dis = prefs().heroes, F = heroForecasts(S), show = !S.mlShown;
+  const recent = S.year.filter(g => g.t > Date.now()/1000 - 90*86400), perMonth = Math.max(10, Math.round(recent.length/3)), months = 12;
   const mmr = rankToMmr(S.player.steamAccount.seasonRank), sgnN = x => (x >= 0 ? '+' : '') + x;
-  const band = (s, cls) => `<b class="${cls}">${sgnN(gain(s, 0.5))}</b> <span class="muted">(от ${sgnN(gain(s, 0.1))} до ${sgnN(gain(s, 0.9))} в 8 из 10 прогонов)</span>`;
+  const rankOf = v => mmr != null ? mmrToRank(Math.max(0, mmr + v)) : sgnN(v) + ' рейтинга';
+  $('growNote').innerHTML = `<span class="muted" style="font-size:13px">Позиция: ${roleShort(p).toLowerCase()} · ~${perMonth} игр в месяц${mmr != null ? ` · сейчас ${mmrToRank(mmr)}` : ''} · только твои игры, без меты</span>`;
+  // Сцена расчёта: каждый шаг — настоящее вычисление, а итог шага — настоящие числа
+  const STEPS = ['Читаю твои игры', 'Ищу, что влияет на твои победы', 'Проверяю себя на играх, которых не видела', 'Проживаю 55 игр на каждом твоём герое', 'Проживаю твой следующий год сотни раз'];
+  $('grow').innerHTML = show ? `<ul class="scan">${STEPS.map(t => `<li><i></i><span>${t}</span></li>`).join('')}</ul>` : '<p class="muted">Пересчитываю под позицию…</p>';
+  const run = async (i, fn, txt) => { const el = show ? $('grow').querySelectorAll('.scan li')[i] : null;
+    if(el) el.className = 'run'; await sleep(show ? 420 : 0); if(!alive()) return null;
+    const r = fn(); if(el){ el.className = 'done'; el.querySelector('span').innerHTML = txt(r); } return r; };
+  await run(0, () => null, () => `Прочитано <b>${S.year.length}</b> игр на <b>${new Set(S.year.map(g => g.hero)).size}</b> героях`); if(!alive()) return;
+  const ML = await run(1, () => S.ML = S.ML || mlBuild(S), ML => `<b>${ML_FEATS.length}</b> признака у каждой игры — только то, что известно до её начала`); if(!alive()) return;
+  const rules = mlRules(ML, perMonth), q = ML.quality;
+  await run(2, () => null, () => `Проверено на <b>${q.n}</b> играх «из будущего»: где прогноз был лучшим, ты выиграл <b>${pct0(q.hi)}</b>, где худшим — <b>${pct0(q.lo)}</b>`); if(!alive()) return;
+  const rows = await run(3, () => F.rows.filter(x => (x.pos[p] || 0) >= 3 && dis[x.h] !== -1).map(x => { const s = mlSimulate(ML, x.h, p, 55, perMonth, 60); return {...x, now: s.p5, w20: s.p20, w50: s.p50}; }).sort((a,b) => b.w50 - a.w50),
+    rows => `<b>${rows.length}</b> героев × 55 игр вперёд`); if(!alive()) return;
+  const best = rows[0];
+  if(!best){ $('grow').innerHTML = '<p class="muted">Мало игр на этой позиции для прогноза — выбери другую позицию.</p>'; return; }
+  const sims = await run(4, () => ({now: mlSimulate(ML, null, p, perMonth*months, perMonth, 300), path: mlSimulate(ML, best.h, p, perMonth*months, perMonth, 300, rules), hero: mlSimulate(ML, best.h, p, perMonth*3, perMonth, 200)}),
+    () => `<b>600</b> вариантов твоего года по <b>${perMonth*months}</b> игр`); if(!alive()) return;
+  if(show) await sleep(700);
+  S.mlShown = true;
 
-  const breaks = F.rows.filter(x => x.br).sort((a,b) => (b.br.wb - b.br.wa) - (a.br.wb - a.br.wa)).slice(0, 2);
-  $('growNote').innerHTML = `<div class="layers"><span><b>1</b>${ML_FEATS.length} признака у каждой игры — только то, что известно до начала</span><i>→</i><span><b>2</b>модель на ${ML.total} играх, проверка на 5 срезах «из будущего»</span><i>→</i><span><b>3</b>что двигает победы</span><i>→</i><span><b>4</b>сотни прогонов будущих игр</span></div>`
-    + learnTypeText(F)
-    + (breaks.length ? `<br>${breaks.map(x => `На <b>${H(x.h).localized_name}</b> первые ${x.br.i} игр — ${pct0(x.br.wa)}, после — <b class="good">${pct0(x.br.wb)}</b>`).join('. ')}.` : '')
-    + `<br>Через 3 месяца (~${games3} игр): ничего не менять — ${band(simNow, gain(simNow, 0.5) >= 0 ? 'good' : 'bad')}; учить <b>${H(best.h).localized_name}</b> — ${band(simBest, gain(simBest, 0.5) >= 0 ? 'good' : 'bad')}.`
-    + `<br><span class="muted" style="font-size:13px">Позиция: ${roleShort(p).toLowerCase()} · ~${perMonth} игр в месяц</span>`;
-  $('grow').innerHTML = (mmr != null ? rankLadder(mmr, [[gain(simNow, 0.5), 'bad', 'Ничего не менять'], [gain(simBest, 0.5), 'good', `Играть ${H(best.h).localized_name}`]], goals) : '')
-    + `<h3 style="margin-top:20px">Герои на вырост <span class="muted" style="text-transform:none;letter-spacing:0">· шанс победы по модели: сейчас → через 20 игр → через 50 игр</span></h3>`
-    + `<div class="gcards">${grow.map(x => growCard(x, x === best)).join('')}</div>`
-    + (trap.length ? `<h3 style="margin-top:20px">Тупики: много играешь, но модель не видит роста</h3><div class="gcards">${trap.map(x => growCard(x, false, true)).join('')}</div>` : '')
-    + `<details class="mlmore" style="margin-top:16px"><summary>Как считает модель и насколько ей верить</summary>${renderModelPanel(ML)}</details>`
-    + `<p class="hint" style="margin-top:14px">Только твои игры, без меты. Прогноз героя — симуляция: каждая будущая игра берёт ситуацию из твоих реальных последних игр (время, сессия, пати, составы), модель даёт шанс, исход разыгрывается, опыт и форма обновляются. Рейтинг приблизительный: ±25 за игру, медаль ≈ 770, звезда ≈ 154.</p>`;
-}
+  const {now, path, hero} = sims, med = (s, m, k = .5) => quant(s.traj[m], k);
+  const n12 = med(now, months), p12 = med(path, months);
+  const heroGain = Math.round((med(hero, 3) - med(now, 3))/3);
+  // Срок цели — месяц, к которому её достигает половина прогонов (недошедшие считаются как «никогда»)
+  const goalM = t => { const c = path.cross[t].map(v => v ?? Infinity), m = quant(c, 0.5); return isFinite(m) ? m/perMonth : null; };
+  const goal = t => { const prob = path.cross[t].filter(v => v != null).length/path.cross[t].length, m = goalM(t);
+    return `+${t} — ${m != null ? `≈ <b>${monthName(m)}</b> · ` : ''}шанс за год <b>${Math.round(prob*100)}%</b>`; };
+  const fut = (cls, title, v, sim) => `<div class="fut ${cls}"><span>${title}</span><b data-count="${v}">${sgnN(v)}</b><em>${rankOf(v)}</em>
+    <small>через год · в 8 из 10 прогонов от ${sgnN(med(sim, months, .1))} до ${sgnN(med(sim, months, .9))}</small>${cls === 'good' ? `<small class="fgoals">${goal(1000)}<br>${goal(2000)}</small>` : ''}</div>`;
+  const steps = [`<div class="pstep"><i>1</i><img src="${CDN + H(best.h).img}" alt=""><div><b>Учить ${H(best.h).localized_name} на позиции ${roleShort(p).toLowerCase()}</b><span>лучший прогноз из твоих героев: ${pct0(best.now)} → <b class="good">${pct0(best.w50)}</b> за 50 игр</span></div>${heroGain > 0 ? `<em>${sgnN(heroGain)}<small> в месяц</small></em>` : '<em></em>'}</div>`]
+    .concat(rules.map((r, i) => `<div class="pstep"><i>${i + 2}</i><span class="ico">${r.icon}</span><div><b>${r.text}</b><span>${r.sub} · по факту в таких играх ты выигрываешь <b class="bad">${pct0(r.fb)}</b>, в остальных — <b class="good">${pct0(r.fg)}</b> (${r.nb} игр)</span></div><em>+${r.gainMonth}<small> в месяц</small></em></div>`));
+  // Кто ты как игрок: тип обучения и доказательства из твоей же истории
+  const lt = [1,2,3].map(c => { const cv = F.curves[c]; return !cv || cv === F.curveAll || cv.length < 3 ? null : {c, d: curveAt(cv, 60) - cv[0].wr}; }).filter(Boolean).sort((a,b) => b.d - a.d)[0];
+  const breaks = F.rows.filter(x => x.br).sort((a,b) => (b.br.wb - b.br.wa) - (a.br.wb - a.br.wa)).slice(0, 3);
+  const grow = rows.slice(0, 5), trap = rows.filter(x => x.n >= 25 && x.w50 < F.overall && !grow.includes(x)).sort((a,b) => b.n - a.n).slice(0, 3);
 
-// Шкала рангов: ты сейчас, куда приведёт каждый вариант за 3 месяца и цели +1000 / +2000 со сроками
-function rankLadder(mmr, opts, goals = []){
-  const vals = [mmr, ...opts.map(([g]) => mmr + g), ...goals.map(x => mmr + x.t)], lo = Math.max(0, Math.min(...vals) - 300), hi = Math.max(...vals) + 250;
-  const x = v => (100*(v - lo)/(hi - lo)).toFixed(2) + '%';
-  const ticks = []; for(let m = Math.ceil(lo/154)*154; m <= hi; m += 154){ const medal = m % 770 === 0;
-    ticks.push(`<i class="tick ${medal ? 'medal' : ''}" style="left:${x(m)}"></i>` + (medal ? `<span class="tlbl" style="left:${x(m)}">${MEDALS[clamp(m/770, 0, 7)]}</span>` : '')); }
-  const fill = (a, b, cls) => `<i class="seg ${cls}" style="left:${x(Math.min(a, b))};width:${(100*Math.abs(b - a)/(hi - lo)).toFixed(2)}%"></i>`;
-  // метка над шкалой рядом с «Ты сейчас» — поднимаем на этаж выше, чтобы подписи не слипались
-  const close = opts.map(([g, cls]) => cls === 'good' && Math.abs(g)/(hi - lo) < 0.15);
-  return `<div class="ladder" style="${close.some(Boolean) ? 'padding-top:64px' : ''}">
-    <div class="lbar">${ticks.join('')}${opts.map(([g, cls]) => fill(mmr, mmr + g, cls)).join('')}
-      <span class="mark me" style="left:${x(mmr)}"><b>Ты сейчас</b>${mmrToRank(mmr)}</span>
-      ${opts.map(([g, cls, label], i) => `<span class="mark ${cls} ${i ? 'up' : ''}" style="left:${x(mmr + g)}${close[i] ? ';bottom:52px' : ''}"><b>${label}</b>${mmrToRank(mmr + g)} · ${(g >= 0 ? '+' : '') + g}</span>`).join('')}
-      ${goals.map(gl => `<span class="goal" style="left:${x(mmr + gl.t)}"><b>+${gl.t}</b>${mmrToRank(mmr + gl.t)}<br>${gl.prob != null ? (gl.months == null ? `<span class="bad">шанс за год ${Math.round(gl.prob*100)}%</span>` : `≈ ${gl.months} мес. · шанс ${Math.round(gl.prob*100)}%`) : gl.months == null ? '<span class="bad">с этим героем не дойти</span>' : `≈ ${gl.months} мес.`}</span>`).join('')}
-    </div><div class="muted" style="font-size:12px;text-align:center;margin-top:${goals.length ? 92 : 52}px">метки — где ты будешь через 3 месяца; флажки +1000 и +2000 — за сколько дойдёшь с лучшим героем</div></div>`;
+  $('grow').innerHTML = `<div class="reveal">
+    <div class="futures">${fut('bad', 'Если ничего не менять', n12, now)}${fut('good', 'Твой путь', p12, path)}</div>
+    <div>${fanChart(now, path, mmr, months, goalM(1000))}<div class="muted" style="font-size:12px;text-align:center">линия — самый вероятный рейтинг, полоса — 8 из 10 вариантов будущего</div></div>
+    <div><h3 style="margin-top:18px">Твой путь — ${steps.length === 1 ? 'один шаг' : steps.length + ' шага'}</h3><div class="psteps">${steps.join('')}</div></div>
+    <div class="proof" style="margin-top:18px"><div class="ptype"><span class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.05em">Твой тип</span><b>${lt && lt.d >= 0.06 ? 'Долгий разгон' : 'Быстрый старт'}</b><div>${learnTypeText(F)}</div></div>
+      ${breaks.length ? `<div class="pproof"><span class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.05em">Ты уже так делал</span>${breaks.map(x => `<div class="pp"><img src="${CDN + H(x.h).img}" alt=""><div><b>${H(x.h).localized_name}</b> <span class="muted" style="font-size:12px">первые ${x.br.i} игр → дальше</span><div class="jump"><span class="${wrClass(x.br.wa)}">${pct0(x.br.wa)}</span> → <span class="good">${pct0(x.br.wb)}</span></div></div></div>`).join('')}</div>` : ''}</div>
+    <div><h3 style="margin-top:20px">Герои на вырост <span class="muted" style="text-transform:none;letter-spacing:0">· шанс победы по модели: сейчас → через 20 игр → через 50 игр</span></h3><div class="gcards">${grow.map(x => growCard(x, x === best)).join('')}</div></div>
+    ${trap.length ? `<div><h3 style="margin-top:20px">Тупики: много играешь, но модель не видит роста</h3><div class="gcards">${trap.map(x => growCard(x, false, true)).join('')}</div></div>` : ''}
+    <div><details class="mlmore" style="margin-top:16px"><summary>Как считает модель и насколько ей верить</summary>${renderModelPanel(ML)}</details>
+    <p class="hint" style="margin-top:14px">Только твои игры, без меты. Каждая будущая игра берёт ситуацию из твоих реальных последних игр (время, сессия, пати, составы врагов), модель даёт шанс, исход разыгрывается, опыт и форма обновляются — и так сотни раз. «Твой путь» — лучший герой плюс правила выше. Рейтинг приблизительный: ±25 за игру, медаль ≈ 770, звезда ≈ 154.</p></div></div>`;
+  // Числа «через год» набегают с нуля (если анимация не запустится — сразу стоит итог)
+  $('grow').querySelectorAll('[data-count]').forEach(el => { const to = +el.dataset.count, t0 = performance.now();
+    const tick = t => { const k = Math.min(1, (t - t0)/1600), v = Math.round(to*(1 - (1 - k)**3)/25)*25; el.textContent = sgnN(v); if(k < 1) requestAnimationFrame(tick); };
+    requestAnimationFrame(tick); });
 }
 // Карточка героя: портрет, мини-график винрейта «сейчас → 20 → 50 игр» с линией 50%
 function growCard(x, top, trap){
