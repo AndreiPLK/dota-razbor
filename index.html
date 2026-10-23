@@ -155,6 +155,32 @@ canvas{max-width:100%}
 .grow-row img{width:56px;height:32px;object-fit:cover;border-radius:4px}
 .gpath{display:flex;justify-content:flex-end;align-items:baseline;gap:8px;font-size:16px;font-variant-numeric:tabular-nums} .gpath b{font-size:22px} .gpath i{color:var(--muted);font-style:normal}
 @media(max-width:600px){.grow-row{grid-template-columns:56px 1fr}.gpath{grid-column:1/3;justify-content:flex-start}.grow-head{display:none}}
+.ladder{padding:34px 8px 0}
+.lbar{position:relative;height:12px;border-radius:6px;background:linear-gradient(90deg,#2a2f3a,#343b4a)}
+.lbar .tick{position:absolute;top:0;width:1px;height:12px;background:rgba(255,255,255,.12)} .lbar .tick.medal{width:2px;height:20px;top:-4px;background:rgba(255,255,255,.35)}
+.lbar .tlbl{position:absolute;top:22px;transform:translateX(-50%);font-size:11px;color:var(--muted);white-space:nowrap}
+.lbar .seg{position:absolute;top:0;height:12px;opacity:.55} .lbar .seg.bad{background:var(--bad)} .lbar .seg.good{background:var(--good)}
+.lbar .mark{position:absolute;transform:translateX(-50%);font-size:12px;white-space:nowrap;text-align:center;line-height:1.2}
+.lbar .mark b{display:block;font-size:12px}
+.lbar .mark::after{content:'';position:absolute;left:50%;width:14px;height:14px;border-radius:50%;transform:translateX(-50%);border:3px solid var(--bg)}
+.lbar .mark.me{bottom:22px;color:var(--text)} .lbar .mark.me::after{top:calc(100% + 1px);background:var(--text)}
+.lbar .mark.bad{top:40px;color:var(--bad)} .lbar .mark.bad::after{bottom:calc(100% + 15px);background:var(--bad)}
+.lbar .mark.good{bottom:22px;color:var(--good)} .lbar .mark.good::after{top:calc(100% + 1px);background:var(--good)}
+.lbar .mark.good.up{bottom:22px}
+.gcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.gcard{background:var(--panel2);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.gcard.top{border-color:var(--good);box-shadow:0 0 0 1px var(--good) inset}
+.gcard.trap{opacity:.8} .gcard.trap img{filter:grayscale(.85)}
+.gimg{position:relative} .gimg img{width:100%;aspect-ratio:16/8;object-fit:cover;display:block}
+.gimg .gname{position:absolute;left:10px;bottom:6px;font-weight:800;font-size:15px;text-shadow:0 1px 4px #000}
+.gimg .gbest{position:absolute;top:6px;left:6px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--good);color:#06210f}
+.gsvg{display:block;width:100%;height:auto;padding:4px 6px 0}
+.gsvg .g50{stroke:rgba(255,255,255,.18);stroke-dasharray:3 3} .gsvg .g50t{fill:var(--muted);font-size:8px;text-anchor:end}
+.gsvg .gline{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.gsvg .gval{fill:var(--text);font-size:10px;text-anchor:middle;font-weight:600} .gsvg .gval.last{font-size:13px;font-weight:800}
+.gsvg .gax{fill:var(--muted);font-size:7.5px;text-anchor:middle}
+.gfoot{padding:4px 10px 10px;font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+.gtag{font-size:11px;padding:1px 7px;border-radius:99px;border:1px solid var(--line)} .gtag.good{color:var(--good);border-color:#2f5d3c} .gtag.bad{color:var(--bad);border-color:#6b2a2a} .gtag.warn{color:var(--warn)}
 details.more{margin-top:16px}
 details.more>summary{cursor:pointer;list-style:none;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 20px;font-weight:700}
 details.more>summary::-webkit-details-marker{display:none}
@@ -1260,16 +1286,39 @@ async function renderGrowth(S){
   const games3 = perMonth*3, learnN = Math.min(games3, Math.max(0, need - best.n)), avgW = (learnN*(best.now + best.ceil)/2 + (games3 - learnN)*best.ceil)/games3;
   const gainNow = Math.round(games3*25*(2*nowWr - 1)), gainBest = Math.round(games3*25*(2*avgW - 1));
   const sgnN = x => (x >= 0 ? '+' : '') + x;
-  $('growNote').innerHTML = `Сейчас на позиции ${roleShort(p).toLowerCase()} ты <b class="${wrClass(nowWr)}">${pct0(nowWr)}</b> — это около <b>${sgnN(Math.round(25*(2*nowWr - 1)))}</b> рейтинга за игру. `
-    + `В твоём темпе (~${perMonth} игр в месяц) за 3 месяца это <b class="${gainNow >= 0 ? 'good' : 'bad'}">${sgnN(gainNow)}</b>${mmr != null ? ` → ${mmrToRank(mmr + gainNow)}` : ''}. `
-    + `Если эти 3 месяца учить <b>${H(best.h).localized_name}</b>: <b class="${gainBest >= 0 ? 'good' : 'bad'}">${sgnN(gainBest)}</b>${mmr != null ? ` → <b>${mmrToRank(mmr + gainBest)}</b>` : ''}.`
-    + `<br><span style="font-size:12px">Прогноз: сила героя в твоём ранге + твои типичные враги и союзники + твой стиль + твоя скорость обучения (герой у тебя «идёт» примерно с ${need}-й игры). Рейтинг — приближение: ±25 за игру, медаль ≈ 770, звезда ≈ 154. Учитывать стоит направление, а не точное число.</span>`;
-  const row = x => `<div class="grow-row"><img src="${CDN + H(x.h).img}" alt=""><div><b>${H(x.h).localized_name}</b>
-      <div class="muted" style="font-size:12px">${x.n ? `у тебя ${x.w}–${x.n - x.w} на позиции` : 'не играл на позиции'} · на ранг выше: ${x.scale == null ? '—' : x.scale >= 0.005 ? '<span class="good">растёт</span>' : x.scale <= -0.02 ? '<span class="bad">проседает</span>' : 'держится'}${x.share < 0.2 ? ` · <span class="warn">на эту позицию берут редко (${pct0(x.share)})</span>` : ''}</div></div>
-      <div class="gpath"><span class="${wrClass(x.now)}">${pct0(x.now)}</span><i>→</i><span class="${wrClass(x.w20)}">${pct0(x.w20)}</span><i>→</i><b class="${wrClass(x.w50)}">${pct0(x.w50)}</b></div></div>`;
-  $('grow').innerHTML = `<div class="grow-head"><span></span><span></span><span class="muted">сейчас → через 20 игр → через 50 игр</span></div>`
-    + `<h3 style="margin-top:6px">Герои на вырост</h3>` + grow.map(row).join('')
-    + (trap.length ? `<h3 style="margin-top:14px">Тупики: много играешь, но дальше не вырастешь</h3>` + trap.map(row).join('') : '');
+  $('growNote').innerHTML = `<span class="muted">Позиция: ${roleShort(p).toLowerCase()} · сейчас ты ${pct0(nowWr)} (${sgnN(Math.round(25*(2*nowWr - 1)))} рейтинга за игру) · ~${perMonth} игр в месяц</span>`;
+  $('grow').innerHTML = (mmr != null ? rankLadder(mmr, [[gainNow, 'bad', 'Ничего не менять'], [gainBest, 'good', `Учить ${H(best.h).localized_name}`]]) : '')
+    + `<h3 style="margin-top:20px">Герои на вырост <span class="muted" style="text-transform:none;letter-spacing:0">· твой винрейт: сейчас → через 20 игр → через 50 игр</span></h3>`
+    + `<div class="gcards">${grow.map(x => growCard(x, x === best)).join('')}</div>`
+    + (trap.length ? `<h3 style="margin-top:20px">Тупики: много играешь, но дальше не вырастешь</h3><div class="gcards">${trap.map(x => growCard(x, false, true)).join('')}</div>` : '')
+    + `<p class="hint" style="margin-top:14px">Прогноз: сила героя в твоём ранге + твои типичные враги и союзники + твой стиль + скорость обучения (герой у тебя «идёт» примерно с ${need}-й игры). Рейтинг приблизительный: ±25 за игру, медаль ≈ 770, звезда ≈ 154 — смотри на направление, а не на точное число.</p>`;
+}
+
+// Шкала рангов: ты сейчас и куда приведёт каждый вариант за 3 месяца
+function rankLadder(mmr, opts){
+  const vals = [mmr, ...opts.map(([g]) => mmr + g)], lo = Math.max(0, Math.min(...vals) - 350), hi = Math.max(...vals) + 350;
+  const x = v => (100*(v - lo)/(hi - lo)).toFixed(2) + '%';
+  const ticks = []; for(let m = Math.ceil(lo/154)*154; m <= hi; m += 154){ const medal = m % 770 === 0;
+    ticks.push(`<i class="tick ${medal ? 'medal' : ''}" style="left:${x(m)}"></i>` + (medal ? `<span class="tlbl" style="left:${x(m)}">${MEDALS[clamp(m/770, 0, 7)]}</span>` : '')); }
+  const fill = (a, b, cls) => `<i class="seg ${cls}" style="left:${x(Math.min(a, b))};width:${(100*Math.abs(b - a)/(hi - lo)).toFixed(2)}%"></i>`;
+  return `<div class="ladder">
+    <div class="lbar">${ticks.join('')}${opts.map(([g, cls]) => fill(mmr, mmr + g, cls)).join('')}
+      <span class="mark me" style="left:${x(mmr)}"><b>Ты сейчас</b>${mmrToRank(mmr)}</span>
+      ${opts.map(([g, cls, label], i) => `<span class="mark ${cls} ${i ? 'up' : ''}" style="left:${x(mmr + g)}"><b>${label}</b>${mmrToRank(mmr + g)} · ${(g >= 0 ? '+' : '') + g}</span>`).join('')}
+    </div><div class="muted" style="font-size:12px;text-align:center;margin-top:44px">куда ты придёшь через 3 месяца</div></div>`;
+}
+// Карточка героя: портрет, мини-график винрейта «сейчас → 20 → 50 игр» с линией 50%
+function growCard(x, top, trap){
+  const pts = [x.now, x.w20, x.w50], X = [14, 90, 166], Y = v => (62 - (clamp(v, .34, .70) - .34)/.36*52).toFixed(1);
+  const up = x.w50 - x.now >= 0.01, col = trap ? 'var(--bad)' : up ? 'var(--good)' : 'var(--accent2)';
+  const scale = x.scale == null ? '' : x.scale >= 0.005 ? '<span class="gtag good">на ранг выше растёт</span>' : x.scale <= -0.02 ? '<span class="gtag bad">на ранг выше проседает</span>' : '<span class="gtag">на ранг выше держится</span>';
+  return `<div class="gcard ${top ? 'top' : ''} ${trap ? 'trap' : ''}">
+    <div class="gimg"><img src="${CDN + H(x.h).img}" alt="">${top ? '<span class="gbest">лучший выбор</span>' : ''}<span class="gname">${H(x.h).localized_name}</span></div>
+    <svg viewBox="0 0 180 70" class="gsvg"><line x1="6" x2="174" y1="${Y(.5)}" y2="${Y(.5)}" class="g50"/><text x="174" y="${(+Y(.5) - 3).toFixed(1)}" class="g50t">50%</text>
+      <polyline points="${pts.map((v, i) => `${X[i]},${Y(v)}`).join(' ')}" style="stroke:${col}" class="gline"/>
+      ${pts.map((v, i) => `<circle cx="${X[i]}" cy="${Y(v)}" r="${i === 2 ? 4.5 : 3}" style="fill:${col}"/><text x="${X[i]}" y="${(+Y(v) - 8).toFixed(1)}" class="gval ${i === 2 ? 'last' : ''}">${pct0(v)}</text>`).join('')}
+      <text x="14" y="69" class="gax">сейчас</text><text x="90" y="69" class="gax">20 игр</text><text x="166" y="69" class="gax">50 игр</text></svg>
+    <div class="gfoot">${x.n ? `у тебя ${x.w}–${x.n - x.w}` : '<span class="warn">новый герой</span>'} ${scale}${x.share < 0.2 ? '<span class="gtag warn">редко на этой позиции</span>' : ''}</div></div>`;
 }
 
 // ───────── на какого про ты похож ─────────
