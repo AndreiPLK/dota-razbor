@@ -135,6 +135,10 @@ canvas{max-width:100%}
 .crow.mine{background:linear-gradient(90deg,rgba(255,94,58,.12),transparent);border-radius:8px}
 .crow .sc{font-size:20px;font-weight:800;text-align:right;white-space:nowrap}
 .crow .chips{grid-column:2/4}
+.ins-row{display:grid;grid-template-columns:110px 1fr;gap:16px;align-items:start;padding:14px 0;border-bottom:1px solid var(--line)}
+.ins-row:last-child{border-bottom:0} .ins-row .t{font-weight:800;font-size:16px;margin-bottom:2px}
+.ins-num{display:flex;flex-direction:column;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:8px 0;line-height:1.15}
+.ins-num b{font-size:22px} .ins-num span{font-size:11px}
 details.more{margin-top:16px}
 details.more>summary{cursor:pointer;list-style:none;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 20px;font-weight:700}
 details.more>summary::-webkit-details-marker{display:none}
@@ -197,6 +201,8 @@ details.more>summary::after{content:' ▾';color:var(--muted)} details.more[open
 
     <div class="card"><h2>Главное</h2><div class="steps" id="verdict"></div></div>
 
+    <div class="card"><h2>Неочевидное: что я нашёл в твоих играх</h2><p class="muted" id="insNote" style="margin-top:0"></p><div id="insights"></div></div>
+
     <div class="card">
       <h2 id="heroTitle">Герои</h2>
       <p class="hint" id="prefHint" style="margin:-6px 0 14px"></p>
@@ -210,6 +216,14 @@ details.more>summary::after{content:' ▾';color:var(--muted)} details.more[open
     </div>
 
     <div class="card"><h2>Пики за месяц: на ком ты выигрывал бы чаще</h2><p class="muted" id="draftNote"></p><div id="draft"></div></div>
+
+    <div class="card"><h2>Кривая обучения: как быстро у тебя «идёт» герой</h2><p id="learnNote" style="margin-top:0"></p>
+      <canvas id="learnChart" height="150"></canvas>
+      <div class="grid g2" style="margin-top:14px">
+        <div><h3>Твои герои: первые игры против последних</h3><div id="learnHeroes"></div></div>
+        <div><h3>Учишь сейчас</h3><div id="learnNow"></div></div>
+      </div>
+    </div>
 
     <div class="card"><h2 id="proTitle">На какого про ты похож</h2><div class="pros" id="pros"></div></div>
 
@@ -878,6 +892,54 @@ function setRole(p, manual){
   renderReport(S);
   renderPros(S);
   renderDraft(S);
+  renderLearn(S);
+}
+
+// ───────── кривая обучения ─────────
+// Для каждого героя игры выстраиваются по порядку (1-я, 2-я…) и винрейт считается по номеру игры на герое.
+// Герои, которые есть уже в первые 60 дней доступной истории, не учитываются: их настоящие первые игры могли быть раньше.
+const LEARN_BUCKETS = [[1,5,'1–5'], [6,10,'6–10'], [11,20,'11–20'], [21,40,'21–40'], [41,80,'41–80'], [81,1e9,'81+']];
+function renderLearn(S){
+  const all = [...S.year].sort((a,b) => a.t - b.t);
+  if(all.length < 50){ $('learnNote').textContent = 'Мало игр для кривой обучения.'; return; }
+  const start = all[0].t, byHero = {};
+  all.forEach(g => (byHero[g.hero] = byHero[g.hero] || []).push(g));
+  const fresh = Object.entries(byHero).filter(([,gs]) => gs[0].t > start + 60*86400);   // герой начат уже на наших глазах
+  const overall = all.filter(g => g.win).length/all.length;
+  const b = LEARN_BUCKETS.map(([lo, hi, label]) => { const gs = fresh.flatMap(([,hs]) => hs.slice(lo - 1, Math.min(hi, hs.length))); return {lo, label, n: gs.length, wr: gs.length ? gs.filter(g => g.win).length/gs.length : null}; })
+    .filter(x => x.n >= 30);
+  if(b.length < 2){ $('learnNote').textContent = 'Мало новых героев в истории, чтобы построить кривую.'; return; }
+  // «Герой пошёл» — первый отрезок, где винрейт дошёл до твоего обычного уровня (−1%)
+  const ok = b.find(x => x.wr >= overall - 0.01), need = ok ? ok.lo : null;
+  S.learnNeed = need;
+  $('learnNote').innerHTML = `Твой обычный винрейт — <b>${pct0(overall)}</b>. На новом герое первые 5 игр — <b class="${wrClass(b[0].wr)}">${pct0(b[0].wr)}</b>. `
+    + (need === 1 ? 'Ты осваиваешь героев быстро: уже с первых игр на своём уровне.'
+      : need ? `Герой у тебя обычно «идёт» примерно <b>с ${need}-й игры</b> — до этого ты платишь за обучение.`
+      : 'Даже после многих игр винрейт на новых героях не догоняет твой обычный — лучше углублять уже знакомых.')
+    + ` <span class="muted" style="font-size:12px">По ${fresh.length} героям, начатым в доступной истории.</span>`;
+  chart('learnChart', {type: 'line', data: {labels: b.map(x => `игры ${x.label}`), datasets: [
+      {label: 'Винрейт на новом герое', data: b.map(x => Math.round(x.wr*1000)/10), borderColor: '#ff5e3a', backgroundColor: 'rgba(255,94,58,.12)', fill: true, tension: .3, pointRadius: 5, borderWidth: 2},
+      {label: 'Твой обычный винрейт', data: b.map(() => Math.round(overall*1000)/10), borderColor: '#8e95a5', borderDash: [6, 6], pointRadius: 0, borderWidth: 1.5}]},
+    options: {scales: {y: {suggestedMin: 30, suggestedMax: 65, ticks: {callback: v => v + '%'}}}, plugins: {legend: {position: 'bottom'},
+      tooltip: {callbacks: {label: c => c.datasetIndex ? `обычный: ${c.raw}%` : `${c.raw}% · ${b[c.dataIndex].n} игр`}}}}});
+
+  // Герои с 25+ играми: первые 10 против последних 10
+  const rec = gs => `${gs.filter(g => g.win).length}–${gs.length - gs.filter(g => g.win).length}`;
+  const wr = gs => gs.filter(g => g.win).length/gs.length;
+  const big = fresh.filter(([,gs]) => gs.length >= 25).sort((a,b) => b[1].length - a[1].length).slice(0, 6);
+  $('learnHeroes').innerHTML = big.map(([h, gs]) => { const f = gs.slice(0, 10), l = gs.slice(-10), d = wr(l) - wr(f);
+    return `<div class="crow"><img src="${CDN + H(+h).img}" alt=""><div><b>${H(+h).localized_name}</b> <span class="muted">· ${gs.length} игр</span>
+      <div class="muted" style="font-size:13px">первые 10: ${rec(f)} · последние 10: ${rec(l)}</div></div>
+      <div class="sc ${d >= 0.1 ? 'good' : d <= -0.1 ? 'bad' : ''}">${d >= 0.1 ? '↑' : d <= -0.1 ? '↓' : '→'} ${pct0(wr(l))}</div></div>`; }).join('')
+    || '<p class="muted">Нет героев с 25+ играми, начатых в доступной истории.</p>';
+
+  // Учишь сейчас: герои, впервые сыгранные за последние 90 дней
+  const now = Date.now()/1000, learning = Object.entries(byHero).filter(([,gs]) => gs[0].t > now - 90*86400 && gs.length >= 2).sort((a,b) => b[1].length - a[1].length).slice(0, 6);
+  $('learnNow').innerHTML = learning.map(([h, gs]) => { const left = need && need > gs.length ? need - gs.length : 0, already = gs.length >= 8 && wr(gs) >= overall;
+    return `<div class="crow"><img src="${CDN + H(+h).img}" alt=""><div><b>${H(+h).localized_name}</b>
+      <div class="muted" style="font-size:13px">${gs.length} игр, ${rec(gs)} · ${already ? 'уже на твоём обычном уровне — быстрее твоей кривой' : left ? `по твоей кривой ещё ~${left} игр до обычного уровня` : need ? 'этап обучения пройден — дальше по результатам' : ''}</div></div>
+      <div class="sc ${wrClass(wr(gs))}">${pct0(wr(gs))}</div></div>`; }).join('')
+    || '<p class="muted">За последние 3 месяца новых героев нет.</p>';
 }
 
 // ───────── пики за месяц ─────────
@@ -949,6 +1011,132 @@ async function renderDraft(S){
     + (w(strong) - w(weak) >= 0.08 ? '<b>Пик решает</b> — смотри на врагов и союзников перед выбором.' : '<b>Пик почти не меняет твой результат</b> — проигрываешь ты по ходу игры (см. «Главное»).')
     + `<br><span style="font-size:12px">Шанс = твой фактический винрейт на позиции за месяц + разница вариантов: драфт (преимущество против 5 врагов и половина синергии с союзниками, Stratz, твой ранг) и твой опыт на герое (насколько ты на нём выигрываешь чаще обычного). Это оценка: порядок пиков неизвестен, а игру решают не только герои.</span>`;
   $('draft').innerHTML = sections || '<p class="muted">Нужна позиция с 6+ играми за месяц и 2+ героями с 10+ играми на ней.</p>';
+}
+
+// ───────── неочевидное: закономерности во всей истории ─────────
+// Составы обеих команд за всё время. Важно: в запросе Stratz полный список игроков (all) должен идти РАНЬШЕ
+// списка, отфильтрованного по игроку (me), — иначе Stratz обрезает и полный список до одного игрока.
+async function loadDrafts(id, onStep){
+  const ck = 'st_draft_' + id, c = lsGet(ck) || {};
+  const v = c.v || {};
+  let full = !!c.full;
+  const page = skip => gqlMatches(`{ player(steamAccountId: ${id}) { matches(request: {take: 100, skip: ${skip}, lobbyTypeIds: [0,7], gameModeIds: [1,22]}) { id all: players { heroId isRadiant } me: players(steamAccountId: ${id}) { isRadiant heroId } } } }`);
+  const add = ms => { let fresh = 0; ms.forEach(m => { if(v[m.id] || !m.me || !m.me[0] || !m.all || m.all.length < 10) return;
+    const side = m.me[0].isRadiant, my = m.me[0].heroId;
+    v[m.id] = [m.all.filter(p => p.isRadiant === side && p.heroId !== my).map(p => p.heroId), m.all.filter(p => p.isRadiant !== side).map(p => p.heroId)]; fresh++; }); return fresh; };
+  const save = () => lsSet(ck, {v, full});
+  const had = Object.keys(v).length;
+  for(let skip = 0; skip < 6000; skip += 100){            // сверху: новые матчи (или вся история при первом запуске)
+    onStep(`Составы команд: ${Object.keys(v).length} матчей…`);
+    const ms = await page(skip), f = add(ms); save();
+    if(ms.length < 100){ full = true; save(); break; }
+    if(had && f < ms.length) break;                        // дошли до уже сохранённых
+  }
+  for(let skip = Object.keys(v).length; !full && skip < 6000; skip += 100){   // вглубь, если прошлый раз прервался
+    onStep(`Составы команд: ${Object.keys(v).length} матчей…`);
+    const ms = await page(skip); add(ms);
+    if(ms.length < 100) full = true;
+    save();
+  }
+  return v;
+}
+
+const zTest = (w1, n1, w2, n2) => { const p = (w1 + w2)/(n1 + n2), se = Math.sqrt(p*(1 - p)*(1/n1 + 1/n2)); return se ? (w1/n1 - w2/n2)/se : 0; };
+const TAG_PHRASE = {Disabler: ['3+ героя с контролем', 3], Nuker: ['3+ героя с магическим уроном', 3], Escape: ['2+ героя с побегом', 2],
+  Durable: ['2+ живучих героя', 2], Pusher: ['2+ пушера', 2], Initiator: ['3+ инициатора', 3], Carry: ['3+ керри', 3]};
+const tagCount = (ids, t) => ids.filter(h => (H(h).roles || []).includes(t)).length;
+
+// Перебираем десятки срезов и оставляем только то, что заметно отличается и вряд ли случайность.
+// Для перекрёстных срезов (герой × состав врага) порог строже: их проверяется много, а значит, больше ложных находок.
+function findInsights(S, drafts){
+  const G = S.year.map(g => ({...g, d: drafts ? drafts[g.id] : null}));
+  const base = G.filter(g => g.win).length/G.length, out = [];
+  const R = gs => ({n: gs.length, w: gs.filter(g => g.win).length, wr: gs.length ? gs.filter(g => g.win).length/gs.length : 0});
+  const rec = r => `${r.w}–${r.n - r.w}`;
+  const push = (kind, a, b, zMin, make) => { if(a.n < 8 || b.n < 8) return; const z = zTest(a.w, a.n, b.w, b.n);
+    if(Math.abs(z) < zMin || Math.abs(a.wr - b.wr) < 0.12) return; out.push({kind, z, a, b, ...make(z)}); };
+  const name = h => `<b>${H(h).localized_name}</b>`, P = x => `<b>${pct0(x)}</b>`;
+  const byHero = {}; G.forEach(g => (byHero[g.hero] = byHero[g.hero] || []).push(g));
+  const heroesBig = Object.entries(byHero).filter(([,gs]) => gs.length >= 20).map(([h, gs]) => [+h, gs]);
+  const SHORT = 33*60, LONG = 45*60;
+
+  // 1. Герой × длина игры: кто «сдувается» в затяжке, а кто наоборот
+  const longBest = heroesBig.map(([h, gs]) => ({h, r: R(gs.filter(g => g.dur > LONG))})).filter(x => x.r.n >= 8).sort((a,b) => solid(b.r.w, b.r.n) - solid(a.r.w, a.r.n))[0];
+  heroesBig.forEach(([h, gs]) => { const s = R(gs.filter(g => g.dur < SHORT)), l = R(gs.filter(g => g.dur > LONG));
+    push('dur', s, l, 1.9, () => s.wr > l.wr
+      ? {title: `${H(h).localized_name} сдувается в затяжке`, text: `На ${name(h)} ты выигрываешь ${P(s.wr)} игр короче 33 минут (${rec(s)}) и только ${P(l.wr)} дольше 45 (${rec(l)}).`,
+         advice: longBest && longBest.h !== h ? `Если против тебя поздние керри и игра обещает затянуться — бери не его. В затяжке твой лучший герой — ${name(longBest.h)} (${pct0(longBest.r.wr)} после 45 минут).` : 'Закрывай игру до 35-й минуты: Рошан, хайграунд, не фармить лишнего.'}
+      : {title: `${H(h).localized_name} — герой затяжки`, text: `На ${name(h)} ты проигрываешь короткие игры (${P(s.wr)}, ${rec(s)}), но выигрываешь ${P(l.wr)} игр дольше 45 минут (${rec(l)}).`,
+         advice: 'Бери его против ранней агрессии и пушеров, когда твоя команда умеет защищаться; не форсируй драки в начале.'}); });
+
+  // 2. Время и обстоятельства
+  const hour = g => new Date(g.t*1000).getHours();
+  [[g => hour(g) < 5, 'ночью (0–5 ч)'], [g => hour(g) >= 10 && hour(g) < 17, 'днём (10–17 ч)'], [g => hour(g) >= 21, 'поздним вечером (21–24 ч)'],
+   [g => [0,6].includes(new Date(g.t*1000).getDay()), 'на выходных']].forEach(([f, label]) => {
+    const a = R(G.filter(f)), b = R(G.filter(g => !f(g)));
+    push('time', a, b, 2.2, () => ({title: a.wr > b.wr ? `Ты сильнее ${label}` : `${label[0].toUpperCase() + label.slice(1)} ты проседаешь`,
+      text: `${label[0].toUpperCase() + label.slice(1)} ты ${P(a.wr)} (${rec(a)}), в остальное время — ${P(b.wr)}.`,
+      advice: a.wr > b.wr ? 'Рейтинговые игры — в это время, остальное — в обычных.' : 'Не играй рейтинг в это время: дело не в героях, а в концентрации.'})); });
+
+  // 3. На каком герое проигранная линия ещё отыгрывается, а на каком это приговор
+  // сравнение — с твоими же проигранными линиями на других героях
+  const lostAll = G.filter(g => g.lane != null && g.lane < 0);
+  heroesBig.forEach(([h, gs]) => { const lost = R(gs.filter(g => g.lane != null && g.lane < 0)), other = R(lostAll.filter(g => g.hero !== h));
+    if(lost.n < 10) return;
+    push('lane', lost, other, 2.0, () => lost.wr > other.wr
+      ? {title: `${H(h).localized_name} отыгрывается`, text: `Проиграв линию на ${name(h)}, ты всё равно выигрываешь ${P(lost.wr)} игр (${rec(lost)}). На остальных героях проигранная линия — это ${P(other.wr)}.`,
+         advice: 'Против тяжёлой линии бери его: на нём проигранная линия — не приговор.'}
+      : {title: `${H(h).localized_name} = выиграй линию или проиграешь`, text: `Проигранная линия на ${name(h)} — это ${P(lost.wr)} (${rec(lost)}), на остальных твоих героях — ${P(other.wr)}.`,
+         advice: 'Бери его только в удобный матчап на линии: если враг на линии сильнее, игра почти потеряна.'}); });
+
+  if(drafts){
+    const D = G.filter(g => g.d);
+    // 4. Вражеские и союзные герои
+    const vs = {}, wi = {};
+    D.forEach(g => { g.d[1].forEach(h => (vs[h] = vs[h] || []).push(g)); g.d[0].forEach(h => (wi[h] = wi[h] || []).push(g)); });
+    Object.entries(vs).forEach(([h, gs]) => { if(gs.length < 15) return; const a = R(gs), b = R(D.filter(g => !g.d[1].includes(+h)));
+      push('enemy', a, b, 2.2, () => ({title: a.wr < b.wr ? `${H(+h).localized_name} — твой кошмар` : `${H(+h).localized_name} — твоя добыча`,
+        text: `Когда у врага ${name(+h)}, ты ${P(a.wr)} (${rec(a)}), без него — ${P(b.wr)}.`,
+        advice: a.wr < b.wr ? `Если он в драфте до твоего пика — бери героя, который его наказывает, или выбирай роль, где вы не пересекаетесь.` : 'Против него можно рисковать и брать агрессивных героев.'})); });
+    Object.entries(wi).forEach(([h, gs]) => { if(gs.length < 15) return; const a = R(gs), b = R(D.filter(g => !g.d[0].includes(+h)));
+      push('ally', a, b, 2.2, () => ({title: a.wr > b.wr ? `С ${H(+h).localized_name} ты взлетаешь` : `С ${H(+h).localized_name} в команде не клеится`,
+        text: `Когда у тебя в команде ${name(+h)}, ты ${P(a.wr)} (${rec(a)}), без него — ${P(b.wr)}.`,
+        advice: a.wr > b.wr ? 'Ищи друга, который на нём играет, и стакайтесь в пати.' : 'Когда союзник берёт его, выбирай героя, который не зависит от его игры.'})); });
+    // 5. Состав врага целиком
+    Object.entries(TAG_PHRASE).forEach(([t, [label, k]]) => { const f = g => tagCount(g.d[1], t) >= k, a = R(D.filter(f)), b = R(D.filter(g => !f(g)));
+      push('comp', a, b, 2.2, () => ({title: a.wr < b.wr ? `Тебя ломает: у врага ${label}` : `Ты разбираешь врага, у которого ${label}`,
+        text: `Когда у врага ${label}, ты ${P(a.wr)} (${rec(a)}), в остальных играх — ${P(b.wr)}.`,
+        advice: a.wr < b.wr ? ({Disabler: 'Против такого состава нужен BKB раньше обычного или герой, который не боится контроля.', Nuker: 'Против магов — Pipe/BKB/Glimmer и герои с магической защитой.',
+          Escape: 'Против вёртких героев бери контроль (Hex, Orchid, Rod of Atos) или героев, которые ловят.', Durable: 'Против живучих нужен Silver Edge/Desolator/чистый урон и затяжка в твою пользу.',
+          Pusher: 'Против пуша — защищай башни раньше, бери героев с волновой зачисткой.', Initiator: 'Против инициаторов держи позицию сзади и ставь варды на их пути заходов.', Carry: 'Против 3 керри закрывай игру рано — в лейте они сильнее.'}[t]) : 'Когда видишь такой драфт врага — можно рисковать, это твоя игра.'})); });
+    // 6. Перекрёстное: твой герой × состав врага (строже, z ≥ 2.5)
+    heroesBig.forEach(([h, gs]) => { const hd = gs.filter(g => g.d); if(hd.length < 20) return;
+      Object.entries(TAG_PHRASE).forEach(([t, [label, k]]) => { const f = g => tagCount(g.d[1], t) >= k, a = R(hd.filter(f)), b = R(hd.filter(g => !f(g)));
+        push('cross', a, b, 2.5, () => ({title: `${H(h).localized_name} против состава: ${label}`,
+          text: `На ${name(h)} против врага, у которого ${label}, ты ${P(a.wr)} (${rec(a)}), против остальных — ${P(b.wr)} (${rec(b)}).`,
+          advice: a.wr < b.wr ? `Увидел у врага ${label} — не бери ${H(h).localized_name}.` : `Увидел у врага ${label} — это момент для ${H(h).localized_name}.`})); }); });
+  }
+  // Сортировка по значимости, не больше 2 находок одного вида
+  const per = {}, res = [];
+  out.sort((a,b) => Math.abs(b.z) - Math.abs(a.z)).forEach(x => { if((per[x.kind] = (per[x.kind] || 0) + 1) <= 2 && res.length < 8) res.push(x); });
+  return res;
+}
+
+async function renderInsights(S){
+  const token = {}; S.insToken = token;
+  const draw = (list, status) => {
+    $('insNote').innerHTML = status;
+    $('insights').innerHTML = list.map(x => `<div class="ins-row"><div class="ins-num"><b class="${x.a.wr >= x.b.wr ? 'good' : 'bad'}">${pct0(x.a.wr)}</b><span class="muted">против</span><b>${pct0(x.b.wr)}</b></div>
+      <div><div class="t">${x.title}</div><div>${x.text}</div><div class="muted" style="margin-top:4px">→ ${x.advice}</div></div></div>`).join('')
+      || '<p class="muted">Ничего заметного не нашёл: твои результаты ровные во всех срезах.</p>';
+  };
+  draw(findInsights(S, null), 'Докачиваю составы команд за всё время, чтобы проверить врагов и союзников…');
+  try{
+    const drafts = await loadDrafts(S.id, t => { if(S.insToken === token) $('insNote').textContent = t + ' (это нужно один раз, дальше из сохранения)'; });
+    if(S.insToken !== token) return;
+    const n = S.year.filter(g => drafts[g.id]).length;
+    draw(findInsights(S, drafts), `Проверил ${S.year.length} игр (${n} — с составами команд) по десяткам срезов: герой × длина игры, враги, союзники, состав врага, время, линия. Показываю только то, что заметно отличается от твоего среднего и вряд ли случайность.`);
+  }catch(e){ if(S.insToken === token) $('insNote').textContent = 'Составы команд не загрузились (Stratz сбоит) — показываю находки без врагов и союзников. Нажми «Разобрать» ещё раз позже.'; }
 }
 
 // ───────── на какого про ты похож ─────────
@@ -1028,6 +1216,7 @@ async function runPlayer(id){
   $('progress').classList.add('hidden');
   const saved = lsGet('dc_role_' + id);
   setRole(saved || state.recommended, !!saved);
+  renderInsights(state);   // не зависит от роли: считается один раз, составы команд докачиваются в фоне
 }
 
 // ───────── разбор одного матча (OpenDota) ─────────
