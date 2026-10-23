@@ -155,6 +155,20 @@ canvas{max-width:100%}
 .grow-row img{width:56px;height:32px;object-fit:cover;border-radius:4px}
 .gpath{display:flex;justify-content:flex-end;align-items:baseline;gap:8px;font-size:16px;font-variant-numeric:tabular-nums} .gpath b{font-size:22px} .gpath i{color:var(--muted);font-style:normal}
 @media(max-width:600px){.grow-row{grid-template-columns:56px 1fr}.gpath{grid-column:1/3;justify-content:flex-start}.grow-head{display:none}}
+.layers{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 12px;font-size:12px}
+.layers span{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:5px 9px;max-width:220px;line-height:1.25}
+.layers span b{display:inline-block;width:18px;height:18px;border-radius:50%;background:var(--accent);color:#000;text-align:center;line-height:18px;margin-right:6px;font-size:11px}
+.layers i{color:var(--muted);font-style:normal}
+.mlmore summary{cursor:pointer;color:var(--accent);font-weight:700}
+.mlq{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+@media(max-width:700px){.mlq{grid-template-columns:1fr}}
+.mlq div{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:4px}
+.mlq b{font-size:24px} .mlq>div>span{font-size:12px;color:var(--muted)}
+.fbar{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 56px;gap:10px;align-items:center;padding:5px 0;font-size:13px}
+.ftrack{position:relative;height:10px;background:var(--panel2);border-radius:5px}
+.ftrack::after{content:'';position:absolute;left:50%;top:-3px;width:1px;height:16px;background:var(--muted)}
+.ftrack i{position:absolute;top:0;height:10px;border-radius:5px} .ftrack i.pos{background:var(--good)} .ftrack i.neg{background:var(--bad)}
+.fbar b{text-align:right;font-variant-numeric:tabular-nums}
 .ladder{padding:34px 8px 0}
 .lbar{position:relative;height:12px;border-radius:6px;background:linear-gradient(90deg,#2a2f3a,#343b4a)}
 .lbar .tick{position:absolute;top:0;width:1px;height:12px;background:rgba(255,255,255,.12)} .lbar .tick.medal{width:2px;height:20px;top:-4px;background:rgba(255,255,255,.35)}
@@ -1281,42 +1295,189 @@ function learnTypeText(F){
   return `${verdict}<br><span class="muted" style="font-size:13px">${txt}</span>`;
 }
 
+// ───────── модель прогноза (ML) ─────────
+// Слой 1. Признаки, известные ДО начала игры (никаких K/D/A и длительности — иначе модель подглядывает в ответ).
+// Слой 2. Логистическая регрессия с L2: обучение на первых 80% игр по времени, проверка на последних 20%.
+// Слой 3. Факторы: эффект каждого признака в процентах шанса.
+// Слой 4. Монте-Карло: сотни прогонов следующих месяцев игры за героем — опыт растёт, форма меняется от исходов,
+//         ситуации (время, сессия, пати, составы) берутся из твоих реальных последних игр.
+const ML_FEATS = [
+  ['exp',      'опыт на герое (лог. число игр)'],
+  ['exp_c1',   'опыт × простой герой'],
+  ['exp_c3',   'опыт × сложный герой'],
+  ['heroSkill','твой уровень на герое на тот момент'],
+  ['heroForm', 'форма на герое (последние 10 игр)'],
+  ['newHero',  'новый герой (меньше 5 игр)'],
+  ['rust',     'давно не играл этим героем'],
+  ['form',     'общая форма (последние 20 игр)'],
+  ['lose2',    'после 2+ поражений подряд'],
+  ['win2',     'после 2+ побед подряд'],
+  ['sess1',    'первая игра сессии'],
+  ['sess4',    '4-я игра сессии и дальше'],
+  ['night',    'ночь (0–6 ч)'],
+  ['weekend',  'выходные'],
+  ['party',    'в пати'],
+  ['pool',     'широкий пул (разных героев за 20 игр)'],
+  ['p1','керри'], ['p2','мид'], ['p3','оффлейн'], ['p4','роумер'], ['p5','саппорт'],
+  ['eDis',     'у врага 3+ контроля'], ['eNuk', 'у врага 3+ магов'], ['eEsc', 'у врага 2+ с побегом'], ['eDur', 'у врага 2+ живучих'],
+  ['ePush',    'у врага 2+ пушера'], ['eIni', 'у врага 3+ инициатора'], ['eCar', 'у врага 3+ керри'],
+  ['aCar2',    'у тебя в команде 2+ керри'], ['aSup0', 'у тебя в команде нет саппорта'],
+  ['noDraft',  'состав неизвестен'],
+  ['trend',    'общий тренд со временем'],
+];
+const ENEMY_FEATS = [['eDis','Disabler',3], ['eNuk','Nuker',3], ['eEsc','Escape',2], ['eDur','Durable',2], ['ePush','Pusher',2], ['eIni','Initiator',3], ['eCar','Carry',3]];
+
+// Состояние игрока на момент игры — то, что меняется от игры к игре
+const mlState = () => ({hero: {}, last: [], streakL: 0, streakW: 0, n: 0, overall: 0.5});
+function mlFeatures(st, ctx, total){
+  const h = st.hero[ctx.hero] || {n: 0, w: 0, seq: [], lastT: 0}, c = H(ctx.hero).complexity || 2, le = Math.log1p(h.n);
+  const recent = h.seq.slice(-10), form = st.last.slice(-20);
+  const f = {
+    exp: le, exp_c1: c === 1 ? le : 0, exp_c3: c === 3 ? le : 0,
+    heroSkill: (h.w + 5*st.overall)/(h.n + 5) - st.overall,
+    heroForm: recent.length >= 3 ? recent.reduce((s,x) => s + x, 0)/recent.length - 0.5 : 0,
+    newHero: h.n < 5 ? 1 : 0, rust: h.lastT ? Math.log1p((ctx.t - h.lastT)/86400) : 0,
+    form: form.length ? form.reduce((s,x) => s + x.win, 0)/form.length - 0.5 : 0,
+    lose2: st.streakL >= 2 ? 1 : 0, win2: st.streakW >= 2 ? 1 : 0,
+    sess1: ctx.sessIdx === 1 ? 1 : 0, sess4: ctx.sessIdx >= 4 ? 1 : 0,
+    night: ctx.hour < 6 ? 1 : 0, weekend: ctx.weekend ? 1 : 0, party: ctx.party > 1 ? 1 : 0,
+    pool: form.length ? new Set(form.map(x => x.hero)).size/20 : 0.5,
+    p1: ctx.pos === 1 ? 1 : 0, p2: ctx.pos === 2 ? 1 : 0, p3: ctx.pos === 3 ? 1 : 0, p4: ctx.pos === 4 ? 1 : 0, p5: ctx.pos === 5 ? 1 : 0,
+    noDraft: ctx.enemies ? 0 : 1, trend: total ? Math.min(1, st.n/total) : 1,   // в будущем тренд не экстраполируем — держим на сегодняшнем уровне
+    aCar2: ctx.allies && tagCount(ctx.allies, 'Carry') >= 2 ? 1 : 0, aSup0: ctx.allies && tagCount(ctx.allies, 'Support') === 0 ? 1 : 0,
+  };
+  ENEMY_FEATS.forEach(([k, t, m]) => f[k] = ctx.enemies && tagCount(ctx.enemies, t) >= m ? 1 : 0);
+  return ML_FEATS.map(([k]) => f[k]);
+}
+function mlUpdate(st, ctx, win){
+  const h = st.hero[ctx.hero] = st.hero[ctx.hero] || {n: 0, w: 0, seq: [], lastT: 0};
+  h.n++; h.w += win; h.seq.push(win); if(h.seq.length > 10) h.seq.shift(); h.lastT = ctx.t;
+  st.last.push({win, hero: ctx.hero}); if(st.last.length > 20) st.last.shift();
+  if(win){ st.streakW++; st.streakL = 0; } else { st.streakL++; st.streakW = 0; }
+  st.overall = (st.overall*st.n + win)/(st.n + 1); st.n++;
+}
+// Контексты игр (что известно до начала) в порядке времени
+function mlContexts(S){
+  const drafts = (lsGet('st_draft_' + S.id) || {}).v || {};
+  const G = [...S.year].sort((a,b) => a.t - b.t);
+  let prevEnd = 0, idx = 0;
+  return G.map(g => { if(g.t - prevEnd > 90*60) idx = 0; idx++; prevEnd = g.t + g.dur; const d = new Date(g.t*1000), dr = drafts[g.id];
+    return {hero: g.hero, pos: g.pos, t: g.t, hour: d.getHours(), weekend: [0,6].includes(d.getDay()), party: g.party, sessIdx: idx,
+      allies: dr ? dr[0] : null, enemies: dr ? dr[1] : null, win: g.win ? 1 : 0}; });
+}
+const sigm = z => 1/(1 + Math.exp(-z));
+function mlTrain(X, y, lambda = 0.02, iters = 500, lr = 0.3){
+  const n = X.length, d = X[0].length, w = new Array(d).fill(0); let b = Math.log(mean(y)/(1 - mean(y)));
+  for(let it = 0; it < iters; it++){
+    const gw = new Array(d).fill(0); let gb = 0;
+    for(let i = 0; i < n; i++){ const xi = X[i]; let z = b; for(let j = 0; j < d; j++) z += w[j]*xi[j]; const e = sigm(z) - y[i]; gb += e; for(let j = 0; j < d; j++) gw[j] += e*xi[j]; }
+    b -= lr*gb/n; for(let j = 0; j < d; j++) w[j] -= lr*(gw[j]/n + lambda*w[j]);
+  }
+  return {w, b};
+}
+const mlPredict = (m, x) => { let z = m.b; for(let j = 0; j < x.length; j++) z += m.w[j]*x[j]; return sigm(z); };
+function mlAuc(p, y){
+  const idx = p.map((v, i) => [v, y[i]]).sort((a,b) => a[0] - b[0]); let rank = 0, pos = 0, sum = 0;
+  idx.forEach(([, yy], i) => { if(yy){ pos++; sum += i + 1; } }); const neg = y.length - pos;
+  return pos && neg ? (sum - pos*(pos + 1)/2)/(pos*neg) : 0.5;
+}
+
+// Сборка: признаки по всей истории, нормировка, проверка на отложенных 20%, финальная модель на всех играх
+function mlBuild(S){
+  const ctxs = mlContexts(S), total = ctxs.length, st = mlState(), raw = [], y = [];
+  ctxs.forEach(c => { raw.push(mlFeatures(st, c, total)); y.push(c.win); mlUpdate(st, c, c.win); });
+  const d = raw[0].length, mu = new Array(d).fill(0), sd = new Array(d).fill(0);
+  raw.forEach(r => r.forEach((v, j) => mu[j] += v/raw.length)); raw.forEach(r => r.forEach((v, j) => sd[j] += (v - mu[j])**2/raw.length));
+  for(let j = 0; j < d; j++) sd[j] = Math.sqrt(sd[j]) || 1;
+  const z = r => r.map((v, j) => (v - mu[j])/sd[j]), X = raw.map(z);
+  // Скользящая проверка по времени: учимся на первых 50/60/70/80/90% игр, проверяем на следующих 10% — модель никогда не видит будущее.
+  // Силу регуляризации выбираем по этой проверке: если сигнала нет, сильная L2 прижимает модель к среднему винрейту.
+  const logloss = (p, yy) => -mean(yy.map((v, i) => v ? Math.log(Math.max(1e-6, p[i])) : Math.log(Math.max(1e-6, 1 - p[i]))));
+  const cv = lambda => { const P = [], B = [], Y = [];
+    [0.5, 0.6, 0.7, 0.8, 0.9].forEach(f => { const a = Math.floor(total*f), b = Math.floor(total*(f + 0.1)), m = mlTrain(X.slice(0, a), y.slice(0, a), lambda, 250), br = mean(y.slice(0, a));
+      for(let i = a; i < b; i++){ P.push(mlPredict(m, X[i])); B.push(br); Y.push(y[i]); } });
+    // Калибровка: реальный винрейт в пятой части игр, где модель давала лучший шанс, и в пятой, где худший
+    const ord = P.map((p, i) => [p, Y[i]]).sort((a,b) => a[0] - b[0]), k = Math.floor(ord.length/5);
+    return {lambda, n: Y.length, lo: mean(ord.slice(0, k).map(x => x[1])), hi: mean(ord.slice(-k).map(x => x[1])), acc: mean(P.map((p, i) => (p >= 0.5 ? 1 : 0) === Y[i] ? 1 : 0)), auc: mlAuc(P, Y),
+      accBase: mean(B.map((p, i) => (p >= 0.5 ? 1 : 0) === Y[i] ? 1 : 0)), ll: logloss(P, Y), llBase: logloss(B, Y)}; };
+  const quality = [0.1, 0.5, 2].map(cv).sort((a,b) => a.ll - b.ll)[0];
+  const model = mlTrain(X, y, quality.lambda);
+  // Эффект фактора: изменение шанса при сдвиге признака на одно стандартное отклонение (в процентных пунктах)
+  const p0 = mean(y), effects = ML_FEATS.map(([k, label], j) => ({k, label, eff: 100*model.w[j]*p0*(1 - p0)}));
+  return {model, mu, sd, z, quality, effects, st, ctxs, total};
+}
+
+// Монте-Карло: hero = null — «ничего не менять»: герой и позиция тоже берутся из твоих последних 200 игр, как ты реально играешь
+function mlSimulate(ML, hero, pos, games, perMonth, runs = 250){
+  const recentCtx = ML.ctxs.slice(-200);
+  const cp = st => ({...st, hero: Object.fromEntries(Object.entries(st.hero).map(([k, v]) => [k, {...v, seq: v.seq.slice()}])), last: st.last.slice()});
+  const out = {wins: [], p5: 0, p20: 0, p50: 0, cross: {1000: [], 2000: []}};
+  for(let r = 0; r < runs; r++){
+    const st = cp(ML.st); let wins = 0, mmr = 0, t = Date.now()/1000; const reached = {};
+    for(let g = 0; g < games; g++){
+      const base = recentCtx[Math.floor(Math.random()*recentCtx.length)];
+      t += 86400*30/perMonth;
+      const ctx = hero == null ? {...base, t} : {...base, pos, t, hero};
+      const p = mlPredict(ML.model, ML.z(mlFeatures(st, ctx, ML.total)));
+      const R = Math.min(runs, 60);
+      if(r < R){ if(g < 5) out.p5 += p/(5*R); else if(g >= 15 && g < 25) out.p20 += p/(10*R); else if(g >= 45 && g < 55) out.p50 += p/(10*R); }
+      const win = Math.random() < p ? 1 : 0; wins += win; mmr += win ? 25 : -25; mlUpdate(st, ctx, win);
+      [1000, 2000].forEach(k => { if(!reached[k] && mmr >= k) reached[k] = g + 1; });
+    }
+    out.wins.push(wins); [1000, 2000].forEach(k => out.cross[k].push(reached[k] || null));
+  }
+  return out;
+}
+const quant = (a, q) => { const s = a.slice().sort((x,y) => x - y); return s[Math.min(s.length - 1, Math.floor(q*s.length))]; };
+
+// Панель модели: качество на отложенных играх и главные факторы
+function renderModelPanel(ML){
+  const q = ML.quality, top = ML.effects.filter(e => !['p1','p2','p3','p4','p5','noDraft'].includes(e.k)).sort((a,b) => Math.abs(b.eff) - Math.abs(a.eff)).slice(0, 10);
+  const mx = Math.max(...top.map(e => Math.abs(e.eff)), 0.1);
+  return `<div class="mlpanel"><div class="mlq">
+      <div><b><span class="${wrClass(q.hi)}">${pct0(q.hi)}</span> vs <span class="${wrClass(q.lo)}">${pct0(q.lo)}</span></b><span>твой реальный винрейт в играх, где модель заранее давала лучший шанс, и где худший (проверка на ${q.n} играх, которых она не видела)</span></div>
+      <div><b>${q.auc.toFixed(2)}</b><span>AUC — насколько различает победы и поражения (0.50 — монетка, 1.00 — идеально)</span></div>
+      <div><b>${q.ll < q.llBase ? '−' + ((1 - q.ll/q.llBase)*100).toFixed(1) + '%' : '±0'}</b><span>ошибка прогноза меньше, чем у «всегда средний винрейт» (log-loss)</span></div></div>
+    <h3 style="margin-top:14px">Что сильнее всего двигает твой шанс на победу</h3>
+    ${top.map(e => `<div class="fbar"><span>${e.label}</span><div class="ftrack"><i class="${e.eff >= 0 ? 'pos' : 'neg'}" style="width:${(50*Math.abs(e.eff)/mx).toFixed(1)}%;${e.eff >= 0 ? 'left:50%' : `right:50%`}"></i></div><b class="${e.eff >= 0 ? 'good' : 'bad'}">${e.eff >= 0 ? '+' : '−'}${Math.abs(e.eff).toFixed(1)}%</b></div>`).join('')}
+    <p class="hint">Эффект — изменение шанса на победу, когда признак сдвигается на типичную величину (одно стандартное отклонение), при прочих равных. Модель обучена только на твоих играх.
+    Исход одной игры до её начала почти случаен: с тобой 4 союзника и 5 врагов. Модель ловит сдвиги в несколько процентов, а на сотне игр это уже сотни рейтинга. Поэтому рейтинг показан диапазоном, а не одним числом.</p></div>`;
+}
+
 async function renderGrowth(S){
   const p = S.trainRole.p, dis = prefs().heroes;
   const F = heroForecasts(S);
-  // Герои этой позиции: хотя бы 3 игры на ней и не отмечены «не хочу»
-  const rows = F.rows.filter(x => (x.pos[p] || 0) >= 3 && dis[x.h] !== -1).sort((a,b) => b.w50 - a.w50);
-  const recent = S.year.filter(g => g.t > Date.now()/1000 - 90*86400), perMonth = Math.max(10, Math.round(recent.length/3));
-  const atPos = S.year.filter(g => g.pos === p), nowWr = atPos.length ? atPos.filter(g => g.win).length/atPos.length : F.overall;
-  const grow = rows.slice(0, 5);
+  $('growNote').textContent = 'Обучаю модель на твоих играх…'; $('grow').innerHTML = '';
+  await sleep(30);
+  const ML = S.ML = S.ML || mlBuild(S);
+  const recent = S.year.filter(g => g.t > Date.now()/1000 - 90*86400), perMonth = Math.max(10, Math.round(recent.length/3)), games3 = perMonth*3;
+  // Герои позиции: хотя бы 3 игры на ней и не «не хочу» — каждому прогон 55 игр вперёд, винрейт сейчас → +20 → +50 из симуляции
+  const rows = F.rows.filter(x => (x.pos[p] || 0) >= 3 && dis[x.h] !== -1).map(x => {
+    const s = mlSimulate(ML, x.h, p, 55, perMonth, 60); return {...x, now: s.p5, w20: s.p20, w50: s.p50}; }).sort((a,b) => b.w50 - a.w50);
+  const grow = rows.slice(0, 5), best = grow[0];
   const trap = rows.filter(x => x.n >= 25 && x.w50 < F.overall && !grow.includes(x)).sort((a,b) => b.n - a.n).slice(0, 3);
-  const best = grow[0];
-  if(!best){ $('growNote').textContent = 'Мало игр на этой позиции для прогноза.'; $('grow').innerHTML = ''; return; }
-  // Рейтинг: ±25 за игру; путь к цели — сначала 50 игр роста от «сейчас» до прогноза на 50 игр, дальше на этом уровне
-  const games3 = perMonth*3, rise = Math.min(games3, 50), avgW = (rise*(best.now + best.w50)/2 + (games3 - rise)*best.w50)/games3;
-  const gainNow = Math.round(games3*25*(2*nowWr - 1)), gainBest = Math.round(games3*25*(2*avgW - 1));
-  const gamesTo = target => { const p1 = 25*(2*(best.now + best.w50)/2 - 1), p2 = 25*(2*best.w50 - 1);
-    if(50*p1 >= target) return p1 > 0 ? Math.ceil(target/p1) : null;
-    return p2 > 0 ? Math.ceil(50 + (target - 50*Math.max(p1, 0))/p2) : null; };
-  const goals = [1000, 2000].map(t => { const g = gamesTo(t); return {t, months: g == null ? null : Math.max(1, Math.round(g/perMonth))}; });
+  if(!best){ $('growNote').textContent = 'Мало игр на этой позиции для прогноза.'; return; }
+  // Рейтинг: Монте-Карло 3 месяцев «как сейчас» и «учить лучшего героя»; цели — горизонт 12 месяцев
+  const simNow = mlSimulate(ML, null, p, games3, perMonth, 300), simBest = mlSimulate(ML, best.h, p, games3, perMonth, 300);
+  const gain = (s, q) => 25*(2*quant(s.wins, q) - games3);
+  const simLong = mlSimulate(ML, best.h, p, perMonth*12, perMonth, 200);
+  const goals = [1000, 2000].map(t => { const c = simLong.cross[t].filter(v => v != null), prob = c.length/simLong.cross[t].length;
+    return {t, prob, months: prob >= 0.5 ? Math.max(1, Math.round(quant(c, 0.5)/perMonth)) : null}; });
   const mmr = rankToMmr(S.player.steamAccount.seasonRank), sgnN = x => (x >= 0 ? '+' : '') + x;
+  const band = (s, cls) => `<b class="${cls}">${sgnN(gain(s, 0.5))}</b> <span class="muted">(от ${sgnN(gain(s, 0.1))} до ${sgnN(gain(s, 0.9))} в 8 из 10 прогонов)</span>`;
 
-  // Факты про твоё обучение: на каких героях был перелом
   const breaks = F.rows.filter(x => x.br).sort((a,b) => (b.br.wb - b.br.wa) - (a.br.wb - a.br.wa)).slice(0, 2);
-  // Самый частый сложный герой, на котором ты пока ниже своего уровня: это старт (растёт) или потолок (не растёт)?
-  const hard = F.rows.filter(x => x.n >= 20 && x.now < F.overall && x.cplx === 3).sort((a,b) => b.n - a.n)[0];
-  const hardText = !hard ? '' : hard.w50 - hard.now >= 0.05
-    ? `<br>На <b>${H(hard.h).localized_name}</b> у тебя ${hard.w}–${hard.n - hard.w}, но это сложный герой, и по твоему типу он ещё растёт: ${pct0(hard.now)} → <b class="good">${pct0(hard.w50)}</b> за 50 игр.`
-    : `<br>На <b>${H(hard.h).localized_name}</b> у тебя ${hard.w}–${hard.n - hard.w} — и по твоим играм это не старт, а потолок: за 50 игр ${pct0(hard.now)} → ${pct0(hard.w50)}. Время лучше вложить в героев выше.`;
-  $('growNote').innerHTML = learnTypeText(F)
+  $('growNote').innerHTML = `<div class="layers"><span><b>1</b>${ML_FEATS.length} признака у каждой игры — только то, что известно до начала</span><i>→</i><span><b>2</b>модель на ${ML.total} играх, проверка на 5 срезах «из будущего»</span><i>→</i><span><b>3</b>что двигает победы</span><i>→</i><span><b>4</b>сотни прогонов будущих игр</span></div>`
+    + learnTypeText(F)
     + (breaks.length ? `<br>${breaks.map(x => `На <b>${H(x.h).localized_name}</b> первые ${x.br.i} игр — ${pct0(x.br.wa)}, после — <b class="good">${pct0(x.br.wb)}</b>`).join('. ')}.` : '')
-    + hardText
-    + `<br><span class="muted" style="font-size:13px">Позиция: ${roleShort(p).toLowerCase()} · сейчас ${pct0(nowWr)} (${sgnN(Math.round(25*(2*nowWr - 1)))} за игру) · ~${perMonth} игр в месяц</span>`;
-  $('grow').innerHTML = (mmr != null ? rankLadder(mmr, [[gainNow, 'bad', 'Ничего не менять'], [gainBest, 'good', `Играть ${H(best.h).localized_name}`]], goals) : '')
-    + `<h3 style="margin-top:20px">Герои на вырост <span class="muted" style="text-transform:none;letter-spacing:0">· твой винрейт: сейчас → через 20 игр → через 50 игр</span></h3>`
+    + `<br>Через 3 месяца (~${games3} игр): ничего не менять — ${band(simNow, gain(simNow, 0.5) >= 0 ? 'good' : 'bad')}; учить <b>${H(best.h).localized_name}</b> — ${band(simBest, gain(simBest, 0.5) >= 0 ? 'good' : 'bad')}.`
+    + `<br><span class="muted" style="font-size:13px">Позиция: ${roleShort(p).toLowerCase()} · ~${perMonth} игр в месяц</span>`;
+  $('grow').innerHTML = (mmr != null ? rankLadder(mmr, [[gain(simNow, 0.5), 'bad', 'Ничего не менять'], [gain(simBest, 0.5), 'good', `Играть ${H(best.h).localized_name}`]], goals) : '')
+    + `<h3 style="margin-top:20px">Герои на вырост <span class="muted" style="text-transform:none;letter-spacing:0">· шанс победы по модели: сейчас → через 20 игр → через 50 игр</span></h3>`
     + `<div class="gcards">${grow.map(x => growCard(x, x === best)).join('')}</div>`
-    + (trap.length ? `<h3 style="margin-top:20px">Тупики: много играешь, но по твоей кривой дальше не вырастешь</h3><div class="gcards">${trap.map(x => growCard(x, false, true)).join('')}</div>` : '')
-    + `<p class="hint" style="margin-top:14px">Только твои игры, без меты: уровень сейчас — последние 20 игр на герое; рост — сколько тебе обычно добавляли следующие игры на героях той же сложности, плюс твой тренд на этом герое. Рейтинг приблизительный: ±25 за игру, медаль ≈ 770, звезда ≈ 154.</p>`;
+    + (trap.length ? `<h3 style="margin-top:20px">Тупики: много играешь, но модель не видит роста</h3><div class="gcards">${trap.map(x => growCard(x, false, true)).join('')}</div>` : '')
+    + `<details class="mlmore" style="margin-top:16px"><summary>Как считает модель и насколько ей верить</summary>${renderModelPanel(ML)}</details>`
+    + `<p class="hint" style="margin-top:14px">Только твои игры, без меты. Прогноз героя — симуляция: каждая будущая игра берёт ситуацию из твоих реальных последних игр (время, сессия, пати, составы), модель даёт шанс, исход разыгрывается, опыт и форма обновляются. Рейтинг приблизительный: ±25 за игру, медаль ≈ 770, звезда ≈ 154.</p>`;
 }
 
 // Шкала рангов: ты сейчас, куда приведёт каждый вариант за 3 месяца и цели +1000 / +2000 со сроками
@@ -1326,11 +1487,13 @@ function rankLadder(mmr, opts, goals = []){
   const ticks = []; for(let m = Math.ceil(lo/154)*154; m <= hi; m += 154){ const medal = m % 770 === 0;
     ticks.push(`<i class="tick ${medal ? 'medal' : ''}" style="left:${x(m)}"></i>` + (medal ? `<span class="tlbl" style="left:${x(m)}">${MEDALS[clamp(m/770, 0, 7)]}</span>` : '')); }
   const fill = (a, b, cls) => `<i class="seg ${cls}" style="left:${x(Math.min(a, b))};width:${(100*Math.abs(b - a)/(hi - lo)).toFixed(2)}%"></i>`;
-  return `<div class="ladder">
+  // метка над шкалой рядом с «Ты сейчас» — поднимаем на этаж выше, чтобы подписи не слипались
+  const close = opts.map(([g, cls]) => cls === 'good' && Math.abs(g)/(hi - lo) < 0.15);
+  return `<div class="ladder" style="${close.some(Boolean) ? 'padding-top:64px' : ''}">
     <div class="lbar">${ticks.join('')}${opts.map(([g, cls]) => fill(mmr, mmr + g, cls)).join('')}
       <span class="mark me" style="left:${x(mmr)}"><b>Ты сейчас</b>${mmrToRank(mmr)}</span>
-      ${opts.map(([g, cls, label], i) => `<span class="mark ${cls} ${i ? 'up' : ''}" style="left:${x(mmr + g)}"><b>${label}</b>${mmrToRank(mmr + g)} · ${(g >= 0 ? '+' : '') + g}</span>`).join('')}
-      ${goals.map(gl => `<span class="goal" style="left:${x(mmr + gl.t)}"><b>+${gl.t}</b>${mmrToRank(mmr + gl.t)}<br>${gl.months == null ? '<span class="bad">с этим героем не дойти</span>' : `≈ ${gl.months} мес.`}</span>`).join('')}
+      ${opts.map(([g, cls, label], i) => `<span class="mark ${cls} ${i ? 'up' : ''}" style="left:${x(mmr + g)}${close[i] ? ';bottom:52px' : ''}"><b>${label}</b>${mmrToRank(mmr + g)} · ${(g >= 0 ? '+' : '') + g}</span>`).join('')}
+      ${goals.map(gl => `<span class="goal" style="left:${x(mmr + gl.t)}"><b>+${gl.t}</b>${mmrToRank(mmr + gl.t)}<br>${gl.prob != null ? (gl.months == null ? `<span class="bad">шанс за год ${Math.round(gl.prob*100)}%</span>` : `≈ ${gl.months} мес. · шанс ${Math.round(gl.prob*100)}%`) : gl.months == null ? '<span class="bad">с этим героем не дойти</span>' : `≈ ${gl.months} мес.`}</span>`).join('')}
     </div><div class="muted" style="font-size:12px;text-align:center;margin-top:${goals.length ? 92 : 52}px">метки — где ты будешь через 3 месяца; флажки +1000 и +2000 — за сколько дойдёшь с лучшим героем</div></div>`;
 }
 // Карточка героя: портрет, мини-график винрейта «сейчас → 20 → 50 игр» с линией 50%
