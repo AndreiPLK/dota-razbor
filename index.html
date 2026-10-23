@@ -881,55 +881,74 @@ function setRole(p, manual){
 }
 
 // ───────── пики за месяц ─────────
-// В каждом матче месяца твой пик сравнивается с твоими основными героями на той же позиции (до 10 героев с 10+ играми):
-// сила по драфту = сумма преимуществ против 5 врагов + половина синергии с 4 союзниками (Stratz, твой ранг).
-// Итог по позиции — какой герой в среднем был бы сильнее во всех твоих играх месяца, а не «лучший в одной игре»
-// (из 10 вариантов кто-то почти всегда окажется сильнее — это шум).
+// Профиль, пул и личные результаты на героях — за весь выбранный период; каждый матч месяца — отдельно.
+// В каждом матче месяца твой пик сравнивается с твоими основными героями на той же позиции (до 10 героев с 10+ играми).
+// Сила варианта в матче = драфт (сумма преимуществ против 5 врагов + половина синергии с 4 союзниками, Stratz, твой ранг)
+//                       + твой опыт на герое (насколько твой винрейт на нём выше твоего обычного на этой позиции, ×0.5).
+// И то и другое в процентах шанса на победу, так что «41% → 45%» — твой фактический винрейт плюс средняя разница вариантов.
 const matchWord = n => n % 10 === 1 && n % 100 !== 11 ? 'матч' : [2,3,4].includes(n % 10) && ![12,13,14].includes(n % 100) ? 'матча' : 'матчей';
 async function renderDraft(S){
   const token = {}; S.draftToken = token;
   const games = S.month.filter(g => g.enemies && g.enemies.length === 5 && g.allies);
   if(!games.length){ $('draftNote').textContent = 'Нет разобранных матчей за месяц.'; $('draft').innerHTML = ''; return; }
-  const dis = prefs().heroes, cnt = {}, recPos = {};
-  S.year.forEach(g => { const k = g.pos + '_' + g.hero; cnt[k] = (cnt[k] || 0) + 1; const o = recPos[k] = recPos[k] || {n:0, w:0}; o.n++; o.w += g.win; });
-  const poolOf = p => Object.entries(cnt).map(([k,n]) => [k.split('_').map(Number), n]).filter(([[kp,h],n]) => kp === p && n >= 10 && dis[h] !== -1)
+  const dis = prefs().heroes, recPos = {}, posTot = {};
+  S.year.forEach(g => { const k = g.pos + '_' + g.hero, o = recPos[k] = recPos[k] || {n:0, w:0}, t = posTot[g.pos] = posTot[g.pos] || {n:0, w:0};
+    o.n++; o.w += g.win; t.n++; t.w += g.win; });
+  const poolOf = p => Object.entries(recPos).map(([k,o]) => [k.split('_').map(Number), o.n]).filter(([[kp,h],n]) => kp === p && n >= 10 && dis[h] !== -1)
     .sort((a,b) => b[1] - a[1]).slice(0, 10).map(([[,h]]) => h);
+  // опыт на герое: на сколько процентов твой винрейт на нём на этой позиции выше твоего обычного (сглажено, вес 0.5)
+  const skill = (h, p) => { const o = recPos[p + '_' + h], t = posTot[p]; return o && t ? 50*(solid(o.w, o.n) - solid(t.w, t.n)) : 0; };
   const need = new Set(); games.forEach(g => { need.add(g.hero); poolOf(g.pos).forEach(h => need.add(h)); });
   $('draftNote').textContent = 'Считаю…'; $('draft').innerHTML = '';
   const mu = await loadMatchups([...need], S.bracket, t => { if(S.draftToken === token) $('draftNote').textContent = t; });
   if(S.draftToken !== token) return;
-  const score = (h, g) => { const v = mu[h] || {vs: {}, with: {}}; return g.enemies.reduce((s,e) => s + (v.vs[e] ?? 0), 0) + 0.5*g.allies.reduce((s,a) => s + (v.with[a] ?? 0), 0); };
+  const draftOf = (h, g) => { const v = mu[h] || {vs: {}, with: {}}; return g.enemies.reduce((s,e) => s + (v.vs[e] ?? 0), 0) + 0.5*g.allies.reduce((s,a) => s + (v.with[a] ?? 0), 0); };
+  const power = (h, g) => draftOf(h, g) + skill(h, g.pos);
   const sgn = x => (x >= 0 ? '+' : '') + x.toFixed(1);
   const wrOf = a => `${a.filter(g => g.win).length}–${a.length - a.filter(g => g.win).length}`;
-  const rows = games.map(g => { const opts = [...new Set([g.hero, ...poolOf(g.pos)])].map(h => ({h, s: score(h, g)})).sort((a,b) => b.s - a.s);
-    const rank = opts.findIndex(o => o.h === g.hero); return {g, opts, mine: opts[rank], best: opts[0], rank, size: opts.length}; }).filter(r => r.size >= 3);
-  if(!rows.length){ $('draftNote').textContent = 'Мало героев в пуле для сравнения (нужно 2+ героя с 10+ играми на позиции).'; return; }
-  const n = rows.length, topThird = rows.filter(r => r.rank < Math.ceil(r.size/3)), lowThird = rows.filter(r => r.rank >= r.size - Math.ceil(r.size/3));
-  $('draftNote').innerHTML = `Разобрал ${n} ${matchWord(n)} месяца. Твой пик был в верхней трети твоих основных героев в <b>${topThird.length}</b>, в нижней — в <b>${lowThird.length}</b>. `
-    + `С сильным по драфту пиком ты ${wrOf(topThird.map(r => r.g))}, со слабым — ${wrOf(lowThird.map(r => r.g))}. `
-    + (() => { const w = a => a.length ? a.filter(r => r.g.win).length/a.length : 0, d = w(topThird) - w(lowThird);
-        return d >= 0.08 ? `<b>Пик решает:</b> с сильным по драфту героем ты выигрываешь на ${pct0(d)} чаще — смотри на врагов перед выбором.`
-          : '<b>Пик почти не меняет твой результат</b> — проигрываешь ты не на выборе героя, а по ходу игры (см. «Главное»).'; })()
-    + `<br><span style="font-size:12px">В каждом матче твой пик сравнивается с твоими основными героями на той же позиции (до 10, у каждого 10+ игр): преимущество против 5 врагов плюс половина синергии с союзниками (Stratz, твой ранг), +1 ≈ +1% к шансу на победу. Порядок пиков неизвестен — это оценка «если бы видел весь драфт».</span>`;
-  // По каждой позиции, где за месяц 6+ игр: какой герой из пула в среднем был бы сильнее твоих реальных пиков
-  const byPos = {}; rows.forEach(r => (byPos[r.g.pos] = byPos[r.g.pos] || []).push(r));
-  const sections = Object.entries(byPos).filter(([,rs]) => rs.length >= 6).sort((a,b) => b[1].length - a[1].length).map(([p, rs]) => {
-    p = +p; const myAvg = avg(rs, r => r.mine.s);
-    const heroesAt = poolOf(p).map(h => { const sc = rs.map(r => score(h, r.g)); return {h, avg: mean(sc), beat: rs.filter((r, i) => sc[i] > r.mine.s + 0.5).length, rec: recPos[p + '_' + h]}; })
-      .sort((a,b) => b.avg - a.avg).slice(0, 3);
-    const lead = heroesAt[0], diff = lead ? lead.avg - myAvg : 0;
-    const verdict = diff >= 1 ? `Чаще выигрывал бы на <b>${H(lead.h).localized_name}</b>: в среднем на ${diff.toFixed(1)}% сильнее твоих пиков против тех же врагов.`
-      : 'Ни один твой герой в среднем не сильнее твоих реальных пиков — здесь решает не выбор героя, а игра.';
-    return `<h3 style="margin-top:14px">${POS[p]} · ${rs.length} ${matchWord(rs.length)} · ${wrOf(rs.map(r => r.g))} · твои пики в среднем ${sgn(myAvg)}</h3><p style="margin:0 0 4px">${verdict}</p>`
-      + heroesAt.map(x => `<div class="crow"><img src="${CDN + H(x.h).img}" alt=""><div><b>${H(x.h).localized_name}</b>
-        <div class="muted" style="font-size:13px">сильнее твоего пика в ${x.beat} из ${rs.length} · у тебя на позиции ${x.rec ? `${x.rec.w}–${x.rec.n - x.rec.w}` : '—'}</div></div>
-        <div class="sc ${x.avg - myAvg >= 1 ? 'good' : x.avg - myAvg <= -1 ? 'bad' : ''}">${sgn(x.avg)}</div></div>`).join('');
+  const day = g => new Date(g.t*1000).toLocaleDateString('ru', {day: '2-digit', month: '2-digit'});
+
+  const byPos = {}; games.forEach(g => (byPos[g.pos] = byPos[g.pos] || []).push(g));
+  const sections = Object.entries(byPos).filter(([p, gs]) => gs.length >= 6 && poolOf(+p).length >= 2).sort((a,b) => b[1].length - a[1].length).map(([p, gs]) => {
+    p = +p;
+    const base = gs.filter(g => g.win).length/gs.length;
+    // 1) твои пики за месяц на этой позиции
+    const picked = {}; gs.forEach(g => { const o = picked[g.hero] = picked[g.hero] || {gs: []}; o.gs.push(g); });
+    const pickedAll = Object.entries(picked).sort((a,b) => b[1].gs.length - a[1].gs.length), rest = pickedAll.slice(5);
+    const pickedHtml = pickedAll.slice(0, 5).map(([h, o]) =>
+      `<span class="chip">${H(+h).localized_name} <b>${wrOf(o.gs)}</b> <span class="muted">драфт ${sgn(avg(o.gs, g => draftOf(+h, g)))}</span></span>`).join('')
+      + (rest.length ? `<span class="chip muted">и ещё ${rest.length} героев: ${wrOf(rest.flatMap(([,o]) => o.gs))}</span>` : '')
+      + (pickedAll.length >= 8 ? `<div class="warn" style="font-size:13px;width:100%;margin-top:4px">${pickedAll.length} разных героев за ${gs.length} игр — пул слишком широкий, на незнакомых героях шанс ниже.</div>` : '');
+    // 2) на ком было бы лучше: шанс победы в среднем по всем матчам месяца на позиции
+    const alts = poolOf(p).map(h => { const d = avg(gs, g => power(h, g) - power(g.hero, g))/100;
+      return {h, est: clamp(base + d, .05, .95), d, dDraft: avg(gs, g => draftOf(h, g) - draftOf(g.hero, g)), dSkill: skill(h, p) - avg(gs, g => skill(g.hero, p)), rec: recPos[p + '_' + h]}; })
+      .sort((a,b) => b.est - a.est).slice(0, 3);
+    const better = alts.filter(x => x.d >= 0.01);
+    const altHtml = better.length ? better.map(x => `<div class="crow"><img src="${CDN + H(x.h).img}" alt=""><div><b>${H(x.h).localized_name}</b>
+        <div class="muted" style="font-size:13px">драфт ${sgn(x.dDraft)}% · твой опыт на нём ${sgn(x.dSkill)}% · у тебя на позиции ${x.rec.w}–${x.rec.n - x.rec.w}</div></div>
+        <div class="sc good">${pct0(base)} → ${pct0(x.est)}</div></div>`).join('')
+      : `<p class="muted" style="margin:4px 0">Ни один твой герой не поднял бы шанс заметно — на этой позиции ты берёшь то, что надо; проигрыши решаются в игре.</p>`;
+    // 3) поражения, где другой твой герой давал шанс заметно выше
+    const flips = gs.filter(g => !g.win).map(g => { const opts = poolOf(p).filter(h => h !== g.hero).map(h => ({h, gain: power(h, g) - power(g.hero, g)})).sort((a,b) => b.gain - a.gain);
+      return {g, alt: opts[0]}; }).filter(x => x.alt && x.alt.gain >= 5).sort((a,b) => b.alt.gain - a.alt.gain).slice(0, 5);
+    const flipHtml = flips.length ? flips.map(x => `<div class="drow"><span class="t">${day(x.g)}</span><img src="${CDN + H(x.g.hero).img}" alt="">
+        <div>Проиграл на <b>${H(x.g.hero).localized_name}</b> — на <b>${H(x.alt.h).localized_name}</b> шанс был бы выше на <b class="good">${Math.round(x.alt.gain)}%</b></div>
+        <a class="linkbtn" href="#m${x.g.id}">разбор →</a></div>`).join('')
+      : '<p class="muted" style="margin:4px 0">Таких поражений нет: в проигранных играх другой твой герой давал бы меньше +5%.</p>';
+    return `<h3 style="margin-top:16px">${POS[p]} · ${gs.length} ${matchWord(gs.length)} за месяц · ${wrOf(gs)} (${pct0(base)})</h3>
+      <div class="muted" style="font-size:13px;margin-bottom:4px">Твои пики</div><div class="chips" style="margin-bottom:10px">${pickedHtml}</div>
+      <div class="muted" style="font-size:13px">На этих было бы лучше</div>${altHtml}
+      <div class="muted" style="font-size:13px;margin-top:10px">На этих пиках ты бы выиграл</div>${flipHtml}`;
   }).join('');
-  const costly = rows.filter(r => !r.g.win && r.best.s - r.mine.s >= 4).sort((a,b) => (b.best.s - b.mine.s) - (a.best.s - a.mine.s)).slice(0, 3);
-  $('draft').innerHTML = sections
-    + (costly.length ? `<h3 style="margin-top:18px">Поражения, где пик стоил дороже всего</h3>` + costly.map(r => `<div class="drow"><span class="t">${new Date(r.g.t*1000).toLocaleDateString('ru', {day: '2-digit', month: '2-digit'})}</span><img src="${CDN + H(r.g.hero).img}" alt="">
-      <div>Ты взял <b>${H(r.g.hero).localized_name}</b> (${sgn(r.mine.s)}), из твоих лучше был <b>${H(r.best.h).localized_name}</b> (${sgn(r.best.s)})</div>
-      <a class="linkbtn" href="#m${r.g.id}">разбор →</a></div>`).join('') : '');
+
+  const strong = games.filter(g => { const o = poolOf(g.pos).concat(g.hero).map(h => power(h, g)).sort((a,b) => b - a); return o.length >= 3 && power(g.hero, g) >= o[Math.floor(o.length/3)]; });
+  const weak = games.filter(g => !strong.includes(g) && poolOf(g.pos).length >= 2);
+  const w = a => a.length ? a.filter(g => g.win).length/a.length : 0;
+  $('draftNote').innerHTML = `Пул и твои результаты на героях — ${PERIOD.label}, каждый матч месяца (${games.length}) — отдельно: враги, союзники, твоя позиция. `
+    + `С сильным пиком ты ${wrOf(strong)}, со слабым — ${wrOf(weak)}. `
+    + (w(strong) - w(weak) >= 0.08 ? '<b>Пик решает</b> — смотри на врагов и союзников перед выбором.' : '<b>Пик почти не меняет твой результат</b> — проигрываешь ты по ходу игры (см. «Главное»).')
+    + `<br><span style="font-size:12px">Шанс = твой фактический винрейт на позиции за месяц + разница вариантов: драфт (преимущество против 5 врагов и половина синергии с союзниками, Stratz, твой ранг) и твой опыт на герое (насколько ты на нём выигрываешь чаще обычного). Это оценка: порядок пиков неизвестен, а игру решают не только герои.</span>`;
+  $('draft').innerHTML = sections || '<p class="muted">Нужна позиция с 6+ играми за месяц и 2+ героями с 10+ играми на ней.</p>';
 }
 
 // ───────── на какого про ты похож ─────────
