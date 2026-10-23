@@ -124,6 +124,17 @@ canvas{max-width:100%}
 .mini{display:flex;gap:8px;flex-wrap:wrap}
 .mini div{width:88px} .mini img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;display:block}
 .mini span{font-size:11px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.mpick{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.mp{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:4px 10px 4px 4px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500}
+.mp img{width:44px;height:25px;object-fit:cover;border-radius:4px} .mp.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.mp.sep{margin-left:14px}
+.drow{display:grid;grid-template-columns:46px 56px 1fr auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.drow:last-child{border-bottom:0} .drow img{width:56px;height:32px;object-fit:cover;border-radius:4px} .drow .t{font-weight:700;font-variant-numeric:tabular-nums}
+.crow{display:grid;grid-template-columns:56px 1fr auto;gap:4px 12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.crow:last-child{border-bottom:0} .crow img{width:56px;height:32px;object-fit:cover;border-radius:4px}
+.crow.mine{background:linear-gradient(90deg,rgba(255,94,58,.12),transparent);border-radius:8px}
+.crow .sc{font-size:20px;font-weight:800;text-align:right;white-space:nowrap}
+.crow .chips{grid-column:2/4}
 details.more{margin-top:16px}
 details.more>summary{cursor:pointer;list-style:none;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 20px;font-weight:700}
 details.more>summary::-webkit-details-marker{display:none}
@@ -245,6 +256,11 @@ details.more>summary::after{content:' ▾';color:var(--muted)} details.more[open
 
   <div id="mout" class="hidden">
     <div class="card" id="mhead"></div>
+    <div class="card"><div class="muted" id="focusLabel"></div><div class="mpick" id="focusPick"></div></div>
+    <div id="focusOut" class="hidden">
+      <div class="card"><h2 id="cpTitle">Кто был бы сильнее на твоей позиции</h2><p class="muted" id="cpNote"></p><div id="counter"></div></div>
+      <div class="card"><h2 id="deathTitle">Твои смерти</h2><p class="muted" id="deathSum"></p><div id="deaths"></div></div>
+    </div>
     <div class="card"><h2 id="whyTitle">Почему проиграли</h2><ul class="ins" id="why"></ul></div>
     <div class="card"><h2 id="loseTitle"></h2><div id="loseTeam"></div></div>
     <div class="card"><h2 id="winTitle"></h2><div id="winTeam"></div></div>
@@ -930,6 +946,7 @@ async function runPlayer(id){
   const sessY = sessionStats(year), sessM = sessionStats(month);
   const axY = psychotype(year, sessY), axM = psychotype(month, sessM);
   const rolesY = roleTable(year);
+  lsSet('dc_last_id', id);   // по нему вкладка «Матч» поймёт, чей это разбор
   const wp = winProfile(year, sessY, axM.parsedN >= 15 ? axM : axY);
   state = {id, player, year, month, axY, axM, rolesY, sessY, sessM, posTable, bracket, wp};
   state.recommended = rankRoles(state, wp.aw)[0].p;
@@ -948,9 +965,11 @@ const EXP = {
 };
 // Матч из Stratz, приведённый к полям, с которыми работает разбор матча
 async function stratzMatch(id){
-  const d = await gql(`{ match(id: ${id}) { id didRadiantWin durationSeconds parsedDateTime radiantNetworthLeads
-    players { isRadiant heroId position lane kills deaths assists goldPerMinute numLastHits heroDamage towerDamage steamAccount { name }
-      stats { networthPerMinute lastHitsPerMinute wards { type } } } } }`);
+  const d = await gql(`{ match(id: ${id}) { id didRadiantWin durationSeconds parsedDateTime radiantNetworthLeads averageRank
+    players { steamAccountId isRadiant heroId position lane kills deaths assists goldPerMinute numLastHits heroDamage towerDamage steamAccount { name seasonRank }
+      stats { networthPerMinute lastHitsPerMinute wards { type }
+        deathEvents { time attacker byAbility byItem timeDead goldLost isBurst isEngagedOnDeath }
+        heroDamageReport { receivedTotal { physicalDamage magicalDamage pureDamage } } } } } }`);
   const m = d.match;
   if(!m || !m.players) throw new Error('Матч не найден. Проверь Match ID.');
   const cum = a => { let s = 0; return a.map(x => s += x); };   // добивания по минутам → накопительно
@@ -958,9 +977,11 @@ async function stratzMatch(id){
     return {player_slot: p.isRadiant ? 0 : 128, hero_id: p.heroId, pos: posNum(p.position), lane_role: {SAFE_LANE:1, MID_LANE:2, OFF_LANE:3, JUNGLE:4}[p.lane] || null,
       kills: p.kills, deaths: p.deaths, assists: p.assists, gold_per_min: p.goldPerMinute, last_hits: p.numLastHits, hero_damage: p.heroDamage, tower_damage: p.towerDamage,
       personaname: p.steamAccount && p.steamAccount.name, obs_placed: w ? w.filter(x => x.type === 0).length : null, sentry_placed: w ? w.filter(x => x.type === 1).length : null,
-      gold_t: st.networthPerMinute || null, lh_t: st.lastHitsPerMinute ? cum(st.lastHitsPerMinute) : null}; });
+      gold_t: st.networthPerMinute || null, lh_t: st.lastHitsPerMinute ? cum(st.lastHitsPerMinute) : null,
+      account_id: p.steamAccountId, rank: p.steamAccount && p.steamAccount.seasonRank, death_events: st.deathEvents || null,
+      dmg_recv: st.heroDamageReport && st.heroDamageReport.receivedTotal}; });
   const score = rad => players.filter(p => (p.player_slot < 128) === rad).reduce((s,p) => s + (p.kills||0), 0);
-  return {match_id: m.id, radiant_win: m.didRadiantWin, duration: m.durationSeconds, version: m.parsedDateTime || null,
+  return {match_id: m.id, radiant_win: m.didRadiantWin, duration: m.durationSeconds, version: m.parsedDateTime || null, avg_rank: m.averageRank,
     radiant_gold_adv: m.radiantNetworthLeads, radiant_score: score(true), dire_score: score(false), players};
 }
 function assignPositions(team){
@@ -1032,6 +1053,108 @@ async function analyzeMatch(id){
   $('whyTitle').textContent = `Почему проиграли ${L.name}`; $('why').innerHTML = defeatReasons(m, L, W).map(t => `<li>${t}</li>`).join('');
   $('loseTitle').textContent = `${L.name} · проиграли · ожидания по роли`; $('loseTeam').innerHTML = teamHtml(L, true);
   $('winTitle').textContent = `${W.name} · победили`; $('winTeam').innerHTML = teamHtml(W, false);
+
+  // Чей разбор: последний разобранный на сайте игрок, если он есть в матче; иначе — выбор кликом
+  const teamOf = p => (p.player_slot < 128) ? R : D;
+  const order = [...[1,2,3,4,5].map(n => R.byPos[n]), ...[1,2,3,4,5].map(n => D.byPos[n])];
+  const known = order.find(p => p.account_id && String(p.account_id) === String(lsGet('dc_last_id')));
+  const show = p => {
+    $('focusLabel').textContent = p ? 'Разбор для игрока (можно выбрать другого):' : 'Выбери себя — покажу твои смерти и кто был бы сильнее на твоей позиции:';
+    $('focusPick').innerHTML = order.map((x, i) => `<button class="mp ${x === p ? 'on' : ''} ${i === 5 ? 'sep' : ''}" data-i="${i}"><img src="${CDN + heroOf(x).img}" alt="">${heroOf(x).localized_name}</button>`).join('');
+    document.querySelectorAll('#focusPick .mp').forEach(b => b.onclick = () => show(order[+b.dataset.i]));
+    $('focusOut').classList.toggle('hidden', !p);
+    if(p) renderFocus(m, p, teamOf(p), teamOf(p) === R ? D : R);
+  };
+  show(known || null);
+}
+
+// Названия способностей и предметов для смертей (кэшируются в браузере)
+async function itemNames(){
+  const c = lsGet('st_items'); if(c && Date.now() - c.t < 7*86400e3) return c.v;
+  const v = {}; ((await gql('{ constants { items { id displayName } } }')).constants.items || []).forEach(i => { if(i.displayName) v[i.id] = i.displayName; });
+  lsSet('st_items', {t: Date.now(), v}); return v;
+}
+async function abilityNames(ids){
+  const v = (lsGet('st_abil') || {}), need = [...new Set(ids)].filter(id => id && !(id in v));
+  if(need.length){
+    const d = await gql(`{ constants { ${need.map(id => `a${id}: ability(id: ${id}) { language { displayName } }`).join(' ')} } }`);
+    need.forEach(id => { const a = d.constants['a' + id]; v[id] = (a && a.language && a.language.displayName) || null; });
+    lsSet('st_abil', v);
+  }
+  return v;
+}
+// Матчапы героя в ранге: vs[герой] и with[герой] — на сколько процентов меняется винрейт (Stratz synergy)
+async function loadMatchups(heroIds, bracket){
+  const out = {}, need = [];
+  heroIds.forEach(h => { const c = lsGet(`st_mu_${bracket}_${h}`); if(c && Date.now() - c.t < 3*86400e3) out[h] = c.v; else need.push(h); });
+  for(let i = 0; i < need.length; i += 6){
+    const part = need.slice(i, i+6);
+    $('cpNote').textContent = `Считаю матчапы: ${Math.min(i+6, need.length)} из ${need.length} героев…`;
+    const d = await gql(`{ heroStats { ${part.map(h => `h${h}: heroVsHeroMatchup(heroId: ${h}, bracketBasicIds: ${bracket}, take: 200) { advantage { vs { heroId2 synergy } with { heroId2 synergy } } }`).join(' ')} } }`);
+    part.forEach(h => { const a = ((d.heroStats['h' + h] || {}).advantage || [])[0] || {}, v = {vs: {}, with: {}};
+      (a.vs || []).forEach(x => v.vs[x.heroId2] = x.synergy); (a.with || []).forEach(x => v.with[x.heroId2] = x.synergy);
+      out[h] = v; lsSet(`st_mu_${bracket}_${h}`, {t: Date.now(), v}); });
+  }
+  return out;
+}
+
+async function renderFocus(m, p, team, foes){
+  const token = {}; renderFocus.token = token;
+  const pos = team.pos.get(p), me = heroOf(p), mm = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+  const enemies = foes.players, allies = team.players.filter(x => x !== p);
+
+  // ── Смерти
+  $('deathTitle').textContent = `Смерти · ${me.localized_name} · ${p.deaths}`;
+  const ev = p.death_events || [];
+  if(!ev.length){ $('deathSum').textContent = m.version ? 'Смертей нет.' : 'Stratz ещё не разобрал реплей — подробностей по смертям нет.'; $('deaths').innerHTML = ''; }
+  else{
+    const [items, abil] = await Promise.all([itemNames(), abilityNames(ev.map(e => e.byAbility))]);
+    if(renderFocus.token !== token) return;
+    const by = {}; ev.forEach(e => by[e.attacker] = (by[e.attacker] || 0) + 1);
+    const top = Object.entries(by).filter(([h]) => heroes[h]).sort((a,b) => b[1] - a[1])[0];
+    const late = ev.filter(e => e.time > 30*60 && !e.isEngagedOnDeath), dead = ev.reduce((s,e) => s + (e.timeDead||0), 0), lost = ev.reduce((s,e) => s + (e.goldLost||0), 0);
+    const r = p.dmg_recv;
+    $('deathSum').innerHTML = [top ? `Чаще всего тебя убивал <b>${H(+top[0]).localized_name}</b> — ${top[1]} из ${ev.length}.` : '',
+      `Мёртвым ${Math.round(dead/60)} мин, потеряно ${fmtK(lost)} золота.`,
+      late.length >= 2 ? `<span class="warn">${late.length} ${late.length < 5 ? 'смерти' : 'смертей'} после 30-й минуты — вне драки, ловили одного.</span>` : '',
+      r ? `Получено урона: магия ${fmtK(r.magicalDamage)}, физический ${fmtK(r.physicalDamage)}, чистый ${fmtK(r.pureDamage)}${r.magicalDamage > r.physicalDamage*1.15 ? ' — в основном магия, BKB или защита от магии нужны раньше' : ''}.` : ''].filter(Boolean).join(' ');
+    $('deaths').innerHTML = ev.map(e => { const k = heroes[e.attacker], how = abil[e.byAbility] || items[e.byItem] || 'атака с руки';
+      const tags = [e.isEngagedOnDeath ? 'в драке' : 'один, вне драки', e.isBurst ? 'бёрст' : ''].filter(Boolean).join(' · ');
+      return `<div class="drow"><span class="t">${mm(e.time)}</span>${k ? `<img src="${CDN + k.img}" alt="">` : '<span></span>'}
+        <div><b>${k ? k.localized_name : 'крипы / башня'}</b> <span class="muted">· ${how}</span><div class="muted" style="font-size:12px">${tags}</div></div>
+        <span class="muted" style="text-align:right;font-size:13px">мёртв ${e.timeDead}с<br>−${e.goldLost} золота</span></div>`; }).join('');
+  }
+
+  // ── Кто был бы сильнее на этой позиции
+  $('cpTitle').textContent = `Кто был бы сильнее на позиции ${roleShort(pos).toLowerCase()}`;
+  $('counter').innerHTML = '';
+  const bracket = bracketOf(m.avg_rank || p.rank);
+  const posTable = await loadPosTable(bracket);
+  const cand = Object.keys(posTable).map(Number).filter(h => { const t = posTable[h], r = t[pos], tot = Object.values(t).reduce((a,x) => a + x.n, 0);
+    return r && r.n >= 300 && r.n/tot >= 0.3; });
+  if(!cand.includes(p.hero_id)) cand.push(p.hero_id);
+  const [mu, perf] = await Promise.all([loadMatchups(cand, bracket),
+    p.account_id ? gql(`{ player(steamAccountId: ${p.account_id}) { heroesPerformance(request: {positionIds: [POSITION_${pos}], take: 3000}, take: 80) { heroId matchCount winCount } } }`).catch(() => null) : null]);
+  if(renderFocus.token !== token) return;
+  const mine = {}; ((perf && perf.player && perf.player.heroesPerformance) || []).forEach(x => mine[x.heroId] = x);
+  const rows = cand.map(h => { const v = mu[h] || {vs: {}, with: {}};
+    const vs = enemies.map(e => ({h: e.hero_id, s: v.vs[e.hero_id] ?? 0})), wi = allies.map(a => v.with[a.hero_id] ?? 0);
+    return {h, vs, withSum: wi.reduce((s,x) => s + x, 0), score: vs.reduce((s,x) => s + x.s, 0) + 0.5*wi.reduce((s,x) => s + x, 0), my: mine[h]}; })
+    .sort((a,b) => b.score - a.score);
+  const place = rows.findIndex(r => r.h === p.hero_id) + 1, pick = rows[place - 1];
+  const sgn = x => (x > 0 ? '+' : '') + x.toFixed(1), cls = x => x >= 1 ? 'ok' : x <= -1 ? 'no' : '';
+  const row = (r, mineRow) => `<div class="crow ${mineRow ? 'mine' : ''}"><img src="${CDN + H(r.h).img}" alt="">
+    <div><b>${H(r.h).localized_name}</b>${mineRow ? ' <span class="accent">← твой пик</span>' : ''}<div class="muted" style="font-size:13px">${r.my ? `у тебя на этой позиции ${r.my.winCount}–${r.my.matchCount - r.my.winCount}` : 'ты на нём тут не играл'}</div></div>
+    <div class="sc ${r.score >= 2 ? 'good' : r.score <= -2 ? 'bad' : ''}">${sgn(r.score)}</div>
+    <div class="chips">${r.vs.map(x => `<span class="chip ${cls(x.s)}">против ${H(x.h).localized_name}: <b>${sgn(x.s)}</b></span>`).join('')}<span class="chip ${cls(r.withSum)}">с союзниками: <b>${sgn(r.withSum)}</b></span></div></div>`;
+  const best = rows.slice(0, 6), familiar = rows.filter(r => r.my && r.my.matchCount >= 5 && r.score > 0 && !best.includes(r)).slice(0, 2);
+  const bestMine = rows.find(r => r.my && r.my.matchCount >= 5 && r.my.winCount/r.my.matchCount >= 0.5 && r.score > 0);
+  $('cpNote').innerHTML = `Ты взял <b>${me.localized_name}</b>: <b class="${pick.score >= 0 ? 'good' : 'bad'}">${sgn(pick.score)}</b> — ${place}-е место из ${rows.length} героев, которых в этом ранге играют на этой позиции. `
+    + (bestMine && bestMine.h !== p.hero_id ? `Лучший вариант из твоих героев: <b>${H(bestMine.h).localized_name}</b> (${sgn(bestMine.score)}, у тебя ${bestMine.my.winCount}–${bestMine.my.matchCount - bestMine.my.winCount}). ` : '')
+    + `<br><span style="font-size:12px">Число — сумма преимуществ героя против каждого врага и половины синергии с союзниками в ранге ${bracket.replace('_', '–').toLowerCase()} (Stratz): +1 ≈ +1% к шансу на победу. Порядок пиков неизвестен — видел ли ты врагов, когда выбирал, сайт не знает.</span>`;
+  $('counter').innerHTML = best.map(r => row(r, r.h === p.hero_id)).join('')
+    + (familiar.length ? `<h3 style="margin-top:14px">Из твоих героев тоже подходили</h3>` + familiar.map(r => row(r, false)).join('') : '')
+    + (place > 6 ? `<h3 style="margin-top:14px">Твой пик</h3>` + row(pick, true) : '');
 }
 
 // ───────── общее ─────────
