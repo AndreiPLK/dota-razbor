@@ -209,6 +209,8 @@ details.more>summary::after{content:' ▾';color:var(--muted)} details.more[open
       </div>
     </div>
 
+    <div class="card"><h2>Пики за месяц: на ком ты выигрывал бы чаще</h2><p class="muted" id="draftNote"></p><div id="draft"></div></div>
+
     <div class="card"><h2 id="proTitle">На какого про ты похож</h2><div class="pros" id="pros"></div></div>
 
     <details class="more" id="more">
@@ -435,7 +437,7 @@ async function monthLayer(id, yearGames, posTable, refTime){
   if(list.length < 20) list = yearGames.slice(0, 40);
   list = list.slice(0, 100);
   // Разобранный матч сохраняется: повторно качаем только новые и те, что Stratz ещё не успел разобрать
-  const MK = mid => 'st_m_' + id + '_' + mid;
+  const MK = mid => 'st_m2_' + id + '_' + mid;   // m2: в сводке есть герои союзников и врагов
   const out = [], need = [];
   list.forEach(g => { const s = lsGet(MK(g.id)); if(s && s.parsed) out.push(s); else need.push(g.id); });
   for(let i = 0; i < need.length; i += 20){
@@ -463,7 +465,8 @@ function summarize(m, posTable, refTime){
   const deaths = st.deathEvents || [];
   const soloDeaths = deaths.filter(d => !ka.some(t => Math.abs(t - d.time) <= 20)).length;
   const stacks = st.campStack && st.campStack.length ? st.campStack[st.campStack.length-1] : 0;
-  return {id: m.id, t: m.startDateTime, dur, win, hero: me.heroId, pos, foeHero: foe ? foe.heroId : null, party: me.partyId != null ? 2 : 1, parsed: !!me.position && nw.length > 10,
+  return {id: m.id, t: m.startDateTime, dur, win, hero: me.heroId, pos, foeHero: foe ? foe.heroId : null, party: me.partyId != null ? 2 : 1,
+    allies: team.filter(p => p.heroId !== me.heroId).map(p => p.heroId), enemies: foes.map(p => p.heroId), parsed: !!me.position && nw.length > 10,
     k: me.kills, d: me.deaths, a: me.assists, gpm: me.goldPerMinute, imp: me.imp, award: me.award, rank: m.averageRank, outcome: m.analysisOutcome,
     lane: myLaneResult(m, me),
     duel: nw[10] != null && fnw[10] != null ? nw[10] - fnw[10] : null,
@@ -874,6 +877,59 @@ function setRole(p, manual){
   S.rec = recommendHeroes(S.year, S.wp, p, S.posTable);
   renderReport(S);
   renderPros(S);
+  renderDraft(S);
+}
+
+// ───────── пики за месяц ─────────
+// В каждом матче месяца твой пик сравнивается с твоими основными героями на той же позиции (до 10 героев с 10+ играми):
+// сила по драфту = сумма преимуществ против 5 врагов + половина синергии с 4 союзниками (Stratz, твой ранг).
+// Итог по позиции — какой герой в среднем был бы сильнее во всех твоих играх месяца, а не «лучший в одной игре»
+// (из 10 вариантов кто-то почти всегда окажется сильнее — это шум).
+const matchWord = n => n % 10 === 1 && n % 100 !== 11 ? 'матч' : [2,3,4].includes(n % 10) && ![12,13,14].includes(n % 100) ? 'матча' : 'матчей';
+async function renderDraft(S){
+  const token = {}; S.draftToken = token;
+  const games = S.month.filter(g => g.enemies && g.enemies.length === 5 && g.allies);
+  if(!games.length){ $('draftNote').textContent = 'Нет разобранных матчей за месяц.'; $('draft').innerHTML = ''; return; }
+  const dis = prefs().heroes, cnt = {}, recPos = {};
+  S.year.forEach(g => { const k = g.pos + '_' + g.hero; cnt[k] = (cnt[k] || 0) + 1; const o = recPos[k] = recPos[k] || {n:0, w:0}; o.n++; o.w += g.win; });
+  const poolOf = p => Object.entries(cnt).map(([k,n]) => [k.split('_').map(Number), n]).filter(([[kp,h],n]) => kp === p && n >= 10 && dis[h] !== -1)
+    .sort((a,b) => b[1] - a[1]).slice(0, 10).map(([[,h]]) => h);
+  const need = new Set(); games.forEach(g => { need.add(g.hero); poolOf(g.pos).forEach(h => need.add(h)); });
+  $('draftNote').textContent = 'Считаю…'; $('draft').innerHTML = '';
+  const mu = await loadMatchups([...need], S.bracket, t => { if(S.draftToken === token) $('draftNote').textContent = t; });
+  if(S.draftToken !== token) return;
+  const score = (h, g) => { const v = mu[h] || {vs: {}, with: {}}; return g.enemies.reduce((s,e) => s + (v.vs[e] ?? 0), 0) + 0.5*g.allies.reduce((s,a) => s + (v.with[a] ?? 0), 0); };
+  const sgn = x => (x >= 0 ? '+' : '') + x.toFixed(1);
+  const wrOf = a => `${a.filter(g => g.win).length}–${a.length - a.filter(g => g.win).length}`;
+  const rows = games.map(g => { const opts = [...new Set([g.hero, ...poolOf(g.pos)])].map(h => ({h, s: score(h, g)})).sort((a,b) => b.s - a.s);
+    const rank = opts.findIndex(o => o.h === g.hero); return {g, opts, mine: opts[rank], best: opts[0], rank, size: opts.length}; }).filter(r => r.size >= 3);
+  if(!rows.length){ $('draftNote').textContent = 'Мало героев в пуле для сравнения (нужно 2+ героя с 10+ играми на позиции).'; return; }
+  const n = rows.length, topThird = rows.filter(r => r.rank < Math.ceil(r.size/3)), lowThird = rows.filter(r => r.rank >= r.size - Math.ceil(r.size/3));
+  $('draftNote').innerHTML = `Разобрал ${n} ${matchWord(n)} месяца. Твой пик был в верхней трети твоих основных героев в <b>${topThird.length}</b>, в нижней — в <b>${lowThird.length}</b>. `
+    + `С сильным по драфту пиком ты ${wrOf(topThird.map(r => r.g))}, со слабым — ${wrOf(lowThird.map(r => r.g))}. `
+    + (() => { const w = a => a.length ? a.filter(r => r.g.win).length/a.length : 0, d = w(topThird) - w(lowThird);
+        return d >= 0.08 ? `<b>Пик решает:</b> с сильным по драфту героем ты выигрываешь на ${pct0(d)} чаще — смотри на врагов перед выбором.`
+          : '<b>Пик почти не меняет твой результат</b> — проигрываешь ты не на выборе героя, а по ходу игры (см. «Главное»).'; })()
+    + `<br><span style="font-size:12px">В каждом матче твой пик сравнивается с твоими основными героями на той же позиции (до 10, у каждого 10+ игр): преимущество против 5 врагов плюс половина синергии с союзниками (Stratz, твой ранг), +1 ≈ +1% к шансу на победу. Порядок пиков неизвестен — это оценка «если бы видел весь драфт».</span>`;
+  // По каждой позиции, где за месяц 6+ игр: какой герой из пула в среднем был бы сильнее твоих реальных пиков
+  const byPos = {}; rows.forEach(r => (byPos[r.g.pos] = byPos[r.g.pos] || []).push(r));
+  const sections = Object.entries(byPos).filter(([,rs]) => rs.length >= 6).sort((a,b) => b[1].length - a[1].length).map(([p, rs]) => {
+    p = +p; const myAvg = avg(rs, r => r.mine.s);
+    const heroesAt = poolOf(p).map(h => { const sc = rs.map(r => score(h, r.g)); return {h, avg: mean(sc), beat: rs.filter((r, i) => sc[i] > r.mine.s + 0.5).length, rec: recPos[p + '_' + h]}; })
+      .sort((a,b) => b.avg - a.avg).slice(0, 3);
+    const lead = heroesAt[0], diff = lead ? lead.avg - myAvg : 0;
+    const verdict = diff >= 1 ? `Чаще выигрывал бы на <b>${H(lead.h).localized_name}</b>: в среднем на ${diff.toFixed(1)}% сильнее твоих пиков против тех же врагов.`
+      : 'Ни один твой герой в среднем не сильнее твоих реальных пиков — здесь решает не выбор героя, а игра.';
+    return `<h3 style="margin-top:14px">${POS[p]} · ${rs.length} ${matchWord(rs.length)} · ${wrOf(rs.map(r => r.g))} · твои пики в среднем ${sgn(myAvg)}</h3><p style="margin:0 0 4px">${verdict}</p>`
+      + heroesAt.map(x => `<div class="crow"><img src="${CDN + H(x.h).img}" alt=""><div><b>${H(x.h).localized_name}</b>
+        <div class="muted" style="font-size:13px">сильнее твоего пика в ${x.beat} из ${rs.length} · у тебя на позиции ${x.rec ? `${x.rec.w}–${x.rec.n - x.rec.w}` : '—'}</div></div>
+        <div class="sc ${x.avg - myAvg >= 1 ? 'good' : x.avg - myAvg <= -1 ? 'bad' : ''}">${sgn(x.avg)}</div></div>`).join('');
+  }).join('');
+  const costly = rows.filter(r => !r.g.win && r.best.s - r.mine.s >= 4).sort((a,b) => (b.best.s - b.mine.s) - (a.best.s - a.mine.s)).slice(0, 3);
+  $('draft').innerHTML = sections
+    + (costly.length ? `<h3 style="margin-top:18px">Поражения, где пик стоил дороже всего</h3>` + costly.map(r => `<div class="drow"><span class="t">${new Date(r.g.t*1000).toLocaleDateString('ru', {day: '2-digit', month: '2-digit'})}</span><img src="${CDN + H(r.g.hero).img}" alt="">
+      <div>Ты взял <b>${H(r.g.hero).localized_name}</b> (${sgn(r.mine.s)}), из твоих лучше был <b>${H(r.best.h).localized_name}</b> (${sgn(r.best.s)})</div>
+      <a class="linkbtn" href="#m${r.g.id}">разбор →</a></div>`).join('') : '');
 }
 
 // ───────── на какого про ты похож ─────────
@@ -1084,12 +1140,12 @@ async function abilityNames(ids){
   return v;
 }
 // Матчапы героя в ранге: vs[герой] и with[герой] — на сколько процентов меняется винрейт (Stratz synergy)
-async function loadMatchups(heroIds, bracket){
+async function loadMatchups(heroIds, bracket, note = t => $('cpNote').textContent = t){
   const out = {}, need = [];
   heroIds.forEach(h => { const c = lsGet(`st_mu_${bracket}_${h}`); if(c && Date.now() - c.t < 3*86400e3) out[h] = c.v; else need.push(h); });
   for(let i = 0; i < need.length; i += 6){
     const part = need.slice(i, i+6);
-    $('cpNote').textContent = `Считаю матчапы: ${Math.min(i+6, need.length)} из ${need.length} героев…`;
+    note(`Считаю матчапы: ${Math.min(i+6, need.length)} из ${need.length} героев…`);
     const d = await gql(`{ heroStats { ${part.map(h => `h${h}: heroVsHeroMatchup(heroId: ${h}, bracketBasicIds: ${bracket}, take: 200) { advantage { vs { heroId2 synergy } with { heroId2 synergy } } }`).join(' ')} } }`);
     part.forEach(h => { const a = ((d.heroStats['h' + h] || {}).advantage || [])[0] || {}, v = {vs: {}, with: {}};
       (a.vs || []).forEach(x => v.vs[x.heroId2] = x.synergy); (a.with || []).forEach(x => v.with[x.heroId2] = x.synergy);
@@ -1147,14 +1203,14 @@ async function renderFocus(m, p, team, foes){
     <div><b>${H(r.h).localized_name}</b>${mineRow ? ' <span class="accent">← твой пик</span>' : ''}<div class="muted" style="font-size:13px">${r.my ? `у тебя на этой позиции ${r.my.winCount}–${r.my.matchCount - r.my.winCount}` : 'ты на нём тут не играл'}</div></div>
     <div class="sc ${r.score >= 2 ? 'good' : r.score <= -2 ? 'bad' : ''}">${sgn(r.score)}</div>
     <div class="chips">${r.vs.map(x => `<span class="chip ${cls(x.s)}">против ${H(x.h).localized_name}: <b>${sgn(x.s)}</b></span>`).join('')}<span class="chip ${cls(r.withSum)}">с союзниками: <b>${sgn(r.withSum)}</b></span></div></div>`;
-  const best = rows.slice(0, 6), familiar = rows.filter(r => r.my && r.my.matchCount >= 5 && r.score > 0 && !best.includes(r)).slice(0, 2);
+  const best = rows.slice(0, 3), familiar = rows.filter(r => r.my && r.my.matchCount >= 5 && r.score > 0 && !best.includes(r)).slice(0, 2);
   const bestMine = rows.find(r => r.my && r.my.matchCount >= 5 && r.my.winCount/r.my.matchCount >= 0.5 && r.score > 0);
   $('cpNote').innerHTML = `Ты взял <b>${me.localized_name}</b>: <b class="${pick.score >= 0 ? 'good' : 'bad'}">${sgn(pick.score)}</b> — ${place}-е место из ${rows.length} героев, которых в этом ранге играют на этой позиции. `
     + (bestMine && bestMine.h !== p.hero_id ? `Лучший вариант из твоих героев: <b>${H(bestMine.h).localized_name}</b> (${sgn(bestMine.score)}, у тебя ${bestMine.my.winCount}–${bestMine.my.matchCount - bestMine.my.winCount}). ` : '')
     + `<br><span style="font-size:12px">Число — сумма преимуществ героя против каждого врага и половины синергии с союзниками в ранге ${bracket.replace('_', '–').toLowerCase()} (Stratz): +1 ≈ +1% к шансу на победу. Порядок пиков неизвестен — видел ли ты врагов, когда выбирал, сайт не знает.</span>`;
   $('counter').innerHTML = best.map(r => row(r, r.h === p.hero_id)).join('')
     + (familiar.length ? `<h3 style="margin-top:14px">Из твоих героев тоже подходили</h3>` + familiar.map(r => row(r, false)).join('') : '')
-    + (place > 6 ? `<h3 style="margin-top:14px">Твой пик</h3>` + row(pick, true) : '');
+    + (place > 3 ? `<h3 style="margin-top:14px">Твой пик</h3>` + row(pick, true) : '');
 }
 
 // ───────── общее ─────────
