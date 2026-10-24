@@ -2632,7 +2632,11 @@ function matchLesson(p, team, pick, best){
   if(pick && best && best.h !== pick.h && best.score - pick.score >= 8) out.push(`🎯 <b>Пик:</b> ${heroOf(p).localized_name} ${pick.score >= 0 ? '+' : ''}${pick.score.toFixed(0)}% к твоему обычному шансу — в таком составе у тебя сильнее <b>${H(best.h).localized_name}</b> (${best.score >= 0 ? '+' : ''}${best.score.toFixed(0)}%)`);
   const solo = ev.filter(e => !e.isEngagedOnDeath); if(solo.length >= 3){ const by = {}; solo.forEach(e => by[e.attacker] = (by[e.attacker] || 0) + 1);
     const k = Object.entries(by).filter(([h]) => heroes[h]).sort((a,b) => b[1] - a[1])[0];
-    out.push(`☠ <b>${solo.length} ${solo.length < 5 ? 'смерти' : 'смертей'} в одиночку, вне драки</b>${k ? ` — чаще всего от ${H(+k[0]).localized_name}` : ''}: держись ближе к команде, особенно после 20-й`); }
+    out.push(`☠ <b>${solo.length} ${solo.length < 5 ? 'смерти' : 'смертей'} в одиночку, вне драки</b>${k ? ` — чаще всего от ${H(+k[0]).localized_name}` : ''}: держись ближе к команде, особенно после 20-й${(() => {
+      // Стык с разбором игрока: повторяется ли это в его последних 15 играх — тогда это привычка, а не один плохой матч
+      if(!state || String(state.id) !== String(p.account_id)) return '';
+      const r15 = [...(state.month || [])].sort((a,b) => b.t - a.t).slice(0, 15), d = r15.reduce((t, g) => t + (g.d || 0), 0), so = r15.reduce((t, g) => t + (g.soloDeaths || 0), 0);
+      return r15.length >= 10 && d >= 30 && so/d >= 0.3 ? `. <b>И это не случайность:</b> в последних ${r15.length} играх ${Math.round(100*so/d)}% твоих смертей — в одиночку` : ''; })()}`); }
   const lh = (team.ev.get(p) || {ms: []}).ms.find(x => x.key === 'lh10'); if(lh && !lh.ok) out.push(`🌾 <b>Линия:</b> ${lh.fmt(lh.act)} добиваний к 10-й при норме ${lh.fmt(lh.exp)}`);
   const old = box.querySelector('.mf-lesson'); if(old) old.remove();
   if(out.length) box.insertAdjacentHTML('beforeend', `<div class="mf-lesson"><b class="mf-lt">Урок матча</b>${out.map(t => `<span>${t}</span>`).join('')}</div>`);
