@@ -2067,6 +2067,41 @@ function mhPlan(S, x, m){
     <div class="mh-stages">${stages.map((s, i) => `<div class="${i === cur ? 'cur' : ''}"><b>${s.t}</b><span>${s.d}</span></div>`).join('')}</div></div>`;
 }
 
+// Картинка «мой герой» 1200×630 для шеринга. Портрет — с CDN Stratz (там разрешён CORS; картинки Valve холст «пачкают»)
+async function heroShareCard(S, m, x){
+  const c = document.createElement('canvas'); c.width = 1200; c.height = 630; const g = c.getContext('2d');
+  try{ await document.fonts.ready; }catch{}
+  const bg = g.createLinearGradient(0, 0, 1200, 630); bg.addColorStop(0, '#160d38'); bg.addColorStop(1, '#05040b'); g.fillStyle = bg; g.fillRect(0, 0, 1200, 630);
+  const glow = (cx, cy, r, col) => { const rg = g.createRadialGradient(cx, cy, 0, cx, cy, r); rg.addColorStop(0, col); rg.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = rg; g.fillRect(0, 0, 1200, 630); };
+  glow(280, 330, 380, 'rgba(139,92,246,.55)'); glow(1050, 80, 320, 'rgba(34,211,238,.22)');
+  const rnd = seededRng(x.h*31); g.fillStyle = '#fff'; for(let i = 0; i < 90; i++){ g.globalAlpha = 0.2 + 0.6*rnd(); g.fillRect(rnd()*1200, rnd()*630, 1.6, 1.6); } g.globalAlpha = 1;
+  const img = await new Promise(res => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => res(im); im.onerror = () => res(null); im.src = `https://cdn.stratz.com/images/dota2/heroes/${heroShort(x.h)}_vert.png`; });
+  if(img){ const bw = 400, bh = 540, s = Math.min(bw/img.width, bh/img.height), w = img.width*s, h = img.height*s;
+    g.save(); g.shadowColor = 'rgba(139,92,246,.8)'; g.shadowBlur = 40; const px = 80 + (bw - w)/2, py = 45 + (bh - h)/2;
+    g.beginPath(); g.roundRect(px, py, w, h, 28); g.clip(); g.drawImage(img, px, py, w, h); g.restore();
+    g.strokeStyle = 'rgba(196,181,253,.6)'; g.lineWidth = 2; g.beginPath(); g.roundRect(80 + (bw - w)/2, 45 + (bh - h)/2, w, h, 28); g.stroke(); }
+  const X = 540; g.textBaseline = 'alphabetic';
+  // На картинке — от первого лица: её публикует сам игрок
+  const me = s => s.replace('Твой герой', 'Мой герой').replace('Ещё твой герой', 'Мой герой').replace('Твой выбор', 'Мой выбор').replace('у тебя', 'у меня').replace('ты на нём ещё не играл', 'ещё не играл');
+  g.fillStyle = '#c4b5fd'; g.font = '800 22px Manrope, sans-serif'; g.fillText(me(m.kick).toUpperCase().split('').join(' '), X, 110);
+  let fs = 78; const name = hn(x.h); do { g.font = `900 ${fs}px Unbounded, Manrope, sans-serif`; fs -= 4; } while(g.measureText(name).width > 620 && fs > 36);
+  const tg = g.createLinearGradient(X, 0, X + g.measureText(name).width, 0); tg.addColorStop(0, '#ffffff'); tg.addColorStop(0.55, '#c4b5fd'); tg.addColorStop(1, '#67e8f9');
+  g.fillStyle = tg; g.fillText(name, X, 200);
+  g.fillStyle = '#d6d0f5'; g.font = '700 26px Manrope, sans-serif'; g.fillText(me(m.line), X, 250);
+  let fx = X, fy = 290; g.font = '800 22px Manrope, sans-serif';
+  m.faces.slice(0, 5).forEach(f => { const t = HERO_FACES[f][0], w = g.measureText(t).width + 32; if(fx + w > 1150){ fx = X; fy += 52; }
+    g.fillStyle = 'rgba(139,92,246,.22)'; g.strokeStyle = 'rgba(196,181,253,.6)'; g.lineWidth = 1.5; g.beginPath(); g.roundRect(fx, fy, w, 40, 14); g.fill(); g.stroke();
+    g.fillStyle = '#fff'; g.fillText(t, fx + 16, fy + 28); fx += w + 10; });
+  const sy = fy + 80; g.fillStyle = 'rgba(255,255,255,.06)'; g.beginPath(); g.roundRect(X, sy, 610, 120, 20); g.fill();
+  g.fillStyle = '#9a94b8'; g.font = '700 20px Manrope, sans-serif'; g.fillText('шанс победы: сейчас → через месяц', X + 24, sy + 38);
+  g.font = '900 52px Unbounded, Manrope, sans-serif'; g.fillStyle = '#fff'; g.fillText(pct0(m.now), X + 24, sy + 98);
+  const nw = g.measureText(pct0(m.now)).width; g.fillStyle = '#9a94b8'; g.fillText('→', X + 44 + nw, sy + 98);
+  g.fillStyle = m.month >= 0.5 ? '#3df29a' : '#ff4d6d'; g.fillText(pct0(m.month), X + 120 + nw, sy + 98);
+  g.fillStyle = '#9a94b8'; g.font = '700 20px Manrope, sans-serif';
+  g.fillText(`${S.player.steamAccount.name || ''} · подобрано по ${S.year.length} играм, без меты`, X, 585); g.fillStyle = '#67e8f9'; g.fillText('andreiplk.github.io/dota-razbor', X, 612);
+  return c;
+}
+
 async function renderMyHero(S, sel){
   const box = $('myHero'), token = {}; S.heroToken = token;
   if(sel == null){ const s = lsGet('dc_mh_' + S.id); sel = typeof s === 'number' ? s : 0; }
@@ -2122,7 +2157,7 @@ async function renderMyHero(S, sel){
     box.innerHTML = `<div class="mh-flash"></div>${tabs}${poolBar()}<div class="mh-grid"><div class="mh-left">${mhStage(m.h)}${psyRadar(S, m.h, m.pos)}</div><div class="mh-info"><div class="mh-kick">${m.kick}</div><div class="mh-name">${hn(m.h)}</div>
       <div class="mh-line">${m.line}</div>${vs}${sel ? '' : `<p class="mh-say">Модель перебрала ${r.n} твоих героев. Почему он:</p>`}${mhList(m.reasons)}${verdict}${mhFaces(m.faces)}
       <div class="mh-pickbar">${(() => { const pool = poolGet(), inP = pool.some(e => e.h === m.h && e.p === m.pos), full = pool.filter(e => e.p === m.pos).length >= 3;
-        return `<button class="mh-pool-add ${inP ? 'on' : ''}" ${!inP && full ? 'disabled title="На роли уже 3 героя — убери одного"' : ''}>${inP ? '✓ В моём пуле' : `⭐ В мой пул (${role})`}</button>`; })()}<button class="mh-no" title="Убрать героя из подбора на всех вкладках">👎 Не мой герой — убрать</button><button class="mh-open">Выбрать самому из ${r.all.length} ▾</button></div></div></div>
+        return `<button class="mh-pool-add ${inP ? 'on' : ''}" ${!inP && full ? 'disabled title="На роли уже 3 героя — убери одного"' : ''}>${inP ? '✓ В моём пуле' : `⭐ В мой пул (${role})`}</button>`; })()}<button class="mh-share" title="Скачать картинку, чтобы поделиться">📸 Картинка «мой герой»</button><button class="mh-no" title="Убрать героя из подбора на всех вкладках">👎 Не мой герой — убрать</button><button class="mh-open">Выбрать самому из ${r.all.length} ▾</button></div></div></div>
       ${mhPlan(S, x, m)}
       <div class="mh-draft"><button class="mh-dopen">⚔ Кого из твоих брать против их пика ▾</button><div class="mh-dbox ${cache.enemies && cache.enemies.length ? '' : 'hidden'}">
         <input list="mhHeroList" class="mh-din" placeholder="Начни писать героя врага и выбери из списка…" autocomplete="off"><datalist id="mhHeroList">${Object.values(heroes).map(hh => `<option value="${hh.localized_name}">`).join('')}</datalist>
@@ -2157,6 +2192,11 @@ async function renderMyHero(S, sel){
     box.querySelector('.mh-din').onchange = e => { const v = e.target.value.trim().toLowerCase(), h = +(Object.keys(heroes).find(k => heroes[k].localized_name.toLowerCase() === v) || 0);
       if(h && !en.includes(h) && en.length < 5){ en.push(h); e.target.value = ''; drawDraft(); } };
     drawDraft();
+    box.querySelector('.mh-share').onclick = async e => { const b = e.currentTarget, t = b.textContent; b.textContent = 'Рисую…';
+      const c = await heroShareCard(S, m, x), blob = await new Promise(res => c.toBlob(res, 'image/png')), file = new File([blob], `moy-geroy-${heroShort(m.h)}.png`, {type: 'image/png'});
+      if(navigator.canShare && navigator.canShare({files: [file]})){ try{ await navigator.share({files: [file], title: `Мой герой — ${hn(m.h)}`}); }catch{} }
+      else { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
+      b.textContent = t; };
     box.querySelector('.mh-pool-add').onclick = () => { let pool = poolGet();
       pool = pool.some(e => e.h === m.h && e.p === m.pos) ? pool.filter(e => !(e.h === m.h && e.p === m.pos)) : [...pool, {h: m.h, p: m.pos, tab: sel}];
       lsSet(poolKey, pool); show(m.h); };
