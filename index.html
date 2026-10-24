@@ -2041,10 +2041,13 @@ function pickPerspective(S, p){
   rows.forEach(x => { x.psy = psyFit(S, x.h, p); x.fitPct = Math.round(50 + 50*x.fit); });
   const psys = rows.map(x => x.psy);
   rows.forEach(x => { x.score = 0.45*nrm(x.fit, fits) + 0.25*nrm(x.psy, psys) + 0.30*nrm(x.month, months); });
-  rows.sort((a,b) => b.score - a.score);
+  // Перспектива = рост: сначала герои, с которыми через месяц ты выше, чем сейчас на позиции; внутри — по счёту.
+  // Нет таких — честно помечаем (noUp), а не выдаём падение 48% → 46% за перспективу
+  const posG0 = S.year.filter(g => g.pos === p), posWr0 = posG0.length ? posG0.filter(g => g.win).length/posG0.length : 0;
+  rows.sort((a,b) => ((b.month > posWr0) - (a.month > posWr0)) || b.score - a.score);
   const mine = Object.entries(atPos).filter(([, o]) => o.n >= 10).map(([h, o]) => ({h: +h, n: o.n, wr: o.w/o.n, sc: solid(o.w, o.n)})).sort((a,b) => b.sc - a.sc);
   const posG = S.year.filter(g => g.pos === p);
-  return {best: rows[0], alts: rows.slice(1, 3), all: rows, cur: mine[0] || null, overall: F.overall, posWr: posG.length ? posG.filter(g => g.win).length/posG.length : null, posN: posG.length, nCand: rows.length, perMonth,
+  return {best: rows[0], alts: rows.slice(1, 3), all: rows, cur: mine[0] || null, overall: F.overall, posWr: posG.length ? posG.filter(g => g.win).length/posG.length : null, posN: posG.length, nCand: rows.length, perMonth, noUp: !rows.some(x => x.month > posWr0), nUp: rows.filter(x => x.month > posWr0).length,
     ownTop: own.sort((a,b) => b[1].n - a[1].n).slice(0, 3).map(([h]) => +h)};
 }
 
@@ -2126,7 +2129,7 @@ function mhView(x, r, sel, S){
   const extra = isBest && r.alts.length && !sel ? [x.g3 >= 0 ? `<b>Лучший прогноз рейтинга из трёх</b>: +${x.g3} за 3 месяца, если играть его.` : `<b>Из трёх с ним рейтинг теряет меньше всего</b>: ${x.g3} за 3 месяца — остальные проседают сильнее.`]
     : !isAlt && !isBest ? [`<b>№${rank} из ${r.all.length}</b> в списке модели. ${hn(r.best.h)} даёт больше, но выбор твой — прогноз ниже уже с ним.`] : [];
   if(sel) return {h: x.h, pos: sel, now: x.now, month: x.month, faces: x.faces, persp: x,
-    kick: `${isBest ? 'Перспектива' : isAlt ? 'Ещё вариант' : 'Твой выбор'} · ${roleShort(sel)}`,
+    kick: `${isBest ? (r.noUp ? 'Лучший из новых' : 'Перспектива') : isAlt ? 'Ещё вариант' : 'Твой выбор'} · ${roleShort(sel)}`,
     line: `${x.n ? `у тебя ${x.w}–${x.n - x.w}` : 'ты на нём ещё не играл'} · ${CPLX[x.cplx]} герой`,
     short: `стиль ${x.fitPct}%${x.sims.length ? `, как ${hn(x.sims[0].h)}` : ''}`, reasons: (([a, ...b]) => [a, ...psyLine, ...b])(perspReasons(x, r)).concat(extra)};
   return {h: x.h, pos: x.pos, now: x.now, month: x.w50, faces: x.faces,
@@ -2348,8 +2351,8 @@ async function renderMyHero(S, sel){
     const m = mhView(x, r, sel, S), role = roleShort(sel || m.pos).toLowerCase();
     const vs = sel ? `<div class="mh-vs"><div><span>ты на позиции сейчас (${r.posN} ${gamesWord(r.posN)})</span><b class="${wrClass(r.posWr ?? .5)}">${r.posWr != null ? pct0(r.posWr) : '—'}</b></div><i>→</i><div class="on"><span>${hn(m.h)} через месяц</span><b class="${wrClass(m.month)}">${pct0(m.month)}</b></div></div>` : '';
     const ahead = sel && r.posWr != null && m.month > r.posWr;
-    const ace = sel && r.cur && r.cur.wr > m.month ? ` ${hn(r.cur.h)} у тебя уже ${pct0(r.cur.wr)} за ${r.cur.n} ${gamesWord(r.cur.n)} — держи его как козырь, а этого качай вторым.` : '';
-    const verdict = sel ? `<div class="mh-verdict ${ahead ? '' : 'meh'}">${ahead ? `Через месяц он может поднять твой ${role} с ${pct0(r.posWr)} до ${pct0(m.month)}.` : 'Пока он не выше твоего уровня на позиции, но из новых героев он среди самых перспективных.'}${ace}${(() => {
+    const ace = sel && !r.noUp && r.cur && r.cur.wr > m.month ? ` ${hn(r.cur.h)} у тебя уже ${pct0(r.cur.wr)} за ${r.cur.n} ${gamesWord(r.cur.n)} — держи его как козырь, а этого качай вторым.` : '';
+    const verdict = sel ? `<div class="mh-verdict ${ahead ? '' : 'meh'}">${ahead ? `Через месяц он может поднять твой ${role} с ${pct0(r.posWr)} до ${pct0(m.month)}.` : (r.noUp ? `На ${role} новые герои пока не поднимут тебя выше ${pct0(r.posWr)}: лучший прогноз через месяц — ${pct0(Math.max(...r.all.map(y => y.month)))}. Твой рост здесь — герои, на которых ты уже играешь.${r.cur ? ` Главный — ${hn(r.cur.h)} (${pct0(r.cur.wr)} за ${r.cur.n} ${gamesWord(r.cur.n)}).` : ''} Нового бери, только если хочется разнообразия.` : 'Этот не выше твоего уровня — выбери героя из тех, что сверху списка.')}${ace}${(() => {
       // Счёт почти равный — честно говорим, что выбор за тобой: модель не различает их уверенно
       const rival = [r.best, ...r.alts].find(y => y.h !== m.h);
       return rival && Math.abs((x.score ?? 0) - (rival.score ?? 0)) < 0.03 ? ` <b>Почти вровень с ${hn(rival.h)}</b> — модель их уверенно не различает, бери того, кто больше нравится.` : ''; })()}</div>` : '';
