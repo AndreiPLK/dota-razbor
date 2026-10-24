@@ -414,6 +414,8 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-link{background:rgba(255,255,255,.06);border:1px solid var(--line);color:#a5f3fc;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;box-shadow:none;margin-left:6px}
 .mfocus{display:grid;grid-template-columns:200px 1fr;align-items:center;gap:10px;margin-top:10px;position:relative}
 .mfocus:empty{display:none}
+.mf-lesson{display:flex;flex-direction:column;gap:5px;margin-top:8px;padding:10px 12px;border-radius:12px;background:rgba(255,198,90,.08);border:1px solid rgba(255,198,90,.35);font-size:13px;line-height:1.4;animation:rise .6s .4s both}
+.mf-lt{font-family:Unbounded,Manrope,sans-serif;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#ffd88a}
 .mf-stage .mh-stage{max-height:220px} .mf-stage .mh-render{animation:emerge 1s cubic-bezier(.2,.8,.2,1) both}
 .mf-info{display:flex;flex-direction:column;gap:4px}
 .mf-name{font-family:Unbounded,Manrope,sans-serif;font-size:clamp(26px,4vw,40px);font-weight:900;line-height:1.05;background:linear-gradient(90deg,#fff,#c4b5fd 55%,#67e8f9);-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -2597,6 +2599,19 @@ async function abilityNames(ids){
   }
   return v;
 }
+// «Урок матча»: 2–3 строки в шапке вместо простыни — пик (если разобран игрок), смерти в одиночку, линия
+function matchLesson(p, team, pick, best){
+  const box = document.querySelector('#mfocus .mf-info'); if(!box) return;
+  const ev = p.death_events || [], out = [];
+  if(pick && best && best.h !== pick.h && best.score - pick.score >= 8) out.push(`🎯 <b>Пик:</b> ${heroOf(p).localized_name} ${pick.score >= 0 ? '+' : ''}${pick.score.toFixed(0)}% к твоему обычному шансу — в таком составе у тебя сильнее <b>${H(best.h).localized_name}</b> (${best.score >= 0 ? '+' : ''}${best.score.toFixed(0)}%)`);
+  const solo = ev.filter(e => !e.isEngagedOnDeath); if(solo.length >= 3){ const by = {}; solo.forEach(e => by[e.attacker] = (by[e.attacker] || 0) + 1);
+    const k = Object.entries(by).filter(([h]) => heroes[h]).sort((a,b) => b[1] - a[1])[0];
+    out.push(`☠ <b>${solo.length} ${solo.length < 5 ? 'смерти' : 'смертей'} в одиночку, вне драки</b>${k ? ` — чаще всего от ${H(+k[0]).localized_name}` : ''}: держись ближе к команде, особенно после 20-й`); }
+  const lh = (team.ev.get(p) || {ms: []}).ms.find(x => x.key === 'lh10'); if(lh && !lh.ok) out.push(`🌾 <b>Линия:</b> ${lh.fmt(lh.act)} добиваний к 10-й при норме ${lh.fmt(lh.exp)}`);
+  const old = box.querySelector('.mf-lesson'); if(old) old.remove();
+  if(out.length) box.insertAdjacentHTML('beforeend', `<div class="mf-lesson"><b class="mf-lt">Урок матча</b>${out.map(t => `<span>${t}</span>`).join('')}</div>`);
+}
+
 async function renderFocus(m, p, team, foes){
   const token = {}; renderFocus.token = token;
   const pos = team.pos.get(p), me = heroOf(p), mm = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
@@ -2650,6 +2665,7 @@ async function renderFocus(m, p, team, foes){
     const mineExtra = rows.filter((r, i) => i >= 3 && (r.h === mainH || poolH.includes(r.h)) && r.h !== p.hero_id);
     $('counter').innerHTML = rows.slice(0, 3).map(r => row(r, r.h === p.hero_id)).join('') + (place > 3 ? `<h3 style="margin-top:14px">Твой пик</h3>` + row(pick, true) : '')
       + (mineExtra.length ? `<h3 style="margin-top:14px">Твой герой и пул в этом матче</h3>` + mineExtra.map(r => row(r, false)).join('') : '');
+    matchLesson(p, team, pick, rows[0]);
     return;
   }
   // Другой игрок: только его собственные результаты на героях этой позиции
@@ -2660,6 +2676,7 @@ async function renderFocus(m, p, team, foes){
     : 'Профиль игрока скрыт или мало игр на этой позиции. Полный разбор — после разбора игрока на вкладке «Игрок».';
   $('counter').innerHTML = list.map(x => `<div class="crow ${x.heroId === p.hero_id ? 'mine' : ''}"><img src="${CDN + H(x.heroId).img}" alt=""><div><b>${H(x.heroId).localized_name}</b>
     <div class="muted" style="font-size:13px">${x.winCount}–${x.matchCount - x.winCount} на этой позиции</div></div><div class="sc ${wrClass(x.winCount/x.matchCount)}">${pct0(x.winCount/x.matchCount)}</div></div>`).join('');
+  matchLesson(p, team, null, null);
   // Одна кнопка вместо инструкции: сразу разобрать этого игрока целиком — герой, роль, пул, будущее
   if(p.account_id){ const b = document.createElement('button'); b.className = 'mh-cmpbtn'; b.style.marginTop = '12px';
     b.textContent = `🦸 Разобрать ${p.personaname || 'этого игрока'} целиком — найти его героя →`;
