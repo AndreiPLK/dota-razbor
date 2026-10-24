@@ -450,6 +450,13 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-today-t div{display:grid;grid-template-columns:30px 1fr;gap:2px 8px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:9px 10px}
 .mh-today-t i{font-style:normal;font-size:22px;grid-row:1/3} .mh-today-t b{font-size:13.5px} .mh-today-t span{font-size:11.5px;color:var(--muted);line-height:1.35}
 @media(prefers-reduced-motion:reduce){.mh-today{animation:none;opacity:1;transform:none}}
+/* Хорошие новости светятся, предупреждения — тёплой рамкой: глаз сначала ловит главное */
+.mh-today-t div.hot{border-color:rgba(255,170,60,.65);background:linear-gradient(135deg,rgba(255,140,40,.16),rgba(255,80,120,.08));animation:hotGlow 2.6s ease-in-out infinite}
+.mh-today-t div.stop{border-color:rgba(103,232,249,.55);background:rgba(103,232,249,.08)}
+@keyframes hotGlow{0%,100%{box-shadow:0 0 0 rgba(255,150,50,0)}50%{box-shadow:0 0 22px rgba(255,150,50,.35)}}
+.mh-pool-auto{animation:poolPulse 2.4s ease-in-out infinite}
+@keyframes poolPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,198,90,.0)}50%{box-shadow:0 0 0 6px rgba(255,198,90,.18)}}
+@media(prefers-reduced-motion:reduce){.mh-today-t div.hot,.mh-pool-auto{animation:none}}
 .mh-draft{margin:0 28px 22px;position:relative;z-index:2}
 @media(max-width:700px){.mh-draft{margin:0 14px 18px}}
 .mh-dopen{width:100%;background:linear-gradient(135deg,rgba(255,77,109,.16),rgba(139,92,246,.12));border:1px solid rgba(255,77,109,.4);color:#ffd0d8;font-weight:800;border-radius:14px;box-shadow:none}
@@ -2237,7 +2244,7 @@ function todayPlan(S, m, cur){
   const week = `<div class="mh-week"><div><b>Цель недели: ${goal} игр на ${hn(m.h)}</b><span>${done >= goal ? '✓ выполнено — герой растёт' : `сделано ${done} из ${goal}${wg.length ? ` · ${ww}–${wg.length - ww}` : ''} · с понедельника`}</span></div>
     <div class="mh-week-bar">${Array.from({length: goal}, (_, i) => `<i class="${i < done ? (wg[i] && wg[i].win ? 'w' : 'l') : ''}"></i>`).join('')}</div></div>`;
   return `<div class="mh-today"><div class="mh-today-h"><b>План на сегодня</b><span>по твоим сессиям — как ты играешь, когда устаёшь и тильтуешь</span></div>${week}
-    <div class="mh-today-t">${tiles.map(([i, t, d]) => `<div><i>${i}</i><b>${t}</b><span>${d}</span></div>`).join('')}</div></div>`;
+    <div class="mh-today-t">${tiles.map(([i, t, d]) => `<div class="${i === '🔥' || i === '🛡' ? 'hot' : i === '⏸' ? 'stop' : ''}"><i>${i}</i><b>${t}</b><span>${d}</span></div>`).join('')}</div></div>`;
 }
 
 // Картинка «мой герой» 1200×630 для шеринга. Портрет — с CDN Stratz (там разрешён CORS; картинки Valve холст «пачкают»)
