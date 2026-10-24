@@ -2004,7 +2004,7 @@ function pickMyHero(S){
     const fit = !!(grow && grow.d >= 0.04 && x.cplx === grow.c);
     const score = 4*(s.p50 - F.overall) + 0.12*Math.min(1, faces.length/5) + 0.03*Math.min(1, myPos.length/3) + (fit ? 0.05 : 0)
       + 0.04*Math.log1p(x.n)/Math.log1p(maxN) + (pr[x.h] === 1 ? 0.05 : 0);
-    return {...x, pos, now: s.p5, w20: s.p20, w50: s.p50, faces, myPos, fit, score, win51: x.n >= 30 && x.w/x.n >= 0.51};
+    return {...x, pos, now: s.p5, w20: s.p20, w50: s.p50, faces, myPos, fit, score, win51: x.n >= 30 && Math.round(100*x.w/x.n) >= 51};
   }).sort((a,b) => (b.win51 - a.win51) || b.score - a.score);   // правило 51%: сначала герои, на которых ты реально выигрываешь (30+ игр)
   const big = rows.filter(x => x.n >= 30).sort((a,b) => b.w/b.n - a.w/a.n), byW50 = rows.slice().sort((a,b) => b.w50 - a.w50);
   const [best, ...alts0] = mhOrderTrio(ML, rows.slice(0, 3), x => x.pos, perMonth);
@@ -2076,7 +2076,7 @@ function pickPerspective(S, p){
   if(!rows.some(x => tier(x))) rows.sort((a,b) => pc(b.ceil) - pc(a.ceil) || b.score - a.score);
   const mine = Object.entries(atPos).filter(([, o]) => o.n >= 10).map(([h, o]) => ({h: +h, n: o.n, wr: o.w/o.n, sc: solid(o.w, o.n)})).sort((a,b) => b.sc - a.sc);
   const posG = S.year.filter(g => g.pos === p);
-  return {best: rows[0], alts: (tier(rows[0] || {}) ? rows.slice(1).filter(x => tier(x)) : rows.slice(1)).slice(0, 2), all: rows, cur: mine[0] || null, mine51: mine.filter(o => o.n >= 20 && o.wr >= 0.51).slice(0, 3), overall: F.overall, posWr: posG.length ? posG.filter(g => g.win).length/posG.length : null, posN: posG.length, nCand: rows.length, perMonth, noUp: !rows.some(x => tier(x)), ceilOnly: !rows.some(upF) && rows.some(upC), nUp: rows.filter(x => tier(x)).length,
+  return {best: rows[0], alts: (tier(rows[0] || {}) ? rows.slice(1).filter(x => tier(x)) : rows.slice(1)).slice(0, 2), all: rows, cur: mine[0] || null, mine51: mine.filter(o => o.n >= 20 && Math.round(100*o.wr) >= 51).slice(0, 3), overall: F.overall, posWr: posG.length ? posG.filter(g => g.win).length/posG.length : null, posN: posG.length, nCand: rows.length, perMonth, noUp: !rows.some(x => tier(x)), ceilOnly: !rows.some(upF) && rows.some(upC), nUp: rows.filter(x => tier(x)).length,
     ownTop: own.sort((a,b) => b[1].n - a[1].n).slice(0, 3).map(([h]) => +h)};
 }
 
