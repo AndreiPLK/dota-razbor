@@ -2725,6 +2725,8 @@ function showErr(err){ $('progress').classList.add('hidden'); $('err').textConte
 
 $('f').onsubmit = async e => {
   e.preventDefault(); const id = parseId($('q').value);
+  // Ссылка Steam с именем (steamcommunity.com/id/имя) номера не содержит — говорим, где взять число
+  if(!id && /steamcommunity\.com\/id\//i.test($('q').value)){ showErr(new Error('В ссылке Steam с именем нет номера. В Dota 2 открой свой профиль — ID (Friend ID) написан под ником. Или вставь ссылку с Dotabuff/Stratz.')); return; }
   if(!id){ showErr(new Error('Не вижу ID. Вставь число из профиля Dota 2 или ссылку на Dotabuff/Stratz/Steam.')); return; }
   $('go').disabled = true;
   try{ await runPlayer(id); history.replaceState(null, '', '#' + id); }catch(err){ showErr(err); }finally{ $('go').disabled = false; }
