@@ -2375,7 +2375,7 @@ async function renderMyHero(S, sel){
       box.querySelector('.mh-dchips').innerHTML = en.map(h => `<button class="mh-dchip" data-h="${h}"><img src="${CDN + H(h).img}" alt="">${hn(h)} ✕</button>`).join('');
       box.querySelectorAll('.mh-dchip').forEach(b => b.onclick = () => { en.splice(en.indexOf(+b.dataset.h), 1); drawDraft(); });
       const out = box.querySelector('.mh-dres');
-      if(!en.length){ out.innerHTML = '<p class="muted" style="font-size:13px;margin:8px 0 0">Добавь 2–5 героев врага — посчитаю по твоим играм, кого из твоих брать.</p>'; return; }
+      if(!en.length){ out.innerHTML = '<p class="muted" style="font-size:13px;margin:8px 0 0">Добавь 2–5 героев врага — посчитаю по твоим играм, кого из твоих брать.' + (poolGet().length ? ` Сравню героев твоего пула (${poolGet().length}) и тройку этой вкладки.` : ' Сейчас сравню только тройку этой вкладки — собери пул, и его герои тоже будут здесь.') + '</p>'; return; }
       if(!M.ready){ out.innerHTML = '<p class="muted" style="font-size:13px">Составы твоих игр ещё докачиваются — открой через пару минут.</p>'; return; }
       const fs = M.feats(en), seen = new Set();
       const cands = [...poolGet().map(e => ({h: e.h, p: e.p})), ...[r.best, ...r.alts].map(y => ({h: y.h, p: sel || y.pos}))].filter(c => !seen.has(c.h) && seen.add(c.h) && !en.includes(c.h));
