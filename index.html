@@ -2138,7 +2138,8 @@ function mineReasons(x, r){
     x.fit ? `<b>${cap(CPLX[x.cplx])} по сложности</b> — на ${CPLX_LOC[x.cplx]} героях ты растёшь сильнее всего: +${Math.round(r.grow.d*100)}% к 40-й игре.`
       : `<b>${cap(CPLX[x.cplx])} по сложности</b> — учиться с нуля не надо, база уже есть.`,
     facesLine(x.faces),
-    `<b>Через месяц (~${r.perMonth} игр) — ${pct0(x.w50)}</b> по модели${x.w50 - x.now >= 0.01 ? `: растёшь с ${pct0(x.now)}` : ': уровень держится, не проседает'}.`].filter(Boolean);
+    // Прогноз показываем, только если он не ниже твоего факта на герое — иначе это падение под видом совета
+    x.n && x.w50 < x.w/x.n - 0.005 ? null : `<b>Через месяц (~${r.perMonth} игр) — ${pct0(x.w50)}</b> по модели${x.w50 - x.now >= 0.01 ? `: растёшь с ${pct0(x.now)}` : ''}.`].filter(Boolean);
 }
 // Причины для перспективного героя (вкладки позиций): сначала стиль, потом прогноз
 function perspReasons(x, r){
@@ -2155,7 +2156,7 @@ function mhView(x, r, sel, S){
   const isBest = x.h === r.best.h, isAlt = r.alts.some(a => a.h === x.h), rank = r.all.findIndex(y => y.h === x.h) + 1;
   const psy = psyReasons(S, x.h, sel || x.pos), psyLine = psy.length ? [`<b>Под твой характер</b>: ${psy.join('; ')}.`] : [];
   const topG3 = !sel && [r.best, ...r.alts].every(y => (y.g3 ?? -1e9) <= (x.g3 ?? -1e9));
-  const extra = isBest && r.alts.length && !sel && !topG3 && x.win51 ? [`<b>Главный по правилу 51%</b>: на нём ты реально выигрываешь — ${pct0(x.w/x.n)} за ${x.n} ${gamesWord(x.n)}. Остальные из тройки ниже 51%.`]
+  const extra = isBest && r.alts.length && !sel && !topG3 && x.win51 ? [`<b>Главный по правилу 51%</b>: на нём ты реально выигрываешь — ${pct0(x.w/x.n)} за ${x.n} ${gamesWord(x.n)}.`]
     : isBest && r.alts.length && !sel ? [x.g3 >= 0 ? `<b>Лучший прогноз рейтинга из трёх</b>: +${x.g3} за 3 месяца, если играть его.` : `<b>Из трёх с ним рейтинг теряет меньше всего</b>: ${x.g3} за 3 месяца — остальные проседают сильнее.`]
     : !isAlt && !isBest ? [`<b>№${rank} из ${r.all.length}</b> в списке модели. ${hn(r.best.h)} даёт больше, но выбор твой — прогноз ниже уже с ним.`] : [];
   if(sel) return {h: x.h, pos: sel, now: x.now, month: x.month, faces: x.faces, persp: x,
@@ -2414,7 +2415,7 @@ async function renderMyHero(S, sel){
       const rival = [r.best, ...r.alts].find(y => y.h !== m.h);
       return rival && Math.abs((x.score ?? 0) - (rival.score ?? 0)) < 0.03 ? ` <b>Почти вровень с ${hn(rival.h)}</b> — модель их уверенно не различает, бери того, кто больше нравится.` : ''; })()}</div>` : '';
     const sides = [r.best, ...r.alts].filter(y => y.h !== m.h).slice(0, 2).map(y => mhView(y, r, sel, S)).map(t => `<button class="mh-side" data-h="${t.h}"><img src="${CDN + H(t.h).img}" alt=""><div><span class="k">${t.kick}</span><b>${hn(t.h)}</b>
-      <span>${pct0(t.now)} → <b class="${wrClass(t.month)}">${pct0(t.month)}</b> через месяц · ${t.short}</span></div><em>Сделать главным →</em></button>`).join('');
+      <span>${sel ? `${pct0(t.now)} → <b class="${wrClass(t.month)}">${pct0(t.month)}</b> через месяц · ${t.short}` : (() => { const ms = mastery(S, t.h); return `<b class="${wrClass(ms.wr)}">${pct0(ms.wr)}</b> за ${ms.n} ${gamesWord(ms.n)} · ${ms.hint}`; })()}</span></div><em>Сделать главным →</em></button>`).join('');
     const list = r.all.slice().sort((a,b) => ord(b) - ord(a)).map(y => `<button class="mh-opt ${y.h === m.h ? 'on' : ''}" data-h="${y.h}" data-n="${hn(y.h).toLowerCase()}"><img src="${CDN + H(y.h).img}" alt="">
       <b>${mastBadge(S, y.h, true)}${hn(y.h)}</b><span><b class="${wrClass(fc(y))}">${pct0(fc(y))}</b> через месяц${sel ? ` · стиль ${y.fitPct}%` : ''}${y.n ? ` · у тебя ${y.w}–${y.n - y.w}` : ''}</span></button>`).join('');
     box.innerHTML = `<div class="mh-flash"></div>${tabs}${poolBar()}<div class="mh-grid"><div class="mh-left">${mhStage(m.h)}${psyRadar(S, m.h, m.pos)}</div><div class="mh-info"><div class="mh-kick">${m.kick}</div><div class="mh-name">${hn(m.h)}</div>
