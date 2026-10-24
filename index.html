@@ -2007,7 +2007,8 @@ function pickMyHero(S){
     return {...x, pos, now: s.p5, w20: s.p20, w50: s.p50, faces, myPos, fit, score, win51: x.n >= 30 && x.w/x.n >= 0.51};
   }).sort((a,b) => (b.win51 - a.win51) || b.score - a.score);   // правило 51%: сначала герои, на которых ты реально выигрываешь (30+ игр)
   const big = rows.filter(x => x.n >= 30).sort((a,b) => b.w/b.n - a.w/a.n), byW50 = rows.slice().sort((a,b) => b.w50 - a.w50);
-  const [best, ...alts] = mhOrderTrio(ML, rows.slice(0, 3), x => x.pos, perMonth);
+  const [best, ...alts0] = mhOrderTrio(ML, rows.slice(0, 3), x => x.pos, perMonth);
+  const alts = best && best.win51 ? alts0.filter(x => x.win51) : alts0;   // запасные тоже 51%+, если такие есть
   return {best, alts, all: rows, n: rows.length, grow, overall: F.overall, big, perMonth,
     rankWr: best ? big.indexOf(best) + 1 : 0, nBig: big.length, rankW50: best ? byW50.indexOf(best) + 1 : 0};
 }
