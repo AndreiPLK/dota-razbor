@@ -2326,7 +2326,7 @@ async function renderMyHero(S, sel){
     if(!pool.length) return `<div class="mh-pool empty">⭐ Собери свой пул: 2–3 героя на роль. Опыт копится на них, а не размазывается по 30 героям — так растут быстрее всего.${(() => { const last = [...S.year].sort((a,b) => b.t - a.t).slice(0, 20), k = new Set(last.map(g => g.hero)).size;
       return last.length >= 10 && k >= 8 ? `<b class="mh-pool-spread">Сейчас в последних ${last.length} играх — ${k} разных героев.</b>` : ''; })()}<button class="mh-pool-auto">⭐ Собрать за меня: главный + 2 запасных</button></div>`;
     return `<div class="mh-pool"><span class="mh-pool-t">Мой пул</span>${[1,2,3,4,5].filter(p => pool.some(e => e.p === p)).map(p => `<span class="mh-pool-r"><small>${roleShort(p)}</small>${pool.filter(e => e.p === p).map(e =>
-      `<button class="mh-pool-h" data-h="${e.h}" data-tab="${e.tab}" title="${hn(e.h)} · ${mastery(S, e.h).hint}"><img src="${CDN + H(e.h).img}" alt="">${mastBadge(S, e.h, true)}</button>`).join('')}</span>`).join('')}${poolDisc(pool)}</div>`; };
+      `<button class="mh-pool-h" data-h="${e.h}" data-tab="${e.tab}" title="${hn(e.h)} · ${mastery(S, e.h).hint}"><img src="${CDN + H(e.h).img}" alt="">${mastBadge(S, e.h, true)}</button>`).join('')}</span>`).join('')}${poolDisc(pool)}${ps.best && !pool.some(e => e.p === ps.best) ? `<span class="mh-pool-d">★ в твоей роли (${roleShort(ps.best).toLowerCase()}) пока нет героя пула — <button class="linkbtn mh-pool-role" data-p="${ps.best}">подобрать</button></span>` : ''}</div>`; };
   // Дисциплина пула: сколько последних игр ушло в героев пула — обратная связь, держишь ли ты своё решение
   const poolDisc = pool => { const last = [...S.year].sort((a,b) => b.t - a.t).slice(0, 20), hs = new Set(pool.map(e => e.h)), k = last.filter(g => hs.has(g.hero)).length;
     if(last.length < 10) return '';
@@ -2404,6 +2404,7 @@ async function renderMyHero(S, sel){
     box.querySelector('.mh-pool-add').onclick = () => { let pool = poolGet();
       pool = pool.some(e => e.h === m.h && e.p === m.pos) ? pool.filter(e => !(e.h === m.h && e.p === m.pos)) : [...pool, {h: m.h, p: m.pos, tab: sel}];
       lsSet(poolKey, pool); show(m.h); };
+    const pr = box.querySelector('.mh-pool-role'); if(pr) pr.onclick = () => { lsSet('dc_mh_' + S.id, +pr.dataset.p); renderMyHero(S, +pr.dataset.p); };
     // Пул в один клик: тройка этой вкладки (главный + 2 запасных) — каждый на своей позиции
     const pa = box.querySelector('.mh-pool-auto'); if(pa) pa.onclick = () => { lsSet(poolKey, [r.best, ...r.alts].slice(0, 3).map(y => ({h: y.h, p: sel || mhView(y, r, sel, S).pos, tab: sel}))); show(m.h); };
     box.querySelectorAll('.mh-pool-h').forEach(b => b.onclick = () => { const tab = +b.dataset.tab, h = +b.dataset.h;
