@@ -1306,7 +1306,7 @@ function setRole(p, manual){
   S.F = S.F || heroForecasts(S);   // прогнозы по героям не зависят от выбранной роли — считаются один раз
   S.rec = recommendHeroes(S, p);
   renderReport(S);
-  renderPros(S);
+  // renderPros — раздел скрыт, а он делает серию запросов к Stratz (общий лимит токена) — не вызываем
   renderDraft(S);
   renderLearn(S);   // до прогноза: прогноз берёт из неё скорость обучения
 }
