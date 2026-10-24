@@ -2603,18 +2603,24 @@ async function renderFocus(m, p, team, foes){
   const own = state && String(state.id) === String(p.account_id) ? draftModel(state) : null;
   if(own && own.ready){
     // Разобранный на сайте игрок: его герои на позиции (5+ игр) — опыт на герое + личная модель драфта против этого состава
-    const cand = [...new Set([p.hero_id, ...Object.entries(own.rec).filter(([k, o]) => +k.split('_')[0] === pos && o.n >= 5).map(([k]) => +k.split('_')[1])])];
+    // + твой пул на этой позиции и твой главный герой — чтобы видеть, как бы сыграли они именно в этом матче
+    const poolH = (lsGet('dc_pool_' + state.id) || []).filter(e => e.p === pos).map(e => e.h);
+    const mb = state.mhCache && state.mhCache[0] && state.mhCache[0].best, mainH = mb && mb.pos === pos ? mb.h : null;
+    const cand = [...new Set([p.hero_id, ...poolH, ...(mainH ? [mainH] : []), ...Object.entries(own.rec).filter(([k, o]) => +k.split('_')[0] === pos && o.n >= 5).map(([k]) => +k.split('_')[1])])];
+    const tagOf = h => (h === mainH ? ' <span class="mast">★ твой герой</span>' : '') + (poolH.includes(h) ? ' <span class="mast">⭐ из пула</span>' : '');
     const rows = cand.map(h => { const o = own.rec[pos + '_' + h], sk = own.skill(h, pos), dr = own.draft(h, enemyIds);
       return {h, my: o, sk, dr, score: sk + dr}; }).sort((a,b) => b.score - a.score);
     const place = rows.findIndex(r => r.h === p.hero_id) + 1, pick = rows[place - 1], fs = own.feats(enemyIds).map(u => TAG_PHRASE[u][0]);
     const row = (r, mineRow) => `<div class="crow ${mineRow ? 'mine' : ''}"><img src="${CDN + H(r.h).img}" alt="">
-      <div><b>${H(r.h).localized_name}</b>${mineRow ? ' <span class="accent">← твой пик</span>' : ''}<div class="muted" style="font-size:13px">${r.my ? `у тебя на этой позиции ${r.my.w}–${r.my.n - r.my.w}` : 'ты на нём тут почти не играл'}</div></div>
+      <div><b>${H(r.h).localized_name}</b>${mineRow ? ' <span class="accent">← твой пик</span>' : ''}${tagOf(r.h)}<div class="muted" style="font-size:13px">${r.my ? `у тебя на этой позиции ${r.my.w}–${r.my.n - r.my.w}` : 'ты на нём тут почти не играл'}</div></div>
       <div class="sc ${r.score >= 2 ? 'good' : r.score <= -2 ? 'bad' : ''}">${sgn(r.score)}</div>
       <div class="chips"><span class="chip ${cls(r.sk)}">твой опыт на нём: <b>${sgn(r.sk)}</b></span><span class="chip ${cls(r.dr)}">ты против такого состава: <b>${sgn(r.dr)}</b></span></div></div>`;
     $('cpNote').innerHTML = `Ты взял <b>${me.localized_name}</b>: <b class="${pick.score >= 0 ? 'good' : 'bad'}">${sgn(pick.score)}</b> — ${place}-е место из ${rows.length} твоих героев на этой позиции. `
       + (fs.length ? `У врага: ${fs.join(', ')}.` : 'В составе врага ничего, что тебе особенно мешает или помогает.')
       + `<br><span style="font-size:12px">Число — на сколько процентов шанс выше твоего обычного: опыт на герое (насколько ты на нём выигрываешь чаще обычного) + как ты по своей истории выигрываешь героями такого типа против такого состава. Без меты.</span>`;
-    $('counter').innerHTML = rows.slice(0, 3).map(r => row(r, r.h === p.hero_id)).join('') + (place > 3 ? `<h3 style="margin-top:14px">Твой пик</h3>` + row(pick, true) : '');
+    const mineExtra = rows.filter((r, i) => i >= 3 && (r.h === mainH || poolH.includes(r.h)) && r.h !== p.hero_id);
+    $('counter').innerHTML = rows.slice(0, 3).map(r => row(r, r.h === p.hero_id)).join('') + (place > 3 ? `<h3 style="margin-top:14px">Твой пик</h3>` + row(pick, true) : '')
+      + (mineExtra.length ? `<h3 style="margin-top:14px">Твой герой и пул в этом матче</h3>` + mineExtra.map(r => row(r, false)).join('') : '');
     return;
   }
   // Другой игрок: только его собственные результаты на героях этой позиции
