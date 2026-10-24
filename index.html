@@ -2327,7 +2327,10 @@ async function renderMyHero(S, sel){
     const vs = sel ? `<div class="mh-vs"><div><span>ты на позиции сейчас (${r.posN} ${gamesWord(r.posN)})</span><b class="${wrClass(r.posWr ?? .5)}">${r.posWr != null ? pct0(r.posWr) : '—'}</b></div><i>→</i><div class="on"><span>${hn(m.h)} через месяц</span><b class="${wrClass(m.month)}">${pct0(m.month)}</b></div></div>` : '';
     const ahead = sel && r.posWr != null && m.month > r.posWr;
     const ace = sel && r.cur && r.cur.wr > m.month ? ` ${hn(r.cur.h)} у тебя уже ${pct0(r.cur.wr)} за ${r.cur.n} ${gamesWord(r.cur.n)} — держи его как козырь, а этого качай вторым.` : '';
-    const verdict = sel ? `<div class="mh-verdict ${ahead ? '' : 'meh'}">${ahead ? `Через месяц он может поднять твой ${role} с ${pct0(r.posWr)} до ${pct0(m.month)}.` : 'Пока он не выше твоего уровня на позиции, но из новых героев он среди самых перспективных.'}${ace}</div>` : '';
+    const verdict = sel ? `<div class="mh-verdict ${ahead ? '' : 'meh'}">${ahead ? `Через месяц он может поднять твой ${role} с ${pct0(r.posWr)} до ${pct0(m.month)}.` : 'Пока он не выше твоего уровня на позиции, но из новых героев он среди самых перспективных.'}${ace}${(() => {
+      // Счёт почти равный — честно говорим, что выбор за тобой: модель не различает их уверенно
+      const rival = [r.best, ...r.alts].find(y => y.h !== m.h);
+      return rival && Math.abs((x.score ?? 0) - (rival.score ?? 0)) < 0.03 ? ` <b>Почти вровень с ${hn(rival.h)}</b> — модель их уверенно не различает, бери того, кто больше нравится.` : ''; })()}</div>` : '';
     const sides = [r.best, ...r.alts].filter(y => y.h !== m.h).slice(0, 2).map(y => mhView(y, r, sel, S)).map(t => `<button class="mh-side" data-h="${t.h}"><img src="${CDN + H(t.h).img}" alt=""><div><span class="k">${t.kick}</span><b>${hn(t.h)}</b>
       <span>${pct0(t.now)} → <b class="${wrClass(t.month)}">${pct0(t.month)}</b> через месяц · ${t.short}</span></div><em>Сделать главным →</em></button>`).join('');
     const list = r.all.slice().sort((a,b) => ord(b) - ord(a)).map(y => `<button class="mh-opt ${y.h === m.h ? 'on' : ''}" data-h="${y.h}" data-n="${hn(y.h).toLowerCase()}"><img src="${CDN + H(y.h).img}" alt="">
