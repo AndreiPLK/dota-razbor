@@ -331,6 +331,16 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-tab{display:flex;flex-direction:column;align-items:center;line-height:1.15;border-radius:14px;padding:6px 14px}
 .mh-tab small{font-size:10.5px;font-weight:600;opacity:.75;margin-top:2px}
 .mh-tab.best:not(.on){border-color:rgba(255,198,90,.55);color:#ffd88a}
+.mh-pool{display:flex;flex-wrap:wrap;gap:8px 14px;justify-content:center;align-items:center;margin:12px 28px 0;padding:8px 14px;border-radius:14px;
+  background:rgba(255,198,90,.06);border:1px solid rgba(255,198,90,.3);position:relative;z-index:4}
+.mh-pool.empty{font-size:12px;color:#e8d4a8;text-align:center}
+.mh-pool-t{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#ffd88a;font-weight:800}
+.mh-pool-r{display:flex;align-items:center;gap:4px} .mh-pool-r small{font-size:11px;color:var(--muted);margin-right:2px}
+.mh-pool-h{padding:0;border-radius:8px;border:1px solid rgba(255,198,90,.4);background:none;box-shadow:none;overflow:hidden;line-height:0}
+.mh-pool-h img{width:46px;height:26px;object-fit:cover} .mh-pool-h:hover{border-color:#ffd88a;transform:translateY(-1px)}
+.mh-pickbar .mh-pool-add{border-color:rgba(255,198,90,.5);color:#ffd88a} .mh-pickbar .mh-pool-add.on{background:rgba(255,198,90,.14)}
+.mh-pickbar .mh-pool-add:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:700px){.mh-pool{margin:10px 14px 0}}
 .mh-rolehint{text-align:center;font-size:12px;color:var(--muted);margin-top:8px;position:relative;z-index:4} .mh-rolehint b{color:#ffd88a}
 .mh-tab.on{background:linear-gradient(135deg,#8b5cf6,#22d3ee);color:#fff;border-color:transparent;box-shadow:0 6px 20px rgba(139,92,246,.35)}
 .mh-reasons{list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:7px}
@@ -1974,6 +1984,12 @@ async function renderMyHero(S, sel){
     Object.keys(pr.heroes).forEach(k => { if(pr.heroes[k] === -1) delete pr.heroes[k]; }); lsSet(prefKey(), pr); S.mhCache = {idx: {}, shown: true}; renderMyHero(S, sel); }; };
   if(!r.best){ box.innerHTML = tabs + `<p class="muted" style="padding:20px 28px">${sel ? 'Не нашёл новых героев для этой позиции — попробуй другую.' : 'Мало игр, чтобы выбрать героя.'} ${restore}</p>`; bindTabs(); bindRestore(); return; }
   const fc = x => sel ? x.month : x.w50, ord = x => sel ? x.score : x.w50;
+  // Мой пул: до 3 героев на роль, хранится в браузере для этого игрока. {h, p, tab} — tab нужен, чтобы открыть героя там, откуда он добавлен
+  const poolKey = 'dc_pool_' + S.id, poolGet = () => lsGet(poolKey) || [];
+  const poolBar = () => { const pool = poolGet();
+    if(!pool.length) return `<div class="mh-pool empty">⭐ Собери свой пул: 2–3 героя на роль. Опыт копится на них, а не размазывается по 30 героям — так растут быстрее всего.</div>`;
+    return `<div class="mh-pool"><span class="mh-pool-t">Мой пул</span>${[1,2,3,4,5].filter(p => pool.some(e => e.p === p)).map(p => `<span class="mh-pool-r"><small>${roleShort(p)}</small>${pool.filter(e => e.p === p).map(e =>
+      `<button class="mh-pool-h" data-h="${e.h}" data-tab="${e.tab}" title="${hn(e.h)}"><img src="${CDN + H(e.h).img}" alt=""></button>`).join('')}</span>`).join('')}</div>`; };
 
   // Показ: главный крупно, два запасных карточками, ниже — весь список модели, чтобы выбрать самому
   const show = h => {
@@ -1988,9 +2004,10 @@ async function renderMyHero(S, sel){
       <span>${pct0(t.now)} → <b class="${wrClass(t.month)}">${pct0(t.month)}</b> через месяц · ${t.short}</span></div><em>Сделать главным →</em></button>`).join('');
     const list = r.all.slice().sort((a,b) => ord(b) - ord(a)).map(y => `<button class="mh-opt ${y.h === m.h ? 'on' : ''}" data-h="${y.h}" data-n="${hn(y.h).toLowerCase()}"><img src="${CDN + H(y.h).img}" alt="">
       <b>${hn(y.h)}</b><span><b class="${wrClass(fc(y))}">${pct0(fc(y))}</b> через месяц${sel ? ` · стиль ${y.fitPct}%` : ''}${y.n ? ` · у тебя ${y.w}–${y.n - y.w}` : ''}</span></button>`).join('');
-    box.innerHTML = `<div class="mh-flash"></div>${tabs}<div class="mh-grid"><div class="mh-left">${mhStage(m.h)}${psyRadar(S, m.h, m.pos)}</div><div class="mh-info"><div class="mh-kick">${m.kick}</div><div class="mh-name">${hn(m.h)}</div>
+    box.innerHTML = `<div class="mh-flash"></div>${tabs}${poolBar()}<div class="mh-grid"><div class="mh-left">${mhStage(m.h)}${psyRadar(S, m.h, m.pos)}</div><div class="mh-info"><div class="mh-kick">${m.kick}</div><div class="mh-name">${hn(m.h)}</div>
       <div class="mh-line">${m.line}</div>${vs}${sel ? '' : `<p class="mh-say">Модель перебрала ${r.n} твоих героев. Почему он:</p>`}${mhList(m.reasons)}${verdict}${mhFaces(m.faces)}
-      <div class="mh-pickbar"><button class="mh-no" title="Убрать героя из подбора на всех вкладках">👎 Не мой герой — убрать</button><button class="mh-open">Выбрать самому из ${r.all.length} ▾</button></div></div></div>
+      <div class="mh-pickbar">${(() => { const pool = poolGet(), inP = pool.some(e => e.h === m.h && e.p === m.pos), full = pool.filter(e => e.p === m.pos).length >= 3;
+        return `<button class="mh-pool-add ${inP ? 'on' : ''}" ${!inP && full ? 'disabled title="На роли уже 3 героя — убери одного"' : ''}>${inP ? '✓ В моём пуле' : `⭐ В мой пул (${role})`}</button>`; })()}<button class="mh-no" title="Убрать героя из подбора на всех вкладках">👎 Не мой герой — убрать</button><button class="mh-open">Выбрать самому из ${r.all.length} ▾</button></div></div></div>
       ${sides ? `<div class="mh-sides"><div class="mh-sides-t">Ещё два варианта — нажми, чтобы сделать главным</div>${sides}</div>` : ''}
       <div class="mh-pick hidden"><div class="mh-pick-h"><b>Все герои${sel ? ` на позицию ${role} — по стилю и прогнозу` : ' — по прогнозу модели через месяц'}</b><input class="mh-q" placeholder="Найти героя…" autocomplete="off">${restore}</div><div class="mh-opts">${list}</div></div>`;
     bindTabs(); bindRestore();
@@ -1998,9 +2015,15 @@ async function renderMyHero(S, sel){
     box.querySelectorAll('.mh-side,.mh-opt').forEach(b => b.onclick = () => { show(+b.dataset.h); box.scrollIntoView({behavior: 'smooth', block: 'start'}); });
     box.querySelector('.mh-open').onclick = () => { pick.classList.toggle('hidden'); if(!pick.classList.contains('hidden')){ pick.scrollIntoView({behavior: 'smooth', block: 'start'}); box.querySelector('.mh-q').focus(); } };
     box.querySelector('.mh-q').oninput = e => { const q = e.target.value.trim().toLowerCase(); box.querySelectorAll('.mh-opt').forEach(o => o.classList.toggle('hidden', !!q && !o.dataset.n.includes(q))); };
+    box.querySelector('.mh-pool-add').onclick = () => { let pool = poolGet();
+      pool = pool.some(e => e.h === m.h && e.p === m.pos) ? pool.filter(e => !(e.h === m.h && e.p === m.pos)) : [...pool, {h: m.h, p: m.pos, tab: sel}];
+      lsSet(poolKey, pool); show(m.h); };
+    box.querySelectorAll('.mh-pool-h').forEach(b => b.onclick = () => { const tab = +b.dataset.tab, h = +b.dataset.h;
+      if(tab === sel) return show(h); cache.idx[tab] = h; lsSet('dc_mh_' + S.id, tab); renderMyHero(S, tab); });
     // «Не мой герой»: отметка «не хочу» (та же, что была в подробном разборе) — подбор пересчитывается на всех вкладках
     box.querySelector('.mh-no').onclick = () => { const pr = prefs(); pr.heroes[m.h] = -1; lsSet(prefKey(), pr); S.mhCache = {idx: {}, shown: true}; renderMyHero(S, sel); };
-    renderGrowth(S, {h: m.h, pos: m.pos, now: m.now, month: m.month, bias: m.persp ? m.persp.transfer : 0});   // «Твоё будущее» — с этим героем
+    const gk = m.h + '_' + m.pos;   // «Твоё будущее» — с этим героем; пересчёт только при смене героя, не от кнопки пула
+    if(cache.growKey !== gk){ cache.growKey = gk; renderGrowth(S, {h: m.h, pos: m.pos, now: m.now, month: m.month, bias: m.persp ? m.persp.transfer : 0}); }
   };
   show(cache.idx[sel] || r.best.h);
 }
