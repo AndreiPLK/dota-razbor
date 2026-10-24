@@ -2643,6 +2643,11 @@ async function renderFocus(m, p, team, foes){
     : 'Профиль игрока скрыт или мало игр на этой позиции. Полный разбор — после разбора игрока на вкладке «Игрок».';
   $('counter').innerHTML = list.map(x => `<div class="crow ${x.heroId === p.hero_id ? 'mine' : ''}"><img src="${CDN + H(x.heroId).img}" alt=""><div><b>${H(x.heroId).localized_name}</b>
     <div class="muted" style="font-size:13px">${x.winCount}–${x.matchCount - x.winCount} на этой позиции</div></div><div class="sc ${wrClass(x.winCount/x.matchCount)}">${pct0(x.winCount/x.matchCount)}</div></div>`).join('');
+  // Одна кнопка вместо инструкции: сразу разобрать этого игрока целиком — герой, роль, пул, будущее
+  if(p.account_id){ const b = document.createElement('button'); b.className = 'mh-cmpbtn'; b.style.marginTop = '12px';
+    b.textContent = `🦸 Разобрать ${p.personaname || 'этого игрока'} целиком — найти его героя →`;
+    b.onclick = () => { document.querySelector('.tab[data-tab="player"]').click(); $('q').value = p.account_id; $('go').click(); window.scrollTo({top: 0, behavior: 'smooth'}); };
+    $('counter').appendChild(b); }
 }
 
 // ───────── общее ─────────
