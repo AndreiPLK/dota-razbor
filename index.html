@@ -360,6 +360,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 @media(prefers-reduced-motion:reduce){.mh-plan{animation:none;opacity:1;transform:none}}
 .lp{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);align-items:center;gap:10px;overflow:hidden;padding:26px 30px;border-color:rgba(167,139,250,.35);
   background:radial-gradient(70% 90% at 80% 50%,rgba(139,92,246,.25),transparent 70%),linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.015))}
+#landing.hidden{display:none}
 @media(max-width:760px){.lp{grid-template-columns:1fr;padding:22px 18px}.lp-stage{order:-1;max-height:300px}}
 .lp-h{font-size:clamp(28px,4.6vw,48px);font-weight:900;line-height:1.08;margin:10px 0 12px;letter-spacing:-.01em}
 .lp-h span{background:linear-gradient(90deg,#c4b5fd,#67e8f9);-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -1193,7 +1194,7 @@ function renderReport(S){
   $('rolesH').textContent = `Роли ${PERIOD.label} · ${year.length} игр`;
   $('factsH').textContent = `${PERIOD.cap} в цифрах`;
   renderSummary(S);
-  $('report').classList.remove('hidden');
+  $('report').classList.remove('hidden'); $('landing').classList.add('hidden');
   if($('more').open) drawCharts(S);
 }
 
