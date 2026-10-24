@@ -2205,6 +2205,12 @@ function todayPlan(S, m, cur){
   const byIdx = [1, 2, 3, 4, 5].map(i => G.filter(g => (i < 5 ? g.sessIdx === i : g.sessIdx >= 5)));
   let stop = null; for(let i = 1; i < 5; i++){ const w = wr(byIdx[i]); if(byIdx[i].length >= 40 && w != null && w <= all - 0.025 && z(w, byIdx[i].length) >= 1.5){ stop = i; break; } }
   if(stop) tiles.push(['🎮', `${stop} ${gamesWord(stop)} за сессию`, `дальше ты проседаешь: ${stop + 1}-я игра — ${pct0(wr(byIdx[stop]))} против ${pct0(all)} в среднем`]);
+  // Сегодня: сколько уже сыграно и чем закончились последние — правило из твоих сессий применяется прямо сейчас
+  const d0 = new Date(); d0.setHours(0, 0, 0, 0);
+  const today = G.filter(g => g.t*1000 >= d0).sort((a,b) => a.t - b.t), tw = today.filter(g => g.win).length;
+  const lost2 = today.length >= 2 && !today[today.length - 1].win && !today[today.length - 2].win;
+  if(today.length && (lost2 || (stop && today.length >= stop))) tiles.unshift(['⏸', `Сегодня уже ${today.length} ${gamesWord(today.length)}: ${tw}–${today.length - tw}`,
+    lost2 ? 'последние две — поражения. По твоим же играм дальше шанс ниже: перерыв хотя бы на час' : `после ${stop}-й игры за сессию ты обычно проседаешь — лучше остановиться на сегодня`]);
   const after2 = G.filter(g => g.lossStreak >= 2);
   if(after2.length >= 40 && wr(after2) <= all - 0.025 && z(wr(after2), after2.length) >= 1.5) tiles.push(['✋', '2 поражения подряд — стоп', `после них ты выигрываешь ${pct0(wr(after2))} — это тильт, а не невезение`]);
   const slots = [[6, 12, 'утром'], [12, 18, 'днём'], [18, 24, 'вечером'], [0, 6, 'ночью']].map(([a, b, l]) => { const g = G.filter(x => { const h = new Date(x.t*1000).getHours(); return h >= a && h < b; }); return {l, a, b, n: g.length, w: wr(g)}; }).filter(s => s.n >= 60);
