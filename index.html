@@ -357,6 +357,22 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-side b{font-size:16px} .mh-side div>span:last-child{display:block;font-size:12px;color:var(--muted)} .mh-side div>span b{font-size:12px}
 .mh-side em{grid-column:2;font-style:normal;font-size:12px;font-weight:700;color:#67e8f9}
 @media(prefers-reduced-motion:reduce){.mh-side{animation:none;opacity:1;transform:none}}
+.mh-pickbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;animation:rise .6s 2s both}
+.mh-pickbar button{background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);padding:8px 14px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:none}
+.mh-pickbar .mh-open{border-color:rgba(103,232,249,.45);color:#a5f3fc}
+.mh-pickbar .mh-no:hover{border-color:rgba(255,77,109,.6);color:#ffb3c1} .mh-pickbar .mh-open:hover{background:rgba(34,211,238,.12)}
+.mh-pick{padding:0 28px 26px;position:relative;z-index:2}
+@media(max-width:700px){.mh-pick{padding:0 18px 20px}}
+.mh-pick-h{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.mh-pick-h input{flex:0 1 240px;min-width:0;padding:8px 12px}
+.mh-opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;max-height:420px;overflow-y:auto;padding-right:4px}
+.mh-opt{display:grid;grid-template-columns:64px 1fr;grid-template-rows:auto auto;gap:0 10px;align-items:center;text-align:left;background:var(--panel2);border:1px solid var(--line);
+  border-radius:12px;padding:6px 10px 6px 6px;color:var(--text);font-weight:400;box-shadow:none;cursor:pointer}
+.mh-opt:hover{border-color:rgba(167,139,250,.6)} .mh-opt.on{border-color:var(--good);box-shadow:0 0 0 1px var(--good) inset}
+.mh-opt img{width:64px;height:36px;object-fit:cover;border-radius:8px;grid-row:1/3}
+.mh-opt>b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .mh-opt>span{font-size:11px;color:var(--muted)}
+.mh-opt.hidden{display:none}
+@media(prefers-reduced-motion:reduce){.mh-pickbar{animation:none;opacity:1;transform:none}}
 </style>
 </head>
 <body>
@@ -1768,32 +1784,56 @@ function pickMyHero(S){
   }).sort((a,b) => b.score - a.score);
   const big = rows.filter(x => x.n >= 30).sort((a,b) => b.w/b.n - a.w/a.n), byW50 = rows.slice().sort((a,b) => b.w50 - a.w50);
   const [best, ...alts] = mhOrderTrio(ML, rows.slice(0, 3), x => x.pos, perMonth);
-  return {best, alts, n: rows.length, grow, overall: F.overall, big, perMonth,
+  return {best, alts, all: rows, n: rows.length, grow, overall: F.overall, big, perMonth,
     rankWr: best ? big.indexOf(best) + 1 : 0, nBig: big.length, rankW50: best ? byW50.indexOf(best) + 1 : 0};
 }
 
+// Стиль героя на позиции — без винрейтов: каким его делает игра. Профиль из средних по рангу (убийства, смерти, помощь,
+// урон по героям и башням, добивания, золото — z-оценки среди всех героев позиции), роли героя и ближний/дальний бой.
+const STYLE_ROLES = ['Carry', 'Nuker', 'Escape', 'Disabler', 'Initiator', 'Durable', 'Pusher', 'Support', 'Jungler'];
+function styleVecs(S, p){
+  const c = S.styleCache = S.styleCache || {}; if(c[p]) return c[p];
+  const T = S.posTable || {}, ids = Object.keys(T).map(Number).filter(h => heroes[h]);
+  const statOf = h => { const t = T[h], at = t[p]; if(at && at.n >= 100) return at; return Object.values(t).sort((a,b) => (b.n || 0) - (a.n || 0))[0]; };
+  const raw = ids.map(h => { const s = statOf(h); return [s.k, s.d, s.a, Math.log1p(s.hd), Math.log1p(s.td), Math.log1p(s.cs), Math.log1p(s.nw)]; });
+  const mu = raw[0].map((_, j) => mean(raw.map(r => r[j]))), sd = raw[0].map((_, j) => Math.sqrt(mean(raw.map(r => (r[j] - mu[j])**2))) || 1);
+  const out = {};
+  ids.forEach((h, i) => { const roles = H(h).roles || [];
+    out[h] = [...raw[i].map((v, j) => (v - mu[j])/sd[j]), ...STYLE_ROLES.map(r => roles.includes(r) ? 0.8 : 0), String(H(h).attack || '').toLowerCase().startsWith('r') ? 1.2 : -1.2]; });
+  return c[p] = out;
+}
+const cosine = (a, b) => { let d = 0, na = 0, nb = 0; for(let i = 0; i < a.length; i++){ d += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; } return na && nb ? d/Math.sqrt(na*nb) : 0; };
+
 function pickPerspective(S, p){
-  const F = S.F || heroForecasts(S), ML = S.ML = S.ML || mlBuild(S), pr = prefs().heroes, perMonth = mhPerMonth(S), T = S.posTable || {};
+  const F = S.F || heroForecasts(S), ML = S.ML = S.ML || mlBuild(S), pr = prefs().heroes, perMonth = mhPerMonth(S), T = S.posTable || {}, V = styleVecs(S, p);
   const rec = {}, atPos = {};
   S.year.forEach(g => { const o = rec[g.hero] = rec[g.hero] || {n: 0, w: 0}; o.n++; o.w += g.win ? 1 : 0;
     if(g.pos === p){ const q = atPos[g.hero] = atPos[g.hero] || {n: 0, w: 0}; q.n++; q.w += g.win ? 1 : 0; } });
+  // Твой стиль на позиции: центр профилей героев, на которых ты тут играешь, с весом «сколько играешь × как выигрываешь»
+  const own = Object.entries(atPos).filter(([h, o]) => o.n >= 3 && V[h]);
+  const C = V[Object.keys(V)[0]].map((_, j) => own.reduce((t, [h, o]) => t + o.n*(0.5 + solid(o.w, o.n))*V[h][j], 0));
   // Твой уровень на героях, где 10+ игр: на сколько ты выше/ниже своего среднего (сглажено)
-  const known = Object.entries(rec).filter(([, o]) => o.n >= 10).map(([h, o]) => ({h: +h, n: o.n, wr: o.w/o.n, d: (o.w + 10*F.overall)/(o.n + 10) - F.overall}));
+  const known = Object.entries(rec).filter(([h, o]) => o.n >= 10 && V[h]).map(([h, o]) => ({h: +h, n: o.n, wr: o.w/o.n, d: (o.w + 10*F.overall)/(o.n + 10) - F.overall}));
   // Герой «принадлежит» позиции, если на ней его играют чаще всего или в 35%+ игр — чтобы один герой не кочевал по всем вкладкам
   const cand = Object.keys(T).map(Number).filter(h => { const t = T[h], tot = Object.values(t).reduce((s, x) => s + (x.n || 0), 0), tp = (t[p] || {}).n || 0;
     const top = Math.max(...Object.values(t).map(x => x.n || 0));
-    return heroes[h] && tot && tp >= 200 && (tp === top || tp/tot >= 0.35) && pr[h] !== -1 && (rec[h] ? rec[h].n : 0) < 15; });
+    return V[h] && tot && tp >= 200 && (tp === top || tp/tot >= 0.35) && pr[h] !== -1 && (rec[h] ? rec[h].n : 0) < 15; });
   const rows = cand.map(h => {
     const s = mlSimulate(ML, h, p, 55, perMonth, 40);
-    const sims = known.filter(k => k.h !== h).map(k => ({...k, s: mhSim(h, k.h)})).filter(k => k.s >= 0.45).sort((a,b) => b.s - a.s).slice(0, 4);
+    const sims = known.filter(k => k.h !== h).map(k => ({...k, s: cosine(V[h], V[k.h])})).filter(k => k.s >= 0.5).sort((a,b) => b.s - a.s).slice(0, 3);
     const ws = sims.reduce((t, k) => t + k.s*k.s, 0), transfer = ws ? 0.5*sims.reduce((t, k) => t + k.s*k.s*k.d, 0)/ws : 0;   // половина — осторожно
     return {h, n: rec[h] ? rec[h].n : 0, w: rec[h] ? rec[h].w : 0, now: clamp(s.p5 + transfer, .3, .7), month: clamp(s.p50 + transfer, .3, .7),
-      transfer, sims, faces: heroFaces(h), cplx: H(h).complexity || 2};
-  }).sort((a,b) => b.month - a.month);
+      transfer, sims, fit: own.length ? cosine(V[h], C) : 0, faces: heroFaces(h), cplx: H(h).complexity || 2};
+  });
+  // Порядок: стиль важнее (65%), прогноз через месяц — 35%; оба приведены к шкале 0..1 среди кандидатов
+  const nrm = (x, a) => { const lo = Math.min(...a), hi = Math.max(...a); return hi > lo ? (x - lo)/(hi - lo) : 0.5; };
+  const fits = rows.map(x => x.fit), months = rows.map(x => x.month);
+  rows.forEach(x => { x.fitPct = Math.round(50 + 50*x.fit); x.score = 0.65*nrm(x.fit, fits) + 0.35*nrm(x.month, months); });
+  rows.sort((a,b) => b.score - a.score);
   const mine = Object.entries(atPos).filter(([, o]) => o.n >= 10).map(([h, o]) => ({h: +h, n: o.n, wr: o.w/o.n, sc: solid(o.w, o.n)})).sort((a,b) => b.sc - a.sc);
   const posG = S.year.filter(g => g.pos === p);
-  const [best, ...alts] = mhOrderTrio(ML, rows.slice(0, 3), () => p, perMonth);
-  return {best, alts, cur: mine[0] || null, posWr: posG.length ? posG.filter(g => g.win).length/posG.length : null, posN: posG.length, nCand: rows.length, perMonth};
+  return {best: rows[0], alts: rows.slice(1, 3), all: rows, cur: mine[0] || null, posWr: posG.length ? posG.filter(g => g.win).length/posG.length : null, posN: posG.length, nCand: rows.length, perMonth,
+    ownTop: own.sort((a,b) => b[1].n - a[1].n).slice(0, 3).map(([h]) => +h)};
 }
 
 const mhStage = h => { const sh = heroShort(h);
@@ -1815,24 +1855,28 @@ function mineReasons(x, r){
     facesLine(x.faces),
     `<b>Через месяц (~${r.perMonth} игр) — ${pct0(x.w50)}</b> по модели${x.w50 - x.now >= 0.01 ? `: растёшь с ${pct0(x.now)}` : ': уровень держится, не проседает'}.`].filter(Boolean);
 }
-// Причины для перспективного героя (вкладки позиций)
+// Причины для перспективного героя (вкладки позиций): сначала стиль, потом прогноз
 function perspReasons(x, r){
-  const sims = x.sims.slice(0, 3), simWr = sims.length ? sims.reduce((t, k) => t + k.wr, 0)/sims.length : null;
+  const sims = x.sims, simWr = sims.length ? sims.reduce((t, k) => t + k.wr, 0)/sims.length : null;
   return [
-    `<b>Через месяц (~${r.perMonth} игр) — ${pct0(x.month)}</b>: первые игры ${pct0(x.now)}, дальше растёшь по своей кривой обучения. Модель прожила этот месяц на каждом из ${r.nCand} героев позиции.`,
-    sims.length ? `<b>Похож на твоих: ${sims.map(k => hn(k.h)).join(', ')}</b> — на таких ты выигрываешь ${pct0(simWr)}, и этот уровень переносится.` : `<b>Не похож ни на одного твоего героя</b> — прогноз только по твоей кривой обучения.`,
+    sims.length ? `<b>Под твой стиль — ${x.fitPct}%</b>: играется как твои ${sims.map(k => hn(k.h)).join(', ')} — на них ты выигрываешь ${pct0(simWr)}, и этот уровень переносится.`
+      : `<b>Под твой стиль — ${x.fitPct}%</b>: по профилю (фарм, драки, урон, ближний/дальний бой) близок к тому, как ты играешь${r.ownTop.length ? ` на ${r.ownTop.map(hn).join(', ')}` : ''}.`,
+    `<b>Через месяц (~${r.perMonth} игр) — ${pct0(x.month)}</b>: первые игры ${pct0(x.now)}, дальше растёшь по своей кривой обучения.`,
     facesLine(x.faces)].filter(Boolean);
 }
-// Три героя вкладки: главный и два запасных, у каждого — объяснение и рост «сейчас → через месяц»
-function mhTrio(r, sel){
-  const xs = [r.best, ...r.alts].filter(Boolean);
-  const top = x => x === r.best && xs.length > 1 ? [`<b>Лучший прогноз рейтинга из трёх</b>: ${x.g3 >= 0 ? '+' : ''}${x.g3} за 3 месяца, если играть его.`] : [];
-  return sel ? xs.map((x, i) => ({h: x.h, pos: sel, now: x.now, month: x.month, faces: x.faces, persp: x,
-      kick: `${i ? 'Ещё вариант' : 'Перспектива'} · ${roleShort(sel)}`, line: `${x.n ? `у тебя ${x.w}–${x.n - x.w}` : 'ты на нём ещё не играл'} · ${CPLX[x.cplx]} герой`,
-      short: x.sims.length ? `похож на твоего ${hn(x.sims[0].h)}` : `${CPLX[x.cplx]} герой`, reasons: [...perspReasons(x, r), ...top(x)]}))
-    : xs.map((x, i) => ({h: x.h, pos: x.pos, now: x.now, month: x.w50, faces: x.faces,
-      kick: i ? 'Ещё твой герой' : 'Твой герой', line: `${roleShort(x.pos)} · у тебя ${x.w}–${x.n - x.w} · ${CPLX[x.cplx]} герой`,
-      short: `${pct0(x.w/x.n)} за ${x.n} ${gamesWord(x.n)}`, reasons: [...mineReasons(x, r), ...top(x)]}));
+// Вид героя для показа: заголовок, строка, причины и рост «сейчас → через месяц».
+// Главный и два запасных — из тройки финалистов; любой другой — «твой выбор» из списка, с его местом в рейтинге модели.
+function mhView(x, r, sel){
+  const isBest = x.h === r.best.h, isAlt = r.alts.some(a => a.h === x.h), rank = r.all.findIndex(y => y.h === x.h) + 1;
+  const extra = isBest && r.alts.length && !sel ? [`<b>Лучший прогноз рейтинга из трёх</b>: ${x.g3 >= 0 ? '+' : ''}${x.g3} за 3 месяца, если играть его.`]
+    : !isAlt && !isBest ? [`<b>№${rank} из ${r.all.length}</b> в списке модели. ${hn(r.best.h)} даёт больше, но выбор твой — прогноз ниже уже с ним.`] : [];
+  if(sel) return {h: x.h, pos: sel, now: x.now, month: x.month, faces: x.faces, persp: x,
+    kick: `${isBest ? 'Перспектива' : isAlt ? 'Ещё вариант' : 'Твой выбор'} · ${roleShort(sel)}`,
+    line: `${x.n ? `у тебя ${x.w}–${x.n - x.w}` : 'ты на нём ещё не играл'} · ${CPLX[x.cplx]} герой`,
+    short: `стиль ${x.fitPct}%${x.sims.length ? `, как ${hn(x.sims[0].h)}` : ''}`, reasons: [...perspReasons(x, r), ...extra]};
+  return {h: x.h, pos: x.pos, now: x.now, month: x.w50, faces: x.faces,
+    kick: isBest ? 'Твой герой' : isAlt ? 'Ещё твой герой' : 'Твой выбор', line: `${roleShort(x.pos)} · у тебя ${x.w}–${x.n - x.w} · ${CPLX[x.cplx]} герой`,
+    short: `${pct0(x.w/x.n)} за ${x.n} ${gamesWord(x.n)}`, reasons: [...mineReasons(x, r), ...extra]};
 }
 
 async function renderMyHero(S, sel){
@@ -1856,26 +1900,41 @@ async function renderMyHero(S, sel){
   await sleep(Math.max(0, (cache.shown ? 1400 : 2600) - (Date.now() - t0)));
   if(S.heroToken !== token) return;
   cache.shown = true;
-  if(!r.best){ box.innerHTML = tabs + `<p class="muted" style="padding:20px 28px">${sel ? 'Не нашёл новых героев для этой позиции — попробуй другую.' : 'Мало игр, чтобы выбрать героя.'}</p>`; bindTabs(); return; }
+  const removed = Object.entries(prefs().heroes).filter(([, v]) => v === -1).length;
+  const restore = removed ? `<button class="linkbtn mh-restore">Вернуть убранных героев (${removed})</button>` : '';
+  const bindRestore = () => { const b = box.querySelector('.mh-restore'); if(b) b.onclick = () => { const pr = prefs();
+    Object.keys(pr.heroes).forEach(k => { if(pr.heroes[k] === -1) delete pr.heroes[k]; }); lsSet(prefKey(), pr); S.mhCache = {idx: {}, shown: true}; renderMyHero(S, sel); }; };
+  if(!r.best){ box.innerHTML = tabs + `<p class="muted" style="padding:20px 28px">${sel ? 'Не нашёл новых героев для этой позиции — попробуй другую.' : 'Мало игр, чтобы выбрать героя.'} ${restore}</p>`; bindTabs(); bindRestore(); return; }
+  const fc = x => sel ? x.month : x.w50, ord = x => sel ? x.score : x.w50;
 
-  // Показ: главный герой крупно, два запасных карточками — клик делает запасного главным
-  const show = idx => {
-    cache.idx[sel] = idx;
-    const trio = mhTrio(r, sel), m = trio[idx] || trio[0], role = roleShort(sel || m.pos).toLowerCase();
+  // Показ: главный крупно, два запасных карточками, ниже — весь список модели, чтобы выбрать самому
+  const show = h => {
+    cache.idx[sel] = h;
+    const x = [r.best, ...r.alts].find(y => y.h === h) || r.all.find(y => y.h === h) || r.best;
+    const m = mhView(x, r, sel), role = roleShort(sel || m.pos).toLowerCase();
     const vs = sel ? `<div class="mh-vs"><div><span>ты на позиции сейчас (${r.posN} ${gamesWord(r.posN)})</span><b class="${wrClass(r.posWr ?? .5)}">${r.posWr != null ? pct0(r.posWr) : '—'}</b></div><i>→</i><div class="on"><span>${hn(m.h)} через месяц</span><b class="${wrClass(m.month)}">${pct0(m.month)}</b></div></div>` : '';
     const ahead = sel && r.posWr != null && m.month > r.posWr;
     const ace = sel && r.cur && r.cur.wr > m.month ? ` ${hn(r.cur.h)} у тебя уже ${pct0(r.cur.wr)} за ${r.cur.n} ${gamesWord(r.cur.n)} — держи его как козырь, а этого качай вторым.` : '';
     const verdict = sel ? `<div class="mh-verdict ${ahead ? '' : 'meh'}">${ahead ? `Через месяц он может поднять твой ${role} с ${pct0(r.posWr)} до ${pct0(m.month)}.` : 'Пока он не выше твоего уровня на позиции, но из новых героев он среди самых перспективных.'}${ace}</div>` : '';
-    const sides = trio.map((t, i) => i === idx ? '' : `<button class="mh-side" data-i="${i}"><img src="${CDN + H(t.h).img}" alt=""><div><span class="k">${t.kick}</span><b>${hn(t.h)}</b>
+    const sides = [r.best, ...r.alts].filter(y => y.h !== m.h).slice(0, 2).map(y => mhView(y, r, sel)).map(t => `<button class="mh-side" data-h="${t.h}"><img src="${CDN + H(t.h).img}" alt=""><div><span class="k">${t.kick}</span><b>${hn(t.h)}</b>
       <span>${pct0(t.now)} → <b class="${wrClass(t.month)}">${pct0(t.month)}</b> через месяц · ${t.short}</span></div><em>Сделать главным →</em></button>`).join('');
+    const list = r.all.slice().sort((a,b) => ord(b) - ord(a)).map(y => `<button class="mh-opt ${y.h === m.h ? 'on' : ''}" data-h="${y.h}" data-n="${hn(y.h).toLowerCase()}"><img src="${CDN + H(y.h).img}" alt="">
+      <b>${hn(y.h)}</b><span><b class="${wrClass(fc(y))}">${pct0(fc(y))}</b> через месяц${sel ? ` · стиль ${y.fitPct}%` : ''}${y.n ? ` · у тебя ${y.w}–${y.n - y.w}` : ''}</span></button>`).join('');
     box.innerHTML = `<div class="mh-flash"></div>${tabs}<div class="mh-grid">${mhStage(m.h)}<div class="mh-info"><div class="mh-kick">${m.kick}</div><div class="mh-name">${hn(m.h)}</div>
-      <div class="mh-line">${m.line}</div>${vs}${sel ? '' : `<p class="mh-say">Модель перебрала ${r.n} твоих героев. Почему он:</p>`}${mhList(m.reasons)}${verdict}${mhFaces(m.faces)}</div></div>
-      ${sides ? `<div class="mh-sides"><div class="mh-sides-t">Ещё два варианта — нажми, чтобы сделать главным</div>${sides}</div>` : ''}`;
-    bindTabs();
-    box.querySelectorAll('.mh-side').forEach(b => b.onclick = () => { show(+b.dataset.i); box.scrollIntoView({behavior: 'smooth', block: 'start'}); });
+      <div class="mh-line">${m.line}</div>${vs}${sel ? '' : `<p class="mh-say">Модель перебрала ${r.n} твоих героев. Почему он:</p>`}${mhList(m.reasons)}${verdict}${mhFaces(m.faces)}
+      <div class="mh-pickbar"><button class="mh-no" title="Убрать героя из подбора на всех вкладках">👎 Не мой герой — убрать</button><button class="mh-open">Выбрать самому из ${r.all.length} ▾</button></div></div></div>
+      ${sides ? `<div class="mh-sides"><div class="mh-sides-t">Ещё два варианта — нажми, чтобы сделать главным</div>${sides}</div>` : ''}
+      <div class="mh-pick hidden"><div class="mh-pick-h"><b>Все герои${sel ? ` на позицию ${role} — по стилю и прогнозу` : ' — по прогнозу модели через месяц'}</b><input class="mh-q" placeholder="Найти героя…" autocomplete="off">${restore}</div><div class="mh-opts">${list}</div></div>`;
+    bindTabs(); bindRestore();
+    const pick = box.querySelector('.mh-pick');
+    box.querySelectorAll('.mh-side,.mh-opt').forEach(b => b.onclick = () => { show(+b.dataset.h); box.scrollIntoView({behavior: 'smooth', block: 'start'}); });
+    box.querySelector('.mh-open').onclick = () => { pick.classList.toggle('hidden'); if(!pick.classList.contains('hidden')){ pick.scrollIntoView({behavior: 'smooth', block: 'start'}); box.querySelector('.mh-q').focus(); } };
+    box.querySelector('.mh-q').oninput = e => { const q = e.target.value.trim().toLowerCase(); box.querySelectorAll('.mh-opt').forEach(o => o.classList.toggle('hidden', !!q && !o.dataset.n.includes(q))); };
+    // «Не мой герой»: отметка «не хочу» (та же, что была в подробном разборе) — подбор пересчитывается на всех вкладках
+    box.querySelector('.mh-no').onclick = () => { const pr = prefs(); pr.heroes[m.h] = -1; lsSet(prefKey(), pr); S.mhCache = {idx: {}, shown: true}; renderMyHero(S, sel); };
     renderGrowth(S, {h: m.h, pos: m.pos, now: m.now, month: m.month, bias: m.persp ? m.persp.transfer : 0});   // «Твоё будущее» — с этим героем
   };
-  show(cache.idx[sel] || 0);
+  show(cache.idx[sel] || r.best.h);
 }
 
 // ───────── на какого про ты похож ─────────
