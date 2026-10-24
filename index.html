@@ -724,7 +724,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261024174720';
+const BUILD = '20261024174906';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2419,7 +2419,7 @@ async function renderMyHero(S, sel){
     const tag = {}; TAGS.forEach(([t, f]) => { const free = top.filter(y => !tag[y.h]); if(!free.length) return; const w = free.reduce((a, b) => f(b) > f(a) ? b : a); tag[w.h] = t; });
     top.forEach(y => { if(!tag[y.h]) tag[y.h] = y.sims && y.sims[0] ? `Похож на твоего ${hn(y.sims[0].h)}` : 'Под твой стиль'; });
     const main = o ? `<div class="mh-main-own"><img src="${CDN + H(o.h).img}" alt=""><div><div class="mh-kick">Главный герой на позиции «${role}»</div><b>${hn(o.h)} — ${pct0(o.wr)} за ${o.n} ${gamesWord(o.n)}</b>
-        <span>${r.ownBetter ? `Он выигрывает больше, чем даст любой новый (лучший новый к 100-й игре — ${pct0(Math.max(bestNew.month, bestNew.ceil))}). Играй его чаще: цель ${Math.max(10, Math.round(perM/2))} игр в месяц, держать 51%+.`
+        <span>${r.ownBetter ? `Он выигрывает больше, чем даст любой новый (лучший новый к 100-й игре — ${pct0(Math.max(bestNew.month, bestNew.ceil))}). Играй его чаще: цель ${Math.max(10, Math.round(perM/2))} ${gamesWord(Math.max(10, Math.round(perM/2)))} в месяц, держать 51%+.`
           : `Это твой основной здесь. Новые ниже могут поднять тебя выше: ${hn(bestNew.h)} — до ${pct0(Math.max(bestNew.month, bestNew.ceil))} к 100-й игре.`}</span>
         <button class="linkbtn mh-own" data-h="${o.h}">Открыть ${hn(o.h)} и план роста →</button></div></div>`
       : `<div class="mh-main-own none"><div><div class="mh-kick">Главный герой на позиции «${role}»</div><b>Своего героя здесь пока нет</b><span>На этой позиции у тебя нет героя с 20+ играми. Выбери одного из новых ниже и сыграй на нём 20 игр — он станет главным.</span></div></div>`;
