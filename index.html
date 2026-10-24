@@ -2209,6 +2209,14 @@ function todayPlan(S, m, cur){
   const slots = [[6, 12, 'утром'], [12, 18, 'днём'], [18, 24, 'вечером'], [0, 6, 'ночью']].map(([a, b, l]) => { const g = G.filter(x => { const h = new Date(x.t*1000).getHours(); return h >= a && h < b; }); return {l, a, b, n: g.length, w: wr(g)}; }).filter(s => s.n >= 60);
   const bs = slots.slice().sort((a,b) => b.w - a.w)[0], ws = slots.slice().sort((a,b) => a.w - b.w)[0];
   if(bs && ws && bs.w - ws.w >= 0.03 && (bs.w - ws.w)/Math.sqrt(all*(1 - all)*(1/bs.n + 1/ws.n)) >= 1.5) tiles.push(['🕗', `Играй ${bs.l} (${bs.a}–${bs.b} ч)`, `${pct0(bs.w)} побед против ${pct0(ws.w)} ${ws.l}`]);
+  // Что повторяется в последних 15 играх — сравниваем с твоей же нормой за всё время
+  const rec15 = [...(S.month || [])].sort((a,b) => b.t - a.t).slice(0, 15);
+  if(rec15.length >= 10){
+    const dR = mean(rec15.map(g => g.d)), dAll = mean(G.filter(g => g.d != null).map(g => g.d));
+    if(dR != null && dAll && dR >= dAll*1.2) tiles.push(['💀', `Много смертей: ${dR.toFixed(1)} за игру`, `в последних ${rec15.length} играх — обычно у тебя ${dAll.toFixed(1)}. Покупай сейв раньше и не фарми там, где не видно врага`]);
+    const dSum = rec15.reduce((s, g) => s + (g.d || 0), 0), solo = rec15.reduce((s, g) => s + (g.soloDeaths || 0), 0);
+    if(dSum >= 30 && solo/dSum >= 0.3) tiles.push(['☠', `${Math.round(100*solo/dSum)}% смертей — в одиночку`, `в последних ${rec15.length} играх ${solo} из ${dSum} смертей вне драки: тебя ловят одного — ходи с командой или с вардом`]);
+  }
   // Первая игра задаёт настрой: новый герой — не первым. Если главный ещё новый, начинаем с уверенного героя позиции
   if(m.persp && cur && cur.h !== m.h) tiles.push(['🦸', `Начни с ${hn(cur.h)}, потом ${hn(m.h)}`, `первая игра задаёт настрой: на ${hn(cur.h)} у тебя ${pct0(cur.wr)}, а нового героя бери второй игрой`]);
   else tiles.push(['🦸', `Начни с ${hn(m.h)}`, 'первая игра задаёт настрой — бери героя, на котором уверен']);
