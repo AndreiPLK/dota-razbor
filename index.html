@@ -412,6 +412,13 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 @media(max-width:600px){.mh-subtabs{flex-wrap:nowrap;margin:0 14px 12px;gap:4px}.mh-subtab{flex:1;padding:8px 4px;font-size:11.5px;line-height:1.25}}
 .mh-pane .mh-plan,.mh-pane .mh-today{animation:none}
 .mh-link{background:rgba(255,255,255,.06);border:1px solid var(--line);color:#a5f3fc;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;box-shadow:none;margin-left:6px}
+.mfocus{display:grid;grid-template-columns:200px 1fr;align-items:center;gap:10px;margin-top:10px;position:relative}
+.mfocus:empty{display:none}
+.mf-stage .mh-stage{max-height:220px} .mf-stage .mh-render{animation:emerge 1s cubic-bezier(.2,.8,.2,1) both}
+.mf-info{display:flex;flex-direction:column;gap:4px}
+.mf-name{font-family:Unbounded,Manrope,sans-serif;font-size:clamp(26px,4vw,40px);font-weight:900;line-height:1.05;background:linear-gradient(90deg,#fff,#c4b5fd 55%,#67e8f9);-webkit-background-clip:text;background-clip:text;color:transparent}
+.mf-kda{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums} .mf-res{font-weight:800;font-size:15px}
+@media(max-width:600px){.mfocus{grid-template-columns:120px 1fr}.mf-stage .mh-stage{max-height:140px}}
 .mh-cmpbtn{grid-column:1/-1;justify-self:center;background:rgba(255,255,255,.05);border:1px solid rgba(103,232,249,.4);color:#a5f3fc;padding:7px 16px;border-radius:12px;font-size:13px;font-weight:800;box-shadow:none}
 .mh-cmp{grid-column:1/-1} .mh-cmp.hidden{display:none}
 .cmp{display:grid;grid-template-columns:minmax(0,280px) minmax(0,1fr);gap:14px;align-items:center;padding:12px;border-radius:16px;background:var(--panel2);border:1px solid var(--line)}
@@ -2534,6 +2541,7 @@ async function analyzeMatch(id){
   $('mhead').innerHTML = `<div class="teams"><div><span class="muted">Radiant</span><div class="score ${m.radiant_win ? 'good' : 'bad'}">${m.radiant_score}</div></div><div class="muted">:</div>
     <div><span class="muted">Dire</span><div class="score ${m.radiant_win ? 'bad' : 'good'}">${m.dire_score}</div></div>
     <div style="margin-left:auto;text-align:right">Победа <b>${W.name}</b><br><span class="muted">${Math.floor(dur/60)}:${String(dur%60).padStart(2,'0')} · матч ${m.match_id}</span></div></div>
+    <div id="mfocus" class="mfocus"></div>
     ${m.version ? '' : `<p class="warn" style="margin:12px 0 0">Stratz ещё не разобрал реплей этого матча: нет линий, вардов и графика золота. Попробуй через несколько минут.</p>`}`;
   $('whyTitle').textContent = `Почему проиграли ${L.name}`; $('why').innerHTML = defeatReasons(m, L, W).map(t => `<li>${t}</li>`).join('');
   $('loseTitle').textContent = `${L.name} · проиграли · ожидания по роли`; $('loseTeam').innerHTML = teamHtml(L, true);
@@ -2548,6 +2556,10 @@ async function analyzeMatch(id){
     $('focusPick').innerHTML = order.map((x, i) => `<button class="mp ${x === p ? 'on' : ''} ${i === 5 ? 'sep' : ''}" data-i="${i}"><img src="${CDN + heroOf(x).img}" alt="">${heroOf(x).localized_name}</button>`).join('');
     document.querySelectorAll('#focusPick .mp').forEach(b => b.onclick = () => show(order[+b.dataset.i]));
     $('focusOut').classList.toggle('hidden', !p);
+    // Живой герой того, за кого разбор: он, его счёт и итог матча — в шапке
+    const won = p && ((p.player_slot < 128) === !!m.radiant_win), tm = p && teamOf(p);
+    $('mfocus').innerHTML = p ? `<div class="mf-stage">${mhStage(p.hero_id)}</div><div class="mf-info"><span class="mh-kick">${p.personaname || 'Игрок'} · ${POS[tm.pos.get(p)] || ''}</span>
+      <b class="mf-name">${heroOf(p).localized_name}</b><span class="mf-kda">${p.kills}/${p.deaths}/${p.assists}</span><span class="mf-res ${won ? 'good' : 'bad'}">${won ? 'Победа' : 'Поражение'}</span></div>` : '';
     if(p) renderFocus(m, p, teamOf(p), teamOf(p) === R ? D : R);
   };
   show(known || null);
