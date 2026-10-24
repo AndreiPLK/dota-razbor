@@ -2216,7 +2216,8 @@ function todayPlan(S, m, cur){
   const d0 = new Date(); d0.setHours(0, 0, 0, 0);
   const today = G.filter(g => g.t*1000 >= d0).sort((a,b) => a.t - b.t), tw = today.filter(g => g.win).length;
   const lost2 = today.length >= 2 && !today[today.length - 1].win && !today[today.length - 2].win;
-  if(today.length && (lost2 || (stop && today.length >= stop))) tiles.unshift(['⏸', `Сегодня уже ${today.length} ${gamesWord(today.length)}: ${tw}–${today.length - tw}`,
+  const stopNow = today.length && (lost2 || (stop && today.length >= stop));
+  if(stopNow) tiles.unshift(['⏸', `Сегодня уже ${today.length} ${gamesWord(today.length)}: ${tw}–${today.length - tw}`,
     lost2 ? 'последние две — поражения. По твоим же играм дальше шанс ниже: перерыв хотя бы на час' : `после ${stop}-й игры за сессию ты обычно проседаешь — лучше остановиться на сегодня`]);
   const after2 = G.filter(g => g.lossStreak >= 2);
   if(after2.length >= 40 && wr(after2) <= all - 0.025 && z(wr(after2), after2.length) >= 1.5) tiles.push(['✋', '2 поражения подряд — стоп', `после них ты выигрываешь ${pct0(wr(after2))} — это тильт, а не невезение`]);
@@ -2230,7 +2231,7 @@ function todayPlan(S, m, cur){
     if(dR != null && dAll && dR >= dAll*1.2) tiles.push(['💀', `Много смертей: ${dR.toFixed(1)} за игру`, `в последних ${rec15.length} играх — обычно у тебя ${dAll.toFixed(1)}. Покупай сейв раньше и не фарми там, где не видно врага`]);
     // Не только ошибки: если ты в форме — сказать об этом, это тоже повод играть сегодня
     const w15 = rec15.filter(g => g.win).length;
-    if(w15/rec15.length >= all + 0.12) tiles.unshift(['🔥', `Ты в форме: ${w15}–${rec15.length - w15}`, `в последних ${rec15.length} играх — ${pct0(w15/rec15.length)} побед, обычно у тебя ${pct0(all)}. Хороший день, чтобы играть своих героев`]);
+    if(w15/rec15.length >= all + 0.12) tiles.unshift(['🔥', `Ты в форме: ${w15}–${rec15.length - w15}`, `в последних ${rec15.length} играх — ${pct0(w15/rec15.length)} побед, обычно у тебя ${pct0(all)}. ${stopNow ? 'Форма никуда не денется — сделай паузу и вернись свежим' : 'Хороший день, чтобы играть своих героев'}`]);
     if(dR != null && dAll && dR <= dAll*0.8) tiles.push(['🛡', `Умираешь реже: ${dR.toFixed(1)} за игру`, `обычно у тебя ${dAll.toFixed(1)} — то, что ты сейчас делаешь, работает`]);
     const dSum = rec15.reduce((s, g) => s + (g.d || 0), 0), solo = rec15.reduce((s, g) => s + (g.soloDeaths || 0), 0);
     if(dSum >= 30 && solo/dSum >= 0.3) tiles.push(['☠', `${Math.round(100*solo/dSum)}% смертей — в одиночку`, `в последних ${rec15.length} играх ${solo} из ${dSum} смертей вне драки: тебя ловят одного — ходи с командой или с вардом`]);
