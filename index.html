@@ -389,6 +389,11 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .py-leg{display:flex;gap:14px;justify-content:center;font-size:11.5px;color:var(--muted)} .py-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .py-leg i.b{background:rgba(61,242,154,.55)} .py-leg i.l{background:#c4b5fd}
 @media(prefers-reduced-motion:reduce){.py-line{animation:none;stroke-dashoffset:0}}
+.mh-mast{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:8px;font-size:12px;color:var(--muted);animation:rise .6s .7s both}
+.mast{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;background:rgba(255,198,90,.12);border:1px solid rgba(255,198,90,.45);color:#ffd88a;font-weight:800;font-size:12px}
+.mast.none{background:rgba(255,255,255,.05);border-color:var(--line);color:var(--muted)}
+.mast.sm{padding:0 3px;font-size:11px;border:0;background:none;margin-right:3px}
+.mh-pool-h{position:relative} .mh-pool-h .mast.sm{position:absolute;right:-2px;bottom:-2px;line-height:1;font-size:13px;filter:drop-shadow(0 1px 2px #000)}
 .mh-today{margin:0 28px 18px;padding:14px 16px;border-radius:18px;background:linear-gradient(160deg,rgba(255,198,90,.08),rgba(255,255,255,.02) 60%);border:1px solid rgba(255,198,90,.28);position:relative;z-index:2;animation:rise .6s 2.3s both}
 @media(max-width:700px){.mh-today{margin:0 14px 16px}}
 .mh-today-h{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline} .mh-today-h b{font-family:Unbounded,Manrope,sans-serif;font-size:16px} .mh-today-h span{font-size:12px;color:var(--muted)}
@@ -2084,6 +2089,20 @@ function mhPlan(S, x, m){
     <div class="mh-stages">${stages.map((s, i) => `<div class="${i === cur ? 'cur' : ''}"><b>${s.t}</b><span>${s.d}</span></div>`).join('')}</div></div>`;
 }
 
+// Мастерство героя — ступени, как в играх: цель «ещё N игр до серебра» тянет сыграть их (эффект близкой цели).
+// Пороги — от твоего же среднего винрейта, а не от абстрактных 50%
+const TIERS = [['💎', 'Легенда', 100, 0.06], ['🥇', 'Золото', 50, 0.04], ['🥈', 'Серебро', 25, 0], ['🥉', 'Бронза', 10, -1]];
+function mastery(S, h){
+  const c = S.mastCache = S.mastCache || {}; if(c[h]) return c[h];
+  const all = S.year.filter(g => g.win).length/S.year.length, gs = S.year.filter(g => g.hero === h), n = gs.length, wr = n ? gs.filter(g => g.win).length/n : 0;
+  const ok = ([, , need, d]) => n >= need && (d < 0 || wr >= all + d), i = TIERS.findIndex(ok), cur = i >= 0 ? TIERS[i] : null, next = TIERS[(i >= 0 ? i : TIERS.length) - 1] || null;
+  const gen = next && {'Легенда': 'легенды', 'Золото': 'золота', 'Серебро': 'серебра', 'Бронза': 'бронзы'}[next[1]];
+  const hint = !next ? 'высшая ступень' : n < next[2] ? `до ${gen}: ещё ${next[2] - n} ${gamesWord(next[2] - n)}${next[3] >= 0 ? ` и ${pct0(all + next[3])}+ побед` : ''}`
+    : `до ${gen}: поднять винрейт до ${pct0(all + next[3])} (сейчас ${pct0(wr)})`;
+  return c[h] = {cur, next, n, wr, hint};
+}
+const mastBadge = (S, h, small) => { const m = mastery(S, h); return m.cur ? `<span class="mast ${small ? 'sm' : ''}" title="${m.cur[1]} · ${m.hint}">${m.cur[0]}${small ? '' : ' ' + m.cur[1]}</span>` : ''; };
+
 // План на сегодня — из твоих сессий: сколько игр подряд держишь уровень, что после двух поражений, в какое время ты сильнее.
 // Каждая плитка — только когда разница по факту заметная (иначе совет без основания)
 function todayPlan(S, m, cur){
@@ -2176,7 +2195,7 @@ async function renderMyHero(S, sel){
   const poolBar = () => { const pool = poolGet();
     if(!pool.length) return `<div class="mh-pool empty">⭐ Собери свой пул: 2–3 героя на роль. Опыт копится на них, а не размазывается по 30 героям — так растут быстрее всего.</div>`;
     return `<div class="mh-pool"><span class="mh-pool-t">Мой пул</span>${[1,2,3,4,5].filter(p => pool.some(e => e.p === p)).map(p => `<span class="mh-pool-r"><small>${roleShort(p)}</small>${pool.filter(e => e.p === p).map(e =>
-      `<button class="mh-pool-h" data-h="${e.h}" data-tab="${e.tab}" title="${hn(e.h)}"><img src="${CDN + H(e.h).img}" alt=""></button>`).join('')}</span>`).join('')}</div>`; };
+      `<button class="mh-pool-h" data-h="${e.h}" data-tab="${e.tab}" title="${hn(e.h)} · ${mastery(S, e.h).hint}"><img src="${CDN + H(e.h).img}" alt="">${mastBadge(S, e.h, true)}</button>`).join('')}</span>`).join('')}</div>`; };
 
   // Показ: главный крупно, два запасных карточками, ниже — весь список модели, чтобы выбрать самому
   const show = h => {
@@ -2190,9 +2209,9 @@ async function renderMyHero(S, sel){
     const sides = [r.best, ...r.alts].filter(y => y.h !== m.h).slice(0, 2).map(y => mhView(y, r, sel, S)).map(t => `<button class="mh-side" data-h="${t.h}"><img src="${CDN + H(t.h).img}" alt=""><div><span class="k">${t.kick}</span><b>${hn(t.h)}</b>
       <span>${pct0(t.now)} → <b class="${wrClass(t.month)}">${pct0(t.month)}</b> через месяц · ${t.short}</span></div><em>Сделать главным →</em></button>`).join('');
     const list = r.all.slice().sort((a,b) => ord(b) - ord(a)).map(y => `<button class="mh-opt ${y.h === m.h ? 'on' : ''}" data-h="${y.h}" data-n="${hn(y.h).toLowerCase()}"><img src="${CDN + H(y.h).img}" alt="">
-      <b>${hn(y.h)}</b><span><b class="${wrClass(fc(y))}">${pct0(fc(y))}</b> через месяц${sel ? ` · стиль ${y.fitPct}%` : ''}${y.n ? ` · у тебя ${y.w}–${y.n - y.w}` : ''}</span></button>`).join('');
+      <b>${mastBadge(S, y.h, true)}${hn(y.h)}</b><span><b class="${wrClass(fc(y))}">${pct0(fc(y))}</b> через месяц${sel ? ` · стиль ${y.fitPct}%` : ''}${y.n ? ` · у тебя ${y.w}–${y.n - y.w}` : ''}</span></button>`).join('');
     box.innerHTML = `<div class="mh-flash"></div>${tabs}${poolBar()}<div class="mh-grid"><div class="mh-left">${mhStage(m.h)}${psyRadar(S, m.h, m.pos)}</div><div class="mh-info"><div class="mh-kick">${m.kick}</div><div class="mh-name">${hn(m.h)}</div>
-      <div class="mh-line">${m.line}</div>${vs}${sel ? '' : `<p class="mh-say">Модель перебрала ${r.n} твоих героев. Почему он:</p>`}${mhList(m.reasons)}${verdict}${mhFaces(m.faces)}
+      <div class="mh-line">${m.line}</div>${(() => { const ms = mastery(S, m.h); return `<div class="mh-mast">${ms.cur ? mastBadge(S, m.h) : '<span class="mast none">ещё без ступени</span>'}<span>${ms.hint}</span></div>`; })()}${vs}${sel ? '' : `<p class="mh-say">Модель перебрала ${r.n} твоих героев. Почему он:</p>`}${mhList(m.reasons)}${verdict}${mhFaces(m.faces)}
       <div class="mh-pickbar">${(() => { const pool = poolGet(), inP = pool.some(e => e.h === m.h && e.p === m.pos), full = pool.filter(e => e.p === m.pos).length >= 3;
         return `<button class="mh-pool-add ${inP ? 'on' : ''}" ${!inP && full ? 'disabled title="На роли уже 3 героя — убери одного"' : ''}>${inP ? '✓ В моём пуле' : `⭐ В мой пул (${role})`}</button>`; })()}<button class="mh-share" title="Скачать картинку, чтобы поделиться">📸 Картинка «мой герой»</button><button class="mh-no" title="Убрать героя из подбора на всех вкладках">👎 Не мой герой — убрать</button><button class="mh-open">Выбрать самому из ${r.all.length} ▾</button></div></div></div>
       ${mhPlan(S, x, m)}
