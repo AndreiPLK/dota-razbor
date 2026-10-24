@@ -341,6 +341,23 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-pickbar .mh-pool-add{border-color:rgba(255,198,90,.5);color:#ffd88a} .mh-pickbar .mh-pool-add.on{background:rgba(255,198,90,.14)}
 .mh-pickbar .mh-pool-add:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:700px){.mh-pool{margin:10px 14px 0}}
+.mh-plan{margin:0 28px 22px;padding:16px 18px 14px;border-radius:18px;background:linear-gradient(160deg,rgba(34,211,238,.08),rgba(255,255,255,.02) 60%);border:1px solid rgba(103,232,249,.25);position:relative;z-index:2;animation:rise .6s 2.2s both}
+@media(max-width:700px){.mh-plan{margin:0 14px 18px}}
+.mh-plan-h{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline} .mh-plan-h b{font-family:Unbounded,Manrope,sans-serif;font-size:16px} .mh-plan-h span{font-size:12px;color:var(--muted)}
+.mh-track{position:relative;height:8px;margin:44px 22px 30px;border-radius:4px;background:rgba(255,255,255,.08)}
+.mh-track>i{position:absolute;left:0;top:0;height:100%;border-radius:4px;background:linear-gradient(90deg,#8b5cf6,#22d3ee);box-shadow:0 0 12px rgba(34,211,238,.5)}
+.mh-node{position:absolute;top:50%;transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;background:#1a1730;border:2px solid rgba(255,255,255,.25)}
+.mh-node.done{background:#22d3ee;border-color:#22d3ee} .mh-node.cur{box-shadow:0 0 0 5px rgba(34,211,238,.25)}
+.mh-node em{position:absolute;top:-36px;left:50%;transform:translateX(-50%);font-style:normal;font-size:11px;color:var(--muted);white-space:nowrap}
+.mh-node b{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:13px;white-space:nowrap}
+.mh-plan-h .fact{color:#67e8f9}
+.mh-me{position:absolute;top:14px;transform:translateX(-50%);font-size:11px;font-weight:800;color:#67e8f9}
+.mh-stages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media(max-width:700px){.mh-stages{grid-template-columns:1fr 1fr}}
+.mh-stages div{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:3px}
+.mh-stages div.cur{border-color:rgba(103,232,249,.55);background:rgba(34,211,238,.08)}
+.mh-stages b{font-size:13px} .mh-stages span{font-size:11.5px;color:var(--muted);line-height:1.4}
+@media(prefers-reduced-motion:reduce){.mh-plan{animation:none;opacity:1;transform:none}}
 .mh-rolehint{text-align:center;font-size:12px;color:var(--muted);margin-top:8px;position:relative;z-index:4} .mh-rolehint b{color:#ffd88a}
 .mh-tab.on{background:linear-gradient(135deg,#8b5cf6,#22d3ee);color:#fff;border-color:transparent;box-shadow:0 6px 20px rgba(139,92,246,.35)}
 .mh-reasons{list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:7px}
@@ -1808,7 +1825,7 @@ function pickMyHero(S){
     const fit = !!(grow && grow.d >= 0.04 && x.cplx === grow.c);
     const score = 4*(s.p50 - F.overall) + 0.12*Math.min(1, faces.length/5) + 0.03*Math.min(1, myPos.length/3) + (fit ? 0.05 : 0)
       + 0.04*Math.log1p(x.n)/Math.log1p(maxN) + (pr[x.h] === 1 ? 0.05 : 0);
-    return {...x, pos, now: s.p5, w50: s.p50, faces, myPos, fit, score};
+    return {...x, pos, now: s.p5, w20: s.p20, w50: s.p50, faces, myPos, fit, score};
   }).sort((a,b) => b.score - a.score);
   const big = rows.filter(x => x.n >= 30).sort((a,b) => b.w/b.n - a.w/a.n), byW50 = rows.slice().sort((a,b) => b.w50 - a.w50);
   const [best, ...alts] = mhOrderTrio(ML, rows.slice(0, 3), x => x.pos, perMonth);
@@ -1850,7 +1867,7 @@ function pickPerspective(S, p){
     const s = mlSimulate(ML, h, p, 55, perMonth, 40);
     const sims = known.filter(k => k.h !== h).map(k => ({...k, s: cosine(V[h], V[k.h])})).filter(k => k.s >= 0.5).sort((a,b) => b.s - a.s).slice(0, 3);
     const ws = sims.reduce((t, k) => t + k.s*k.s, 0), transfer = ws ? 0.5*sims.reduce((t, k) => t + k.s*k.s*k.d, 0)/ws : 0;   // половина — осторожно
-    return {h, n: rec[h] ? rec[h].n : 0, w: rec[h] ? rec[h].w : 0, now: clamp(s.p5 + transfer, .3, .7), month: clamp(s.p50 + transfer, .3, .7),
+    return {h, n: rec[h] ? rec[h].n : 0, w: rec[h] ? rec[h].w : 0, now: clamp(s.p5 + transfer, .3, .7), w20: clamp(s.p20 + transfer, .3, .7), month: clamp(s.p50 + transfer, .3, .7),
       transfer, sims, fit: own.length ? cosine(V[h], C) : 0, faces: heroFaces(h), cplx: H(h).complexity || 2};
   });
   // Порядок: стиль героев 45%, совпадение характера 25%, прогноз через месяц 30%; всё приведено к шкале 0..1 среди кандидатов
@@ -1952,6 +1969,27 @@ function mhView(x, r, sel, S){
     short: `${pct0(x.w/x.n)} за ${x.n} ${gamesWord(x.n)}`, reasons: (([a, ...b]) => [a, ...psyLine, ...b])(mineReasons(x, r)).concat(extra)};
 }
 
+// План развития на герое: этапы 0 → 10 → 25 → 50 игр, шанс по модели на каждом, где ты сейчас (твои игры на нём)
+// и что делать на этапе. Советы опираются на твои же цифры: старт на новых героях этой сложности и с какой игры герои у тебя «идут».
+function mhPlan(S, x, m){
+  const F = S.F || heroForecasts(S), c = H(x.h).complexity || 2, cv = F.curves[c] || F.curveAll, start = cv && cv.length ? cv[0].wr : null;
+  const brs = F.rows.filter(y => y.br).map(y => y.br.i).sort((a,b) => a - b), goes = brs.length ? brs[Math.floor(brs.length/2)] : 25;
+  const n = x.n || 0, w20 = x.w20 ?? (m.now + m.month)/2;
+  const stages = [
+    {at: 0, wr: m.now, t: 'Знакомство', d: `Первые игры — в обычных матчах или турбо: выучи способности и тайминги предметов. На новых ${CPLX_LOC[c]} героях ты стартуешь${start != null ? ` с ${pct0(start)}` : ' ниже обычного'} — это нормально, не суди героя по ним.`},
+    {at: 10, wr: (m.now + w20)/2, t: 'В рейтинг', d: 'Одна-две игры на герое за сессию, не пять подряд. После каждого поражения — разбор во вкладке «Матч»: одна ошибка, которую уберёшь в следующей игре.'},
+    {at: 25, wr: w20, t: 'Герой пошёл', d: `У тебя герои обычно «идут» примерно с ${goes}-й игры. Сейчас важно не распыляться: держи пул из 2–3 героев на роль.`},
+    {at: 50, wr: m.month, t: 'Твой герой', d: 'Месяц на герое. Дальше рост медленнее — пора добавить к нему второго из пула под другие составы.'}];
+  // Пройденные этапы — твой настоящий винрейт на тех играх (5+ игр в отрезке), текущий и будущие — прогноз модели
+  const gs = S.year.filter(g => g.hero === x.h).sort((a,b) => a.t - b.t), ends = [10, 25, 50, 1e9];
+  stages.forEach((s, i) => { const seg = gs.slice(s.at, ends[i]);
+    if(n >= ends[i] || (i === 3 && seg.length >= 10)){ if(seg.length >= 5){ s.wr = seg.filter(g => g.win).length/seg.length; s.fact = true; } } });
+  const cur = stages.reduce((k, s, i) => n >= s.at ? i : k, 0), fill = clamp(n/50, 0, 1);
+  return `<div class="mh-plan"><div class="mh-plan-h"><b>План на ${hn(x.h)}</b><span>${n ? `у тебя уже ${n} ${gamesWord(n)} — этап «${stages[cur].t}»` : 'ты в начале пути'} · ${stages.some(s => s.fact) ? '<span class="fact">●</span> твой факт, ○ прогноз модели' : 'шанс победы по модели на каждом этапе'}</span></div>
+    <div class="mh-track"><i style="width:${(100*fill).toFixed(1)}%"></i>${stages.map((s, i) => `<span class="mh-node ${i <= cur && (n || !i) ? 'done' : ''} ${i === cur ? 'cur' : ''}" style="left:${(100*s.at/50).toFixed(1)}%"><em>${s.at ? s.at + ' игр' : 'старт'}</em><b class="${wrClass(s.wr)}">${s.fact ? '●' : '○'} ${pct0(s.wr)}</b></span>`).join('')}${n ? `<span class="mh-me" style="left:${(100*fill).toFixed(1)}%">ты</span>` : ''}</div>
+    <div class="mh-stages">${stages.map((s, i) => `<div class="${i === cur ? 'cur' : ''}"><b>${s.t}</b><span>${s.d}</span></div>`).join('')}</div></div>`;
+}
+
 async function renderMyHero(S, sel){
   const box = $('myHero'), token = {}; S.heroToken = token;
   if(sel == null){ const s = lsGet('dc_mh_' + S.id); sel = typeof s === 'number' ? s : 0; }
@@ -2008,6 +2046,7 @@ async function renderMyHero(S, sel){
       <div class="mh-line">${m.line}</div>${vs}${sel ? '' : `<p class="mh-say">Модель перебрала ${r.n} твоих героев. Почему он:</p>`}${mhList(m.reasons)}${verdict}${mhFaces(m.faces)}
       <div class="mh-pickbar">${(() => { const pool = poolGet(), inP = pool.some(e => e.h === m.h && e.p === m.pos), full = pool.filter(e => e.p === m.pos).length >= 3;
         return `<button class="mh-pool-add ${inP ? 'on' : ''}" ${!inP && full ? 'disabled title="На роли уже 3 героя — убери одного"' : ''}>${inP ? '✓ В моём пуле' : `⭐ В мой пул (${role})`}</button>`; })()}<button class="mh-no" title="Убрать героя из подбора на всех вкладках">👎 Не мой герой — убрать</button><button class="mh-open">Выбрать самому из ${r.all.length} ▾</button></div></div></div>
+      ${mhPlan(S, x, m)}
       ${sides ? `<div class="mh-sides"><div class="mh-sides-t">Ещё два варианта — нажми, чтобы сделать главным</div>${sides}</div>` : ''}
       <div class="mh-pick hidden"><div class="mh-pick-h"><b>Все герои${sel ? ` на позицию ${role} — по стилю и прогнозу` : ' — по прогнозу модели через месяц'}</b><input class="mh-q" placeholder="Найти героя…" autocomplete="off">${restore}</div><div class="mh-opts">${list}</div></div>`;
     bindTabs(); bindRestore();
