@@ -369,6 +369,17 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .lp-steps span{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:13px;font-weight:600}
 .lp-steps b{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#22d3ee);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px}
 .lp-stage{position:relative;aspect-ratio:1/1;max-height:400px;display:flex;align-items:center;justify-content:center}
+.py{margin-bottom:16px;padding:14px 16px 10px;border-radius:18px;background:var(--panel2);border:1px solid var(--line)}
+.py-h{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline} .py-h>b{font-family:Unbounded,Manrope,sans-serif;font-size:15px} .py-h>span{font-size:12.5px;color:var(--muted)}
+.py-svg{width:100%;height:auto;display:block;margin-top:6px}
+.py-bar.up{fill:rgba(61,242,154,.55)} .py-bar.dn{fill:rgba(255,77,109,.45)}
+.py-v{fill:var(--text);font-size:11px;text-anchor:middle;font-weight:700} .py-m{fill:var(--muted);font-size:11px;text-anchor:middle}
+.py-50{stroke:rgba(255,255,255,.18);stroke-dasharray:4 4}
+.py-r{fill:#c4b5fd;font-size:11.5px;font-weight:800}
+.py-line{fill:none;stroke:#c4b5fd;stroke-width:2.5;stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.8s .3s ease forwards} .py-dot{fill:#c4b5fd}
+.py-leg{display:flex;gap:14px;justify-content:center;font-size:11.5px;color:var(--muted)} .py-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.py-leg i.b{background:rgba(61,242,154,.55)} .py-leg i.l{background:#c4b5fd}
+@media(prefers-reduced-motion:reduce){.py-line{animation:none;stroke-dashoffset:0}}
 .mh-rolehint{text-align:center;font-size:12px;color:var(--muted);margin-top:8px;position:relative;z-index:4} .mh-rolehint b{color:#ffd88a}
 .mh-tab.on{background:linear-gradient(135deg,#8b5cf6,#22d3ee);color:#fff;border-color:transparent;box-shadow:0 6px 20px rgba(139,92,246,.35)}
 .mh-reasons{list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:7px}
@@ -1747,6 +1758,36 @@ function renderModelPanel(ML){
     Исход одной игры до её начала почти случаен: с тобой 4 союзника и 5 врагов. Модель ловит сдвиги в несколько процентов, а на сотне игр это уже сотни рейтинга. Поэтому рейтинг показан диапазоном, а не одним числом.</p></div>`;
 }
 
+// Последний год по месяцам: винрейт столбиками и средний ранг лобби линией — «было → стало» перед прогнозом вперёд
+function pastYear(S){
+  const now = new Date(), months = [];
+  for(let i = 11; i >= 0; i--){ const d = new Date(now.getFullYear(), now.getMonth() - i, 1), e = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    const g = S.year.filter(x => x.t*1000 >= d && x.t*1000 < e), r = g.map(x => rankToMmr(x.rank)).filter(v => v != null);
+    months.push({d, n: g.length, wr: g.length ? g.filter(x => x.win).length/g.length : null, mmr: r.length >= 3 ? mean(r) : null}); }
+  const act = months.filter(m => m.n >= 5); if(act.length < 3) return '';
+  // Ранга лобби нет (Stratz часто не отдаёт) — восстанавливаем рейтинг назад от текущего ранга: ±25 за каждую игру месяца
+  const cur = rankToMmr(S.player.steamAccount.seasonRank), approx = !months.some(m => m.mmr != null) && cur != null;
+  if(approx){ let v = cur; for(let i = 11; i >= 0; i--){ const m = months[i]; m.mmr = v; if(m.n) v -= 25*Math.round(m.n*(2*m.wr - 1)); } }
+  const W = 760, Hh = 170, L = 10, R = 10, T = 22, B = 26, cw = (W - L - R)/12;
+  const mm = months.filter(m => m.mmr != null).map(m => m.mmr), lo = Math.min(...mm) - 200, hi = Math.max(...mm) + 200;
+  const Yw = wr => T + (Hh - T - B)*(1 - clamp((wr - 0.2)/0.5, 0, 1)), Ym = v => T + (Hh - T - B)*(1 - (v - lo)/(hi - lo));
+  const bars = months.map((m, i) => { const x = L + i*cw + cw*0.18, w = cw*0.64;
+    return (m.n >= 5 ? `<rect x="${x.toFixed(1)}" y="${Yw(m.wr).toFixed(1)}" width="${w.toFixed(1)}" height="${(Hh - B - Yw(m.wr)).toFixed(1)}" rx="4" class="py-bar ${m.wr >= 0.5 ? 'up' : 'dn'}"/>
+      <text x="${(x + w/2).toFixed(1)}" y="${(Yw(m.wr) - 5).toFixed(1)}" class="py-v">${pct0(m.wr)}</text>` : '')
+      + `<text x="${(x + w/2).toFixed(1)}" y="${Hh - 8}" class="py-m">${MON_SHORT[m.d.getMonth()]}</text>`; }).join('');
+  const pts = months.map((m, i) => m.mmr != null && m.n >= 5 ? [L + i*cw + cw/2, Ym(m.mmr)] : null).filter(Boolean);
+  const line = pts.length >= 2 ? `<polyline points="${pts.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ')}" class="py-line" pathLength="1"/>${pts.map(p => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" class="py-dot"/>`).join('')}`
+    + [[pts[0], months.find(m => m.mmr != null && m.n >= 5)], [pts[pts.length - 1], [...months].reverse().find(m => m.mmr != null && m.n >= 5)]].map(([p, m], i) =>
+      `<text x="${(p[0] + (i ? -6 : 6)).toFixed(1)}" y="${(p[1] - 9).toFixed(1)}" class="py-r" style="text-anchor:${i ? 'end' : 'start'}">${mmrToRank(Math.max(0, m.mmr))}</text>`).join('') : '';
+  const half = a => { const g = a.filter(m => m.n >= 5); const n = g.reduce((t, m) => t + m.n, 0); return n ? g.reduce((t, m) => t + m.wr*m.n, 0)/n : null; };
+  const wr1 = half(months.slice(0, 6)), wr2 = half(months.slice(6)), m1 = act.find(m => m.mmr != null), m2 = [...act].reverse().find(m => m.mmr != null);
+  const best = act.slice().sort((a,b) => b.wr - a.wr)[0];
+  const trend = wr1 != null && wr2 != null ? (wr2 - wr1 >= 0.02 ? `<b class="good">растёшь</b>: ${pct0(wr1)} → ${pct0(wr2)} побед` : wr2 - wr1 <= -0.02 ? `<b class="bad">спад</b>: ${pct0(wr1)} → ${pct0(wr2)} побед — прогноз ниже как раз про то, как из него выйти` : `ровно: около ${pct0(wr2)} побед`) : '';
+  return `<div class="py"><div class="py-h"><b>Как ты шёл последний год</b><span>полгода назад → последние полгода: ${trend}${m1 && m2 ? ` · ${approx ? 'рейтинг примерно' : 'лобби'}: ${mmrToRank(Math.max(0, m1.mmr))} → ${mmrToRank(Math.max(0, m2.mmr))}` : ''} · лучший месяц — ${MONTHS[best.d.getMonth()]} (${pct0(best.wr)})</span></div>
+    <svg viewBox="0 0 ${W} ${Hh}" class="py-svg"><line x1="${L}" x2="${W - R}" y1="${Yw(0.5).toFixed(1)}" y2="${Yw(0.5).toFixed(1)}" class="py-50"/>${bars}${line}</svg>
+    <div class="py-leg"><span><i class="b"></i>винрейт за месяц</span><span><i class="l"></i>${approx ? 'рейтинг на конец месяца (примерно: ±25 за игру от твоего ранга сейчас)' : 'средний ранг лобби'}</span></div></div>`;
+}
+
 async function renderGrowth(S, pick){
   const token = {}; S.growToken = token; const alive = () => S.growToken === token;
   const p = pick.pos, show = !S.mlShown;
@@ -1782,6 +1823,7 @@ async function renderGrowth(S, pick){
     .concat(rules.map((r, i) => `<div class="pstep"><i>${i + 2}</i><span class="ico">${r.icon}</span><div><b>${r.text}</b><span>${r.sub} · по факту в таких играх ты выигрываешь <b class="bad">${pct0(r.fb)}</b>, в остальных — <b class="good">${pct0(r.fg)}</b> (${r.nb} игр)</span></div><em>+${r.gainMonth}<small> в месяц</small></em></div>`));
 
   $('grow').innerHTML = `<div class="reveal">
+    <div>${pastYear(S)}</div>
     <div class="futures">${fut('bad', 'Если ничего не менять', n12, now)}${fut('good', `С ${H(pick.h).localized_name}`, p12, path)}</div>
     <div>${fanChart(now, path, mmr, months, goalM(1000))}<div class="muted" style="font-size:12px;text-align:center">линия — самый вероятный рейтинг, полоса — 8 из 10 вариантов будущего</div></div>
     <div><h3 style="margin-top:18px">Твой путь — ${steps.length === 1 ? 'один шаг' : steps.length + ' шага'}</h3><div class="psteps">${steps.join('')}</div></div>
