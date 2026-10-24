@@ -487,7 +487,11 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-mini{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:10px;border-radius:14px;border:1px solid var(--line);background:var(--panel2);text-align:left;transition:transform .15s,border-color .15s}
 .mh-mini:hover{transform:translateY(-2px);border-color:rgba(196,181,253,.6)} .mh-mini img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:9px}
 .mh-mini>b{font-size:15px} .mh-mini em{font-style:normal;font-size:11.5px;color:#c4b5fd;font-weight:700} .mh-mini span{font-size:13px} .mh-mini span b{font-size:14px}
-.mh-ov-all{margin-top:10px} .mh-back{margin-bottom:8px}
+.mh-ov-all{margin-top:10px}
+.mh-newhead.far{color:#67e8f9} .mh-anoms{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-top:10px}
+.mh-anom{display:grid !important;grid-template-columns:120px 1fr;gap:12px;align-items:center;border-color:rgba(103,232,249,.55) !important;background:linear-gradient(160deg,rgba(103,232,249,.12),var(--panel2) 70%) !important}
+.mh-anom>div{display:flex;flex-direction:column;gap:4px} .mh-anom span{font-size:13px;line-height:1.45} .mh-anom em{font-style:normal;font-size:12px;color:#67e8f9;font-weight:700}
+@media(max-width:520px){.mh-anom{grid-template-columns:1fr}} .mh-back{margin-bottom:8px}
 @media(max-width:700px){.mh-ov{margin:12px 14px 6px} .mh-minis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .mh-main-own{display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:center;margin:14px 0 4px;padding:16px 18px;border-radius:18px;border:1px solid rgba(61,242,154,.5);background:linear-gradient(160deg,rgba(61,242,154,.14),var(--panel2) 70%)}
 .mh-main-own img{width:120px;height:68px;object-fit:cover;border-radius:10px} .mh-main-own>div{display:flex;flex-direction:column;gap:4px}
@@ -724,7 +728,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261024174906';
+const BUILD = '20261024194035';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2102,7 +2106,17 @@ function pickPerspective(S, p){
   // Твой герой на роли сильнее любого нового (51%+ за 20+ игр и выше потолка лучшего нового) — главный совет он, новый — запасной
   const ownBest = mine.filter(o => o.n >= 20).sort((a,b) => b.sc - a.sc)[0] || null, nb = rows[0];
   const ownBetter = !!(ownBest && nb && pc(ownBest.wr) >= WIN && pc(ownBest.wr) > Math.max(pc(nb.month), pc(nb.ceil)));
-  return {ownBest, ownBetter, best: rows[0], alts: (tier(rows[0] || {}) ? rows.slice(1).filter(x => tier(x)) : rows.slice(1)).slice(0, 2), all: rows, cur: mine[0] || null, mine51: mine.filter(o => o.n >= 20 && Math.round(100*o.wr) >= 51).slice(0, 3), mineTop: mine.slice().sort((a,b) => b.n - a.n).slice(0, 6).sort((a,b) => b.sc - a.sc).slice(0, 4), overall: F.overall, posWr: posG.length ? posG.filter(g => g.win).length/posG.length : null, posN: posG.length, nCand: rows.length, perMonth, noUp: !rows.some(x => tier(x)), stepOnly: !rows.some(x => tier(x) >= 2) && rows.some(x => tier(x) === 1), ceilOnly: !rows.some(upF) && rows.some(upC), nUp: rows.filter(x => tier(x)).length,
+  // 💎 Дальний потенциал — то, чего не видит прогноз на 100 игр (модель к 50-й игре выходит на плато):
+  //  а) похожие герои: на героях, которые играются так же, ты уже выигрываешь 55%+ (40+ игр) — до этого уровня можно дорасти;
+  //  б) аномальный старт: несколько игр, но результат, который при твоём уровне на позиции случаен реже чем в 1 из 10
+  const binTail = (w, n, q) => { let t = 0, c = 1; for(let k = 0; k <= n; k++){ if(k) c = c*(n - k + 1)/k; if(k >= w) t += c*q**k*(1 - q)**(n - k); } return t; };
+  rows.forEach(x => { const sn = x.sims.reduce((t, k) => t + k.n, 0), sd = x.sims.reduce((t, k) => t + k.s*k.s*k.n, 0);
+    x.simWr = sd ? x.sims.reduce((t, k) => t + k.s*k.s*k.wr*k.n, 0)/sd : null; x.simN = sn;
+    x.farSim = x.simWr != null && sn >= 40 && pc(x.simWr) >= 55 && pc(x.simWr) >= pc(x.ceil) + 5;
+    x.startP = x.n >= 4 && x.w/x.n >= 0.6 ? binTail(x.w, x.n, posWr0 || 0.5) : 1; x.farStart = x.startP <= 0.1;
+    x.far = x.farSim || x.farStart ? Math.max(x.ceil, x.farSim ? x.simWr : 0) : null; });
+  const anoms = rows.filter(x => x.far != null).sort((a,b) => (b.far - b.ceil) - (a.far - a.ceil) || (a.startP - b.startP)).slice(0, 2);
+  return {anoms, ownBest, ownBetter, best: rows[0], alts: (tier(rows[0] || {}) ? rows.slice(1).filter(x => tier(x)) : rows.slice(1)).slice(0, 2), all: rows, cur: mine[0] || null, mine51: mine.filter(o => o.n >= 20 && Math.round(100*o.wr) >= 51).slice(0, 3), mineTop: mine.slice().sort((a,b) => b.n - a.n).slice(0, 6).sort((a,b) => b.sc - a.sc).slice(0, 4), overall: F.overall, posWr: posG.length ? posG.filter(g => g.win).length/posG.length : null, posN: posG.length, nCand: rows.length, perMonth, noUp: !rows.some(x => tier(x)), stepOnly: !rows.some(x => tier(x) >= 2) && rows.some(x => tier(x) === 1), ceilOnly: !rows.some(upF) && rows.some(upC), nUp: rows.filter(x => tier(x)).length,
     ownTop: own.sort((a,b) => b[1].n - a[1].n).slice(0, 3).map(([h]) => +h)};
 }
 
@@ -2412,6 +2426,7 @@ async function renderMyHero(S, sel){
   // Обзор роли (основатель, 24.10): ГЛАВНЫЙ — твой лучший герой на роли; ниже — мини-карточки новых «на вырост»,
   // у каждой своя причина выбрать именно его (быстрее растёт / выше итог / ближе к стилю / проще…). Клик — подробно
   cache.open = cache.open || {};
+  const posWrOf = rr => rr.posWr ?? 0.5;
   const overview = () => {
     const role = roleShort(sel).toLowerCase(), o = r.ownBest, top = r.all.slice(0, 6), perM = r.perMonth || 30, bestNew = r.best;
     const TAGS = [['Выше всех к 100-й игре', y => y.ceil], ['Быстрее всех растёт', y => y.month - y.now], ['Ближе всего к твоему стилю', y => y.fitPct || 0],
@@ -2426,6 +2441,11 @@ async function renderMyHero(S, sel){
     const others = (r.mineTop || []).filter(y => !o || y.h !== o.h);
     box.innerHTML = `<div class="mh-flash"></div>${tabs}${poolBar()}<div class="mh-ov">${main}
       ${others.length ? `<div class="mh-ownrow-t">Ещё твои на этой позиции</div><div class="mh-ownrow-l">${others.map(y => `<button class="mh-own" data-h="${y.h}"><img src="${CDN + H(y.h).img}" alt=""><b>${hn(y.h)}</b><span class="${wrClass(y.wr)}">${pct0(y.wr)} · ${y.n} ${gamesWord(y.n)}</span></button>`).join('')}</div>` : ''}
+      ${r.anoms && r.anoms.length ? `<div class="mh-newhead far">💎 Дальний потенциал · ${roleShort(sel)} <small>то, чего не видит прогноз на 100 игр: скрытые сигналы в твоих играх</small></div>
+      <div class="mh-anoms">${r.anoms.map(y => `<button class="mh-anom mh-mini" data-h="${y.h}"><img src="${CDN + H(y.h).img}" alt=""><div><b>${hn(y.h)}</b>
+        <span>${y.farSim ? `Играется как твои ${y.sims.slice(0, 3).map(k => hn(k.h)).join(', ')} — на них ты выигрываешь <b class="good">${pct0(y.simWr)}</b> (${y.simN} игр). Прогноз модели к 100-й игре — ${pct0(y.ceil)}, но твой уровень на таких героях выше: потолок — до ${pct0(y.simWr)}.` : ''}
+        ${y.farStart ? `Аномальный старт: <b class="good">${y.w}–${y.n - y.w}</b> за ${y.n} ${gamesWord(y.n)} при твоих ${pct0(posWrOf(r))} на позиции — случайно так бывает реже чем в 1 из ${Math.max(10, Math.round(1/Math.max(y.startP, 0.001)))}.` : ''}</span>
+        <em>Старт ${pct0(y.now)} → месяц ${pct0(y.month)} → 100 игр ${pct0(y.ceil)} → потенциал до ${pct0(y.far)}</em></div></button>`).join('')}</div>` : ''}
       <div class="mh-newhead">Новые герои на вырост · ${roleShort(sel)} <small>на них у тебя меньше 15 игр. Цифры: старт → через месяц → к 100-й игре. Нажми — подробно, почему он и как расти</small></div>
       <div class="mh-minis">${top.map(y => `<button class="mh-mini" data-h="${y.h}"><img src="${CDN + H(y.h).img}" alt=""><b>${hn(y.h)}</b><em>${tag[y.h]}</em>
         <span><b class="${wrClass(y.now)}">${pct0(y.now)}</b> → <b class="${wrClass(y.month)}">${pct0(y.month)}</b> → <b class="${wrClass(y.ceil)}">${pct0(y.ceil)}</b></span></button>`).join('')}</div>
