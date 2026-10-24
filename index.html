@@ -434,6 +434,10 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-today{margin:0 28px 18px;padding:14px 16px;border-radius:18px;background:linear-gradient(160deg,rgba(255,198,90,.08),rgba(255,255,255,.02) 60%);border:1px solid rgba(255,198,90,.28);position:relative;z-index:2;animation:rise .6s 2.3s both}
 @media(max-width:700px){.mh-today{margin:0 14px 16px}}
 .mh-today-h{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline} .mh-today-h b{font-family:Unbounded,Manrope,sans-serif;font-size:16px} .mh-today-h span{font-size:12px;color:var(--muted)}
+.mh-week{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(255,198,90,.08);border:1px solid rgba(255,198,90,.3)}
+.mh-week b{display:block;font-size:14px} .mh-week span{font-size:12px;color:var(--muted)}
+.mh-week-bar{display:flex;gap:5px} .mh-week-bar i{width:26px;height:10px;border-radius:5px;background:rgba(255,255,255,.1)}
+.mh-week-bar i.w{background:var(--good);box-shadow:0 0 8px rgba(61,242,154,.5)} .mh-week-bar i.l{background:#ff8a9f}
 .mh-today-t{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:10px}
 .mh-today-t div{display:grid;grid-template-columns:30px 1fr;gap:2px 8px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:9px 10px}
 .mh-today-t i{font-style:normal;font-size:22px;grid-row:1/3} .mh-today-t b{font-size:13.5px} .mh-today-t span{font-size:11.5px;color:var(--muted);line-height:1.35}
@@ -2200,7 +2204,12 @@ function todayPlan(S, m, cur){
   // Первая игра задаёт настрой: новый герой — не первым. Если главный ещё новый, начинаем с уверенного героя позиции
   if(m.persp && cur && cur.h !== m.h) tiles.push(['🦸', `Начни с ${hn(cur.h)}, потом ${hn(m.h)}`, `первая игра задаёт настрой: на ${hn(cur.h)} у тебя ${pct0(cur.wr)}, а нового героя бери второй игрой`]);
   else tiles.push(['🦸', `Начни с ${hn(m.h)}`, 'первая игра задаёт настрой — бери героя, на котором уверен']);
-  return `<div class="mh-today"><div class="mh-today-h"><b>План на сегодня</b><span>по твоим сессиям — как ты играешь, когда устаёшь и тильтуешь</span></div>
+  // Цель недели: 5 игр на этом герое с понедельника — прогресс считается сам по твоим матчам (эффект близкой цели)
+  const wk = new Date(); wk.setHours(0, 0, 0, 0); wk.setDate(wk.getDate() - ((wk.getDay() + 6) % 7));
+  const wg = G.filter(g => g.hero === m.h && g.t*1000 >= wk), goal = 5, done = Math.min(goal, wg.length), ww = wg.filter(g => g.win).length;
+  const week = `<div class="mh-week"><div><b>Цель недели: ${goal} игр на ${hn(m.h)}</b><span>${done >= goal ? '✓ выполнено — герой растёт' : `сделано ${done} из ${goal}${wg.length ? ` · ${ww}–${wg.length - ww}` : ''} · с понедельника`}</span></div>
+    <div class="mh-week-bar">${Array.from({length: goal}, (_, i) => `<i class="${i < done ? (wg[i] && wg[i].win ? 'w' : 'l') : ''}"></i>`).join('')}</div></div>`;
+  return `<div class="mh-today"><div class="mh-today-h"><b>План на сегодня</b><span>по твоим сессиям — как ты играешь, когда устаёшь и тильтуешь</span></div>${week}
     <div class="mh-today-t">${tiles.map(([i, t, d]) => `<div><i>${i}</i><b>${t}</b><span>${d}</span></div>`).join('')}</div></div>`;
 }
 
