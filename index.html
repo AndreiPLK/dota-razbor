@@ -343,7 +343,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-pool{display:flex;flex-wrap:wrap;gap:8px 14px;justify-content:center;align-items:center;margin:12px 28px 0;padding:8px 14px;border-radius:14px;
   background:rgba(255,198,90,.06);border:1px solid rgba(255,198,90,.3);position:relative;z-index:4}
 .mh-pool.empty{font-size:12px;color:#e8d4a8;text-align:center}
-.mh-pool-d{font-size:12px;color:var(--muted)} .mh-pool-d b{color:#ffd88a} .mh-pool-d.ok b{color:#6ee7a8}
+.mh-pool-spread{color:#ffd88a;font-size:13px} .mh-pool-d{font-size:12px;color:var(--muted)} .mh-pool-d b{color:#ffd88a} .mh-pool-d.ok b{color:#6ee7a8}
 .mh-pool-t{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#ffd88a;font-weight:800}
 .mh-pool-r{display:flex;align-items:center;gap:4px} .mh-pool-r small{font-size:11px;color:var(--muted);margin-right:2px}
 .mh-pool-h{padding:0;border-radius:8px;border:1px solid rgba(255,198,90,.4);background:none;box-shadow:none;overflow:hidden;line-height:0}
@@ -2303,7 +2303,8 @@ async function renderMyHero(S, sel){
   // Мой пул: до 3 героев на роль, хранится в браузере для этого игрока. {h, p, tab} — tab нужен, чтобы открыть героя там, откуда он добавлен
   const poolKey = 'dc_pool_' + S.id, poolGet = () => lsGet(poolKey) || [];
   const poolBar = () => { const pool = poolGet();
-    if(!pool.length) return `<div class="mh-pool empty">⭐ Собери свой пул: 2–3 героя на роль. Опыт копится на них, а не размазывается по 30 героям — так растут быстрее всего.</div>`;
+    if(!pool.length) return `<div class="mh-pool empty">⭐ Собери свой пул: 2–3 героя на роль. Опыт копится на них, а не размазывается по 30 героям — так растут быстрее всего.${(() => { const last = [...S.year].sort((a,b) => b.t - a.t).slice(0, 20), k = new Set(last.map(g => g.hero)).size;
+      return last.length >= 10 && k >= 8 ? `<br><b class="mh-pool-spread">Сейчас в последних ${last.length} играх — ${k} разных героев.</b>` : ''; })()}</div>`;
     return `<div class="mh-pool"><span class="mh-pool-t">Мой пул</span>${[1,2,3,4,5].filter(p => pool.some(e => e.p === p)).map(p => `<span class="mh-pool-r"><small>${roleShort(p)}</small>${pool.filter(e => e.p === p).map(e =>
       `<button class="mh-pool-h" data-h="${e.h}" data-tab="${e.tab}" title="${hn(e.h)} · ${mastery(S, e.h).hint}"><img src="${CDN + H(e.h).img}" alt="">${mastBadge(S, e.h, true)}</button>`).join('')}</span>`).join('')}${poolDisc(pool)}</div>`; };
   // Дисциплина пула: сколько последних игр ушло в героев пула — обратная связь, держишь ли ты своё решение
