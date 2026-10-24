@@ -2310,7 +2310,10 @@ async function renderMyHero(S, sel){
   // Дисциплина пула: сколько последних игр ушло в героев пула — обратная связь, держишь ли ты своё решение
   const poolDisc = pool => { const last = [...S.year].sort((a,b) => b.t - a.t).slice(0, 20), hs = new Set(pool.map(e => e.h)), k = last.filter(g => hs.has(g.hero)).length;
     if(last.length < 10) return '';
-    return `<span class="mh-pool-d ${k >= last.length*0.6 ? 'ok' : ''}">последние ${last.length}: <b>${k}</b> ${gamesWord(k)} на героях пула${k < last.length*0.6 ? ' · цель — 12+' : ' ✓'}</span>`; };
+    return `<span class="mh-pool-d ${k >= last.length*0.6 ? 'ok' : ''}">последние ${last.length}: <b>${k}</b> ${gamesWord(k)} на героях пула${k < last.length*0.6 ? ' · цель — 12+' : ' ✓'}</span>${(() => {
+      // Пул против остальных за весь период — довод цифрой, зачем держаться пула
+      const inP = S.year.filter(g => hs.has(g.hero)), out = S.year.filter(g => !hs.has(g.hero)), w = a => a.filter(g => g.win).length/a.length;
+      return inP.length >= 20 && out.length >= 20 ? `<span class="mh-pool-d">на пуле <b class="${wrClass(w(inP))}">${pct0(w(inP))}</b> за ${inP.length} ${gamesWord(inP.length)}, на остальных ${pct0(w(out))}</span>` : ''; })()}`; };
 
   // Показ: главный крупно, два запасных карточками, ниже — весь список модели, чтобы выбрать самому
   const show = h => {
