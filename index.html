@@ -411,6 +411,15 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 @media(max-width:600px){.mh-subtabs{flex-wrap:nowrap;margin:0 14px 12px;gap:4px}.mh-subtab{flex:1;padding:8px 4px;font-size:11.5px;line-height:1.25}}
 .mh-pane .mh-plan,.mh-pane .mh-today{animation:none}
 .mh-link{background:rgba(255,255,255,.06);border:1px solid var(--line);color:#a5f3fc;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;box-shadow:none;margin-left:6px}
+.mh-cmpbtn{grid-column:1/-1;justify-self:center;background:rgba(255,255,255,.05);border:1px solid rgba(103,232,249,.4);color:#a5f3fc;padding:7px 16px;border-radius:12px;font-size:13px;font-weight:800;box-shadow:none}
+.mh-cmp{grid-column:1/-1} .mh-cmp.hidden{display:none}
+.cmp{display:grid;grid-template-columns:minmax(0,280px) minmax(0,1fr);gap:14px;align-items:center;padding:12px;border-radius:16px;background:var(--panel2);border:1px solid var(--line)}
+@media(max-width:700px){.cmp{grid-template-columns:1fr}}
+.cmp-radar svg{width:100%;height:auto;display:block}
+.cmp-t{width:100%;border-collapse:collapse;font-size:13px}
+.cmp-t th{font-weight:700;padding:4px;vertical-align:bottom} .cmp-t th img{display:block;width:72px;height:41px;object-fit:cover;border-radius:8px;margin:0 auto 4px} .cmp-t th b{font-size:12px}
+.cmp-t td{padding:6px 4px;text-align:center;border-top:1px solid var(--line)} .cmp-t td:first-child{text-align:left;color:var(--muted)}
+.cmp-t td.best{color:var(--good);font-weight:800}
 .mh-since{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:center;align-items:baseline;margin:10px auto 0;padding:7px 16px;max-width:680px;border-radius:12px;
   background:rgba(34,211,238,.08);border:1px solid rgba(103,232,249,.35);font-size:13px;position:relative;z-index:4}
 .mh-since>b{color:#a5f3fc} .mh-since.quiet{opacity:.8} .mh-since .up{color:#ffd88a;font-weight:800}
@@ -2123,6 +2132,29 @@ function mastery(S, h){
 }
 const mastBadge = (S, h, small) => { const m = mastery(S, h); return m.cur ? `<span class="mast ${small ? 'sm' : ''}" title="${m.cur[1]} · ${m.hint}">${m.cur[0]}${small ? '' : ' ' + m.cur[1]}</span>` : ''; };
 
+// Сравнение тройки: таблица (лучшее в строке подсвечено) и общий радар характера — ты и три героя
+const CMP_COL = ['#67e8f9', '#f472b6', '#facc15'];
+function compareTrio(S, views, sel){
+  const me = playerPsy(S), R = 78, cx = 110, cy = 100, N = PSY.length;
+  const pt = (i, v) => { const a = -Math.PI/2 + 2*Math.PI*i/N, r = R*clamp((v - 20)/70, 0.06, 1); return [cx + r*Math.cos(a), cy + r*Math.sin(a)]; };
+  const poly = vals => vals.map((v, i) => pt(i, v).map(x => x.toFixed(1)).join(',')).join(' ');
+  const grid = [37.5, 55, 72.5, 90].map(l => `<polygon points="${poly(PSY.map(() => l))}" class="rd-grid"/>`).join('');
+  const labels = PSY.map(([, l], i) => { const a = -Math.PI/2 + 2*Math.PI*i/N; return `<text x="${(cx + (R + 18)*Math.cos(a)).toFixed(1)}" y="${(cy + (R + 14)*Math.sin(a) + 4).toFixed(1)}" class="rd-lbl">${l}</text>`; }).join('');
+  const polys = views.map((v, k) => { const hp = heroPsy(S, v.h, v.pos); return hp ? `<polygon points="${poly(PSY.map(([key]) => clamp(50 + 22*hp[key], 5, 95)))}" style="fill:${CMP_COL[k]}22;stroke:${CMP_COL[k]};stroke-width:2"/>` : ''; }).join('');
+  const rows = [
+    ['Через месяц', v => v.month, v => pct0(v.month)],
+    ['Сейчас', v => v.now, v => pct0(v.now)],
+    ...(sel ? [['Под твой стиль', v => v.persp.fitPct, v => v.persp.fitPct + '%']] : [['Винрейт на нём', v => mastery(S, v.h).wr, v => pct0(mastery(S, v.h).wr)]]),
+    ['Совпадение характера', v => psyFit(S, v.h, v.pos), v => Math.round(50 + 50*psyFit(S, v.h, v.pos)) + '%'],
+    ['Игр на нём', v => mastery(S, v.h).n, v => mastery(S, v.h).n],
+    ['Ступень', v => { const m = mastery(S, v.h); return m.cur ? 4 - TIERS.indexOf(m.cur) : 0; }, v => mastery(S, v.h).cur ? mastery(S, v.h).cur[0] + ' ' + mastery(S, v.h).cur[1] : '—'],
+    ['Лиц у героя', v => v.faces.length, v => v.faces.length]];
+  return `<div class="cmp"><div class="cmp-radar"><svg viewBox="0 0 220 205">${grid}<polygon points="${poly(PSY.map(([k]) => me[k]))}" class="rd-me"/>${polys}${labels}</svg>
+      <div class="rd-cap"><span><i class="me"></i>ты</span>${views.map((v, k) => `<span><i style="background:${CMP_COL[k]}"></i>${hn(v.h)}</span>`).join('')}</div></div>
+    <table class="cmp-t"><tr><th></th>${views.map((v, k) => `<th><img src="${CDN + H(v.h).img}" alt=""><b style="color:${CMP_COL[k]}">${hn(v.h)}</b></th>`).join('')}</tr>
+      ${rows.map(([l, val, txt]) => { const vals = views.map(val), top = Math.max(...vals); return `<tr><td>${l}</td>${views.map((v, k) => `<td class="${vals[k] === top && vals.filter(x => x === top).length < views.length ? 'best' : ''}">${txt(v)}</td>`).join('')}</tr>`; }).join('')}</table></div>`;
+}
+
 // «С прошлого раза»: снимок в браузере (время, последняя игра, ступени героев). Если с прошлого снимка прошло 6+ часов —
 // показываем разницу и обновляем снимок; если меньше — показываем разницу, но снимок не трогаем (перезагрузка не обнуляет)
 function sinceLast(S){
@@ -2254,7 +2286,8 @@ async function renderMyHero(S, sel){
       <div class="mh-line">${m.line}</div>${(() => { const ms = mastery(S, m.h); return `<div class="mh-mast">${ms.cur ? mastBadge(S, m.h) : '<span class="mast none">ещё без ступени</span>'}<span>${ms.hint}</span></div>`; })()}${vs}${sel ? '' : `<p class="mh-say">Модель перебрала ${r.n} твоих героев. Почему он:</p>`}${mhList(m.reasons)}${verdict}${mhFaces(m.faces)}
       <div class="mh-pickbar">${(() => { const pool = poolGet(), inP = pool.some(e => e.h === m.h && e.p === m.pos), full = pool.filter(e => e.p === m.pos).length >= 3;
         return `<button class="mh-pool-add ${inP ? 'on' : ''}" ${!inP && full ? 'disabled title="На роли уже 3 героя — убери одного"' : ''}>${inP ? '✓ В моём пуле' : `⭐ В мой пул (${role})`}</button>`; })()}<button class="mh-share" title="Скачать картинку, чтобы поделиться">📸 Картинка «мой герой»</button><button class="mh-no" title="Убрать героя из подбора на всех вкладках">👎 Не мой герой — убрать</button><button class="mh-open">Выбрать самому из ${r.all.length} ▾</button></div></div></div>
-      ${sides ? `<div class="mh-sides"><div class="mh-sides-t">Ещё два варианта — нажми, чтобы сделать главным</div>${sides}</div>` : ''}
+      ${sides ? `<div class="mh-sides"><div class="mh-sides-t">Ещё два варианта — нажми, чтобы сделать главным</div>${sides}
+        <button class="mh-cmpbtn">⇄ Сравнить всех троих</button><div class="mh-cmp hidden">${compareTrio(S, [m, ...[r.best, ...r.alts].filter(y => y.h !== m.h).slice(0, 2).map(y => mhView(y, r, sel, S))], sel)}</div></div>` : ''}
       <div class="mh-sub"><div class="mh-subtabs">${[['plan', '📈 Как развиваться'], ['today', '🗓 План на сегодня'], ['draft', '⚔ Против их пика']].map(([k, l]) => `<button class="mh-subtab ${(cache.sub || 'plan') === k ? 'on' : ''}" data-k="${k}">${l}</button>`).join('')}</div>
       <div class="mh-pane" data-k="plan">${mhPlan(S, x, m)}</div>
       <div class="mh-pane" data-k="today">${todayPlan(S, m, sel ? r.cur : null)}</div>
@@ -2287,6 +2320,7 @@ async function renderMyHero(S, sel){
           <em class="${x.total >= 0 ? 'good' : 'bad'}">${sg(x.total)}</em></div>`).join('')
         + '<p class="hint" style="margin-top:6px">Шанс относительно твоего обычного уровня на позиции: твой результат на этом герое + как ты играешь на героях таких ролей против таких составов. Только твои игры.</p>';
     };
+    const cb = box.querySelector('.mh-cmpbtn'); if(cb) cb.onclick = () => { const p = box.querySelector('.mh-cmp'); p.classList.toggle('hidden'); cb.textContent = p.classList.contains('hidden') ? '⇄ Сравнить всех троих' : '✕ Скрыть сравнение'; };
     // Вкладки под героем: одна панель за раз вместо простыни; выбор запоминается на время сессии
     const subShow = k => { cache.sub = k; box.querySelectorAll('.mh-subtab').forEach(b => b.classList.toggle('on', b.dataset.k === k)); box.querySelectorAll('.mh-pane').forEach(p => p.classList.toggle('hidden', p.dataset.k !== k)); };
     box.querySelectorAll('.mh-subtab').forEach(b => b.onclick = () => subShow(b.dataset.k)); subShow(cache.sub || 'plan');
