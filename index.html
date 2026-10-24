@@ -358,6 +358,16 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-stages div.cur{border-color:rgba(103,232,249,.55);background:rgba(34,211,238,.08)}
 .mh-stages b{font-size:13px} .mh-stages span{font-size:11.5px;color:var(--muted);line-height:1.4}
 @media(prefers-reduced-motion:reduce){.mh-plan{animation:none;opacity:1;transform:none}}
+.lp{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);align-items:center;gap:10px;overflow:hidden;padding:26px 30px;border-color:rgba(167,139,250,.35);
+  background:radial-gradient(70% 90% at 80% 50%,rgba(139,92,246,.25),transparent 70%),linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.015))}
+@media(max-width:760px){.lp{grid-template-columns:1fr;padding:22px 18px}.lp-stage{order:-1;max-height:300px}}
+.lp-h{font-size:clamp(28px,4.6vw,48px);font-weight:900;line-height:1.08;margin:10px 0 12px;letter-spacing:-.01em}
+.lp-h span{background:linear-gradient(90deg,#c4b5fd,#67e8f9);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lp-p{color:#cfc9ec;font-size:15px;margin:0 0 16px;max-width:560px}
+.lp-steps{display:flex;flex-wrap:wrap;gap:8px}
+.lp-steps span{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:13px;font-weight:600}
+.lp-steps b{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#22d3ee);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px}
+.lp-stage{position:relative;aspect-ratio:1/1;max-height:400px;display:flex;align-items:center;justify-content:center}
 .mh-rolehint{text-align:center;font-size:12px;color:var(--muted);margin-top:8px;position:relative;z-index:4} .mh-rolehint b{color:#ffd88a}
 .mh-tab.on{background:linear-gradient(135deg,#8b5cf6,#22d3ee);color:#fff;border-color:transparent;box-shadow:0 6px 20px rgba(139,92,246,.35)}
 .mh-reasons{list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:7px}
@@ -447,6 +457,16 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
   </div>
 
   <div id="err" class="err hidden"></div>
+
+  <div id="landing" class="card lp">
+    <div class="lp-txt">
+      <div class="mh-kick">Dota 2 · только твои игры · без меты</div>
+      <h2 class="lp-h">Найди героя, на котором <span>ты</span> будешь побеждать</h2>
+      <p class="lp-p">Модель изучит все твои матчи — как ты играешь, как учишься новым героям, что тебя ломает — и соберёт героя, роль и пул под тебя, с прогнозом рейтинга на год.</p>
+      <div class="lp-steps"><span><b>1</b>Вставь профиль выше</span><span><b>2</b>Модель проживёт твоё будущее сотни раз</span><span><b>3</b>Твой герой, роль, пул и план</span></div>
+    </div>
+    <div class="lp-stage"><div class="mh-aura"></div><div class="mh-ring"></div><video id="lpVideo" class="mh-render" autoplay muted loop playsinline></video></div>
+  </div>
 
   <div id="progress" class="card hidden">
     <div class="prog"><div class="ring"></div><div style="flex:1"><div id="pTitle" style="font-weight:700">Загружаю…</div><div id="pStep" class="muted"></div><div class="bar"><i id="pFill" style="width:0"></i></div></div></div>
@@ -2067,6 +2087,12 @@ async function renderMyHero(S, sel){
   show(cache.idx[sel] || r.best.h);
 }
 
+// Экран входа: живой герой — случайный из набора с разными ролями, чтобы с первого открытия было «вау»
+(() => { const v = $('landing') && $('lpVideo'); if(!v) return;
+  const pick = ['juggernaut', 'invoker', 'crystal_maiden', 'void_spirit', 'pudge', 'phantom_assassin', 'troll_warlord', 'lina', 'earthshaker', 'shadow_fiend'];
+  const sh = pick[Math.floor(Math.random()*pick.length)], base = CDN + RENDER + sh;
+  v.poster = base + '.png'; v.innerHTML = `<source src="${base}.webm" type="video/webm"><source src="${base}.mov" type="video/quicktime">`; v.load(); })();
+
 // ───────── на какого про ты похож ─────────
 // Составы — с последних крупных турниров (свежее в Stratz нет), пул героев — по матчам про за 120 дней на этой позиции
 const PRO_LEAGUES = [18324, 18375];   // TI 2025, Esports World Cup 2025
@@ -2117,7 +2143,7 @@ async function renderPros(S){
 
 // ───────── оркестрация ─────────
 async function runPlayer(id){
-  $('report').classList.add('hidden'); $('err').classList.add('hidden'); $('progress').classList.remove('hidden');
+  $('report').classList.add('hidden'); $('err').classList.add('hidden'); $('progress').classList.remove('hidden'); $('landing').classList.add('hidden');
   prog('Профиль', '', 0.01);
   await ensureHeroes();
   const pd = await gql(`{ player(steamAccountId: ${id}) { steamAccount { name avatar seasonRank } matchCount winCount } }`);
