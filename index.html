@@ -2028,7 +2028,7 @@ function psyRadar(S, h, p){
   const spokes = PSY.map((_, i) => { const [x, y] = pt(i, 90); return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="rd-grid"/>`; }).join('');
   const labels = PSY.map(([, l], i) => { const a = -Math.PI/2 + 2*Math.PI*i/N, x = cx + (R + 18)*Math.cos(a), y = cy + (R + 14)*Math.sin(a); return `<text x="${x.toFixed(1)}" y="${(y + 4).toFixed(1)}" class="rd-lbl">${l}</text>`; }).join('');
   return `<div class="mh-radar"><svg viewBox="0 0 220 205">${grid}${spokes}<polygon points="${poly(meV)}" class="rd-me"/><polygon points="${poly(heroV)}" class="rd-hero"/>${labels}</svg>
-    <div class="rd-cap"><span><i class="me"></i>ты</span><span><i class="hero"></i>${hn(h)}</span><b>характер: ${fit}%</b></div></div>`;
+    <div class="rd-cap"><span><i class="me"></i>ты</span><span><i class="hero"></i>${hn(h)}</span><b title="насколько герой «просит» то же, что ты и так делаешь в игре">совпадение характера: ${fit}%</b></div></div>`;
 }
 
 const mhStage = h => { const sh = heroShort(h);
@@ -2175,7 +2175,8 @@ async function renderMyHero(S, sel){
     o.best = +Object.keys(o).filter(p => o[p].n >= 30).sort((a,b) => o[b].sm - o[a].sm)[0] || null; return o; })();
   const tabs = `<div class="mh-who">${acc.name || ''}${mmr != null ? ' · ' + mmrToRank(mmr) : ''} · ${S.year.length} игр разобрано</div>
     <div class="mh-tabs">${MH_TABS.map(([p, l]) => `<button class="mh-tab ${p === sel ? 'on' : ''} ${p && p === ps.best ? 'best' : ''}" data-p="${p}">${p === ps.best ? '★ ' : ''}${l}${p ? `<small>${ps[p].n ? `${pct0(ps[p].wr)} · ${ps[p].n}` : 'нет игр'}</small>` : '<small>из твоих</small>'}</button>`).join('')}</div>
-    ${ps.best ? `<div class="mh-rolehint">★ Твоя роль по играм — <b>${roleShort(ps.best).toLowerCase()}</b>: ${pct0(ps[ps.best].wr)} за ${ps[ps.best].n} ${gamesWord(ps[ps.best].n)}</div>` : ''}`;
+    ${ps.best ? `<div class="mh-rolehint">★ Твоя роль по играм — <b>${roleShort(ps.best).toLowerCase()}</b>: ${pct0(ps[ps.best].wr)} за ${ps[ps.best].n} ${gamesWord(ps[ps.best].n)}</div>` : ''}
+    <div class="mh-rolehint">${sel ? `Вкладка роли — <b>новые герои на вырост</b>: на них у тебя меньше 15 игр, подобраны под твой стиль и характер` : `«Твой герой» — <b>из тех, на ком ты уже играешь</b>. Вкладки ролей — новые герои на вырост`}</div>`;
   const bindTabs = () => box.querySelectorAll('.mh-tab').forEach(b => b.onclick = () => { lsSet('dc_mh_' + S.id, +b.dataset.p); renderMyHero(S, +b.dataset.p); });
   const T = S.posTable || {};
   const pool = sel ? Object.keys(T).map(Number).filter(h => heroes[h] && T[h][sel]).sort((a,b) => T[b][sel].n - T[a][sel].n).slice(0, 12)
