@@ -2215,6 +2215,10 @@ function todayPlan(S, m, cur){
   if(rec15.length >= 10){
     const dR = mean(rec15.map(g => g.d)), dAll = mean(G.filter(g => g.d != null).map(g => g.d));
     if(dR != null && dAll && dR >= dAll*1.2) tiles.push(['💀', `Много смертей: ${dR.toFixed(1)} за игру`, `в последних ${rec15.length} играх — обычно у тебя ${dAll.toFixed(1)}. Покупай сейв раньше и не фарми там, где не видно врага`]);
+    // Не только ошибки: если ты в форме — сказать об этом, это тоже повод играть сегодня
+    const w15 = rec15.filter(g => g.win).length;
+    if(w15/rec15.length >= all + 0.12) tiles.unshift(['🔥', `Ты в форме: ${w15}–${rec15.length - w15}`, `в последних ${rec15.length} играх — ${pct0(w15/rec15.length)} побед, обычно у тебя ${pct0(all)}. Хороший день, чтобы играть своих героев`]);
+    if(dR != null && dAll && dR <= dAll*0.8) tiles.push(['🛡', `Умираешь реже: ${dR.toFixed(1)} за игру`, `обычно у тебя ${dAll.toFixed(1)} — то, что ты сейчас делаешь, работает`]);
     const dSum = rec15.reduce((s, g) => s + (g.d || 0), 0), solo = rec15.reduce((s, g) => s + (g.soloDeaths || 0), 0);
     if(dSum >= 30 && solo/dSum >= 0.3) tiles.push(['☠', `${Math.round(100*solo/dSum)}% смертей — в одиночку`, `в последних ${rec15.length} играх ${solo} из ${dSum} смертей вне драки: тебя ловят одного — ходи с командой или с вардом`]);
   }
