@@ -1973,7 +1973,7 @@ function pickPerspective(S, p){
   rows.sort((a,b) => b.score - a.score);
   const mine = Object.entries(atPos).filter(([, o]) => o.n >= 10).map(([h, o]) => ({h: +h, n: o.n, wr: o.w/o.n, sc: solid(o.w, o.n)})).sort((a,b) => b.sc - a.sc);
   const posG = S.year.filter(g => g.pos === p);
-  return {best: rows[0], alts: rows.slice(1, 3), all: rows, cur: mine[0] || null, posWr: posG.length ? posG.filter(g => g.win).length/posG.length : null, posN: posG.length, nCand: rows.length, perMonth,
+  return {best: rows[0], alts: rows.slice(1, 3), all: rows, cur: mine[0] || null, overall: F.overall, posWr: posG.length ? posG.filter(g => g.win).length/posG.length : null, posN: posG.length, nCand: rows.length, perMonth,
     ownTop: own.sort((a,b) => b[1].n - a[1].n).slice(0, 3).map(([h]) => +h)};
 }
 
@@ -2042,7 +2042,7 @@ function mineReasons(x, r){
 function perspReasons(x, r){
   const sims = x.sims, simWr = sims.length ? sims.reduce((t, k) => t + k.wr, 0)/sims.length : null;
   return [
-    sims.length ? `<b>Под твой стиль — ${x.fitPct}%</b>: играется как твои ${sims.map(k => hn(k.h)).join(', ')} — на них ты выигрываешь ${pct0(simWr)}, и этот уровень переносится.`
+    sims.length ? `<b>Под твой стиль — ${x.fitPct}%</b>: играется как твои ${sims.map(k => hn(k.h)).join(', ')} — ${simWr >= r.overall ? `на них ты выигрываешь ${pct0(simWr)}, и этот уровень переносится` : `по стилю они твои, но результат на них пока ${pct0(simWr)} — прогноз это честно учитывает`}.`
       : `<b>Под твой стиль — ${x.fitPct}%</b>: по профилю (фарм, драки, урон, ближний/дальний бой) близок к тому, как ты играешь${r.ownTop.length ? ` на ${r.ownTop.map(hn).join(', ')}` : ''}.`,
     `<b>Через месяц (~${r.perMonth} игр) — ${pct0(x.month)}</b>: первые игры ${pct0(x.now)}, дальше растёшь по своей кривой обучения.`,
     facesLine(x.faces)].filter(Boolean);
@@ -2052,7 +2052,7 @@ function perspReasons(x, r){
 function mhView(x, r, sel, S){
   const isBest = x.h === r.best.h, isAlt = r.alts.some(a => a.h === x.h), rank = r.all.findIndex(y => y.h === x.h) + 1;
   const psy = psyReasons(S, x.h, sel || x.pos), psyLine = psy.length ? [`<b>Под твой характер</b>: ${psy.join('; ')}.`] : [];
-  const extra = isBest && r.alts.length && !sel ? [`<b>Лучший прогноз рейтинга из трёх</b>: ${x.g3 >= 0 ? '+' : ''}${x.g3} за 3 месяца, если играть его.`]
+  const extra = isBest && r.alts.length && !sel ? [x.g3 >= 0 ? `<b>Лучший прогноз рейтинга из трёх</b>: +${x.g3} за 3 месяца, если играть его.` : `<b>Из трёх с ним рейтинг теряет меньше всего</b>: ${x.g3} за 3 месяца — остальные проседают сильнее.`]
     : !isAlt && !isBest ? [`<b>№${rank} из ${r.all.length}</b> в списке модели. ${hn(r.best.h)} даёт больше, но выбор твой — прогноз ниже уже с ним.`] : [];
   if(sel) return {h: x.h, pos: sel, now: x.now, month: x.month, faces: x.faces, persp: x,
     kick: `${isBest ? 'Перспектива' : isAlt ? 'Ещё вариант' : 'Твой выбор'} · ${roleShort(sel)}`,
@@ -2086,7 +2086,7 @@ function mhPlan(S, x, m){
 
 // План на сегодня — из твоих сессий: сколько игр подряд держишь уровень, что после двух поражений, в какое время ты сильнее.
 // Каждая плитка — только когда разница по факту заметная (иначе совет без основания)
-function todayPlan(S, m){
+function todayPlan(S, m, cur){
   const G = S.year, all = G.filter(g => g.win).length/G.length, wr = a => a.length ? a.filter(g => g.win).length/a.length : null;
   const tiles = [], z = (w, n) => (all - w)/Math.sqrt(all*(1 - all)/n);   // насколько провал не похож на случайность
   const byIdx = [1, 2, 3, 4, 5].map(i => G.filter(g => (i < 5 ? g.sessIdx === i : g.sessIdx >= 5)));
@@ -2097,7 +2097,9 @@ function todayPlan(S, m){
   const slots = [[6, 12, 'утром'], [12, 18, 'днём'], [18, 24, 'вечером'], [0, 6, 'ночью']].map(([a, b, l]) => { const g = G.filter(x => { const h = new Date(x.t*1000).getHours(); return h >= a && h < b; }); return {l, a, b, n: g.length, w: wr(g)}; }).filter(s => s.n >= 60);
   const bs = slots.slice().sort((a,b) => b.w - a.w)[0], ws = slots.slice().sort((a,b) => a.w - b.w)[0];
   if(bs && ws && bs.w - ws.w >= 0.03 && (bs.w - ws.w)/Math.sqrt(all*(1 - all)*(1/bs.n + 1/ws.n)) >= 1.5) tiles.push(['🕗', `Играй ${bs.l} (${bs.a}–${bs.b} ч)`, `${pct0(bs.w)} побед против ${pct0(ws.w)} ${ws.l}`]);
-  tiles.push(['🦸', `Начни с ${hn(m.h)}`, `первая игра задаёт настрой — бери героя, на котором уверен`]);
+  // Первая игра задаёт настрой: новый герой — не первым. Если главный ещё новый, начинаем с уверенного героя позиции
+  if(m.persp && cur && cur.h !== m.h) tiles.push(['🦸', `Начни с ${hn(cur.h)}, потом ${hn(m.h)}`, `первая игра задаёт настрой: на ${hn(cur.h)} у тебя ${pct0(cur.wr)}, а нового героя бери второй игрой`]);
+  else tiles.push(['🦸', `Начни с ${hn(m.h)}`, 'первая игра задаёт настрой — бери героя, на котором уверен']);
   return `<div class="mh-today"><div class="mh-today-h"><b>План на сегодня</b><span>по твоим сессиям — как ты играешь, когда устаёшь и тильтуешь</span></div>
     <div class="mh-today-t">${tiles.map(([i, t, d]) => `<div><i>${i}</i><b>${t}</b><span>${d}</span></div>`).join('')}</div></div>`;
 }
@@ -2194,7 +2196,7 @@ async function renderMyHero(S, sel){
       <div class="mh-pickbar">${(() => { const pool = poolGet(), inP = pool.some(e => e.h === m.h && e.p === m.pos), full = pool.filter(e => e.p === m.pos).length >= 3;
         return `<button class="mh-pool-add ${inP ? 'on' : ''}" ${!inP && full ? 'disabled title="На роли уже 3 героя — убери одного"' : ''}>${inP ? '✓ В моём пуле' : `⭐ В мой пул (${role})`}</button>`; })()}<button class="mh-share" title="Скачать картинку, чтобы поделиться">📸 Картинка «мой герой»</button><button class="mh-no" title="Убрать героя из подбора на всех вкладках">👎 Не мой герой — убрать</button><button class="mh-open">Выбрать самому из ${r.all.length} ▾</button></div></div></div>
       ${mhPlan(S, x, m)}
-      ${todayPlan(S, m)}
+      ${todayPlan(S, m, sel ? r.cur : null)}
       <div class="mh-draft"><button class="mh-dopen">⚔ Кого из твоих брать против их пика ▾</button><div class="mh-dbox ${cache.enemies && cache.enemies.length ? '' : 'hidden'}">
         <input list="mhHeroList" class="mh-din" placeholder="Начни писать героя врага и выбери из списка…" autocomplete="off"><datalist id="mhHeroList">${Object.values(heroes).map(hh => `<option value="${hh.localized_name}">`).join('')}</datalist>
         <div class="mh-dchips"></div><div class="mh-dres"></div></div></div>
