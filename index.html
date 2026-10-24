@@ -419,6 +419,11 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mf-name{font-family:Unbounded,Manrope,sans-serif;font-size:clamp(26px,4vw,40px);font-weight:900;line-height:1.05;background:linear-gradient(90deg,#fff,#c4b5fd 55%,#67e8f9);-webkit-background-clip:text;background-clip:text;color:transparent}
 .mf-kda{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums} .mf-res{font-weight:800;font-size:15px}
 @media(max-width:600px){.mfocus{grid-template-columns:120px 1fr}.mf-stage .mh-stage{max-height:140px}}
+.rm-h{font-size:13px;color:var(--muted);margin:12px 0 6px}
+.rm{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px}
+.rm-g{display:flex;align-items:center;gap:8px;text-align:left;padding:5px 10px 5px 5px;border-radius:12px;background:var(--panel2);border:1px solid var(--line);border-left:3px solid;color:var(--text);font-weight:400;box-shadow:none}
+.rm-g.w{border-left-color:var(--good)} .rm-g.l{border-left-color:var(--bad)} .rm-g:hover{border-color:rgba(167,139,250,.6)}
+.rm-g img{width:56px;height:32px;object-fit:cover;border-radius:7px} .rm-g b{display:block;font-size:13px} .rm-g small{font-size:11px;color:var(--muted)}
 .mh-cmpbtn{grid-column:1/-1;justify-self:center;background:rgba(255,255,255,.05);border:1px solid rgba(103,232,249,.4);color:#a5f3fc;padding:7px 16px;border-radius:12px;font-size:13px;font-weight:800;box-shadow:none}
 .mh-cmp{grid-column:1/-1} .mh-cmp.hidden{display:none}
 .cmp{display:grid;grid-template-columns:minmax(0,280px) minmax(0,1fr);gap:14px;align-items:center;padding:12px;border-radius:16px;background:var(--panel2);border:1px solid var(--line)}
@@ -543,6 +548,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
       <input id="qm" placeholder="Match ID или ссылка на матч" autocomplete="off">
       <button id="gom">Разобрать матч</button>
     </form>
+    <div id="recentM"></div>
   </div>
 
   <div id="err" class="err hidden"></div>
@@ -2666,6 +2672,17 @@ function showTab(name){
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   $('tab-player').classList.toggle('hidden', name !== 'player'); $('tab-match').classList.toggle('hidden', name !== 'match');
   $('report').classList.add('hidden'); $('mout').classList.add('hidden'); $('err').classList.add('hidden'); $('landing').classList.add('hidden');
+  if(name === 'match') renderRecentMatches();
+}
+// Последние игры разобранного игрока — нажал и разобрал, без поиска Match ID (его почти никто не знает)
+function renderRecentMatches(){
+  const box = $('recentM'); if(!box) return;
+  if(!state || !state.year){ box.innerHTML = '<p class="hint">Разбери себя на вкладке «Игрок» — здесь появятся твои последние игры, Match ID искать не придётся.</p>'; return; }
+  const ago = t => { const h = Math.round((Date.now()/1000 - t)/3600); return h < 24 ? `${Math.max(1, h)} ч назад` : `${Math.round(h/24)} дн. назад`; };
+  const list = [...state.year].sort((a,b) => b.t - a.t).slice(0, 12);
+  box.innerHTML = `<div class="rm-h">Твои последние игры — нажми на любую:</div><div class="rm">${list.map(g => `<button class="rm-g ${g.win ? 'w' : 'l'}" data-id="${g.id}">
+    <img src="${CDN + H(g.hero).img}" alt=""><span><b>${hn(g.hero)}</b><small>${g.win ? 'победа' : 'поражение'}${g.k != null ? ` · ${g.k}/${g.d}/${g.a}` : ''} · ${ago(g.t)}</small></span></button>`).join('')}</div>`;
+  box.querySelectorAll('.rm-g').forEach(b => b.onclick = () => { $('qm').value = b.dataset.id; $('fm').requestSubmit(); });
 }
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => showTab(b.dataset.tab));
 function showErr(err){ $('progress').classList.add('hidden'); $('err').textContent = /Failed to fetch/.test(err.message) ? 'Не удалось связаться с сервером. Проверь интернет.' : err.message; $('err').classList.remove('hidden'); console.error(err); }
