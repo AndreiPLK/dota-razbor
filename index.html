@@ -401,6 +401,10 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-pane.hidden{display:none}
 @media(max-width:600px){.mh-subtabs{flex-wrap:nowrap;margin:0 14px 12px;gap:4px}.mh-subtab{flex:1;padding:8px 4px;font-size:11.5px;line-height:1.25}}
 .mh-pane .mh-plan,.mh-pane .mh-today{animation:none}
+.mh-link{background:rgba(255,255,255,.06);border:1px solid var(--line);color:#a5f3fc;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;box-shadow:none;margin-left:6px}
+.mh-since{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:center;align-items:baseline;margin:10px auto 0;padding:7px 16px;max-width:680px;border-radius:12px;
+  background:rgba(34,211,238,.08);border:1px solid rgba(103,232,249,.35);font-size:13px;position:relative;z-index:4}
+.mh-since>b{color:#a5f3fc} .mh-since.quiet{opacity:.8} .mh-since .up{color:#ffd88a;font-weight:800}
 .mh-today{margin:0 28px 18px;padding:14px 16px;border-radius:18px;background:linear-gradient(160deg,rgba(255,198,90,.08),rgba(255,255,255,.02) 60%);border:1px solid rgba(255,198,90,.28);position:relative;z-index:2;animation:rise .6s 2.3s both}
 @media(max-width:700px){.mh-today{margin:0 14px 16px}}
 .mh-today-h{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline} .mh-today-h b{font-family:Unbounded,Manrope,sans-serif;font-size:16px} .mh-today-h span{font-size:12px;color:var(--muted)}
@@ -2110,6 +2114,23 @@ function mastery(S, h){
 }
 const mastBadge = (S, h, small) => { const m = mastery(S, h); return m.cur ? `<span class="mast ${small ? 'sm' : ''}" title="${m.cur[1]} · ${m.hint}">${m.cur[0]}${small ? '' : ' ' + m.cur[1]}</span>` : ''; };
 
+// «С прошлого раза»: снимок в браузере (время, последняя игра, ступени героев). Если с прошлого снимка прошло 6+ часов —
+// показываем разницу и обновляем снимок; если меньше — показываем разницу, но снимок не трогаем (перезагрузка не обнуляет)
+function sinceLast(S){
+  if(S.sinceHtml != null) return S.sinceHtml;
+  const key = 'dc_snap_' + S.id, snap = lsGet(key), lastT = Math.max(...S.year.map(g => g.t));
+  const tiers = {}; [...new Set(S.year.map(g => g.hero))].forEach(h => { const m = mastery(S, h); if(m.cur) tiers[h] = m.cur[1]; });
+  const save = () => lsSet(key, {t: Date.now(), lastT, tiers});
+  if(!snap){ save(); return S.sinceHtml = ''; }
+  const fresh = S.year.filter(g => g.t > snap.lastT), w = fresh.filter(g => g.win).length, ago = Math.max(1, Math.round((Date.now() - snap.t)/3600e3));
+  const agoTxt = ago < 24 ? `${ago} ч назад` : `${Math.round(ago/24)} дн. назад`;
+  const ups = Object.entries(tiers).filter(([h, t]) => snap.tiers && snap.tiers[h] !== t && TIERS.findIndex(x => x[1] === t) < TIERS.findIndex(x => x[1] === (snap.tiers[h] || 'нет'))).map(([h, t]) => `${TIERS.find(x => x[1] === t)[0]} ${hn(+h)} — ${t.toLowerCase()}!`);
+  const top = Object.entries(fresh.reduce((o, g) => (o[g.hero] = (o[g.hero] || 0) + 1, o), {})).sort((a,b) => b[1] - a[1])[0];
+  if(Date.now() - snap.t >= 6*3600e3) save();
+  return S.sinceHtml = fresh.length ? `<div class="mh-since"><b>С прошлого раза (${agoTxt})</b><span>${fresh.length} ${gamesWord(fresh.length)} · <b class="${wrClass(w/fresh.length)}">${w}–${fresh.length - w}</b>${top ? ` · чаще всего ${hn(+top[0])}` : ''}</span>${ups.length ? `<span class="up">${ups.join(' · ')}</span>` : ''}</div>`
+    : ago >= 6 ? `<div class="mh-since quiet"><b>С прошлого раза (${agoTxt})</b><span>новых игр нет — план ниже ждёт</span></div>` : '';
+}
+
 // План на сегодня — из твоих сессий: сколько игр подряд держишь уровень, что после двух поражений, в какое время ты сильнее.
 // Каждая плитка — только когда разница по факту заметная (иначе совет без основания)
 function todayPlan(S, m, cur){
@@ -2173,11 +2194,13 @@ async function renderMyHero(S, sel){
   const ps = S.posStats = S.posStats || (() => { const all = S.year.filter(g => g.win).length/S.year.length, o = {};
     [1,2,3,4,5].forEach(p => { const g = S.year.filter(x => x.pos === p), w = g.filter(x => x.win).length; o[p] = {n: g.length, wr: g.length ? w/g.length : null, sm: (w + 20*all)/(g.length + 20)}; });
     o.best = +Object.keys(o).filter(p => o[p].n >= 30).sort((a,b) => o[b].sm - o[a].sm)[0] || null; return o; })();
-  const tabs = `<div class="mh-who">${acc.name || ''}${mmr != null ? ' · ' + mmrToRank(mmr) : ''} · ${S.year.length} игр разобрано</div>
+  const tabs = `<div class="mh-who">${acc.name || ''}${mmr != null ? ' · ' + mmrToRank(mmr) : ''} · ${S.year.length} игр разобрано <button class="mh-link" title="Скопировать ссылку — другу откроется этот же разбор">🔗 Ссылка на разбор</button></div>${sinceLast(S)}
     <div class="mh-tabs">${MH_TABS.map(([p, l]) => `<button class="mh-tab ${p === sel ? 'on' : ''} ${p && p === ps.best ? 'best' : ''}" data-p="${p}">${p === ps.best ? '★ ' : ''}${l}${p ? `<small>${ps[p].n ? `${pct0(ps[p].wr)} · ${ps[p].n}` : 'нет игр'}</small>` : '<small>из твоих</small>'}</button>`).join('')}</div>
     ${ps.best ? `<div class="mh-rolehint">★ Твоя роль по играм — <b>${roleShort(ps.best).toLowerCase()}</b>: ${pct0(ps[ps.best].wr)} за ${ps[ps.best].n} ${gamesWord(ps[ps.best].n)}</div>` : ''}
     <div class="mh-rolehint">${sel ? `Вкладка роли — <b>новые герои на вырост</b>: на них у тебя меньше 15 игр, подобраны под твой стиль и характер` : `«Твой герой» — <b>из тех, на ком ты уже играешь</b>. Вкладки ролей — новые герои на вырост`}</div>`;
-  const bindTabs = () => box.querySelectorAll('.mh-tab').forEach(b => b.onclick = () => { lsSet('dc_mh_' + S.id, +b.dataset.p); renderMyHero(S, +b.dataset.p); });
+  const bindTabs = () => { box.querySelectorAll('.mh-tab').forEach(b => b.onclick = () => { lsSet('dc_mh_' + S.id, +b.dataset.p); renderMyHero(S, +b.dataset.p); });
+    const lb = box.querySelector('.mh-link'); if(lb) lb.onclick = async () => { const url = location.origin + location.pathname + '#' + S.id;
+      try{ await navigator.clipboard.writeText(url); lb.textContent = '✓ Скопировано'; }catch{ prompt('Ссылка на разбор:', url); } setTimeout(() => lb.textContent = '🔗 Ссылка на разбор', 2000); }; };
   const T = S.posTable || {};
   const pool = sel ? Object.keys(T).map(Number).filter(h => heroes[h] && T[h][sel]).sort((a,b) => T[b][sel].n - T[a][sel].n).slice(0, 12)
     : [...S.year.reduce((m, g) => m.set(g.hero, (m.get(g.hero) || 0) + 1), new Map())].sort((a,b) => b[1] - a[1]).slice(0, 12).map(([h]) => h);
