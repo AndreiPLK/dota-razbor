@@ -2205,7 +2205,8 @@ function sinceLast(S){
   const ups = Object.entries(tiers).filter(([h, t]) => snap.tiers && snap.tiers[h] !== t && TIERS.findIndex(x => x[1] === t) < TIERS.findIndex(x => x[1] === (snap.tiers[h] || 'нет'))).map(([h, t]) => `${TIERS.find(x => x[1] === t)[0]} ${hn(+h)} — ${t.toLowerCase()}!`);
   const top = Object.entries(fresh.reduce((o, g) => (o[g.hero] = (o[g.hero] || 0) + 1, o), {})).sort((a,b) => b[1] - a[1])[0];
   if(Date.now() - snap.t >= 6*3600e3) save();
-  return S.sinceHtml = fresh.length ? `<div class="mh-since"><b>С прошлого раза (${agoTxt})</b><span>${fresh.length} ${gamesWord(fresh.length)} · <b class="${wrClass(w/fresh.length)}">${w}–${fresh.length - w}</b>${top ? ` · чаще всего ${hn(+top[0])}` : ''}</span>${ups.length ? `<span class="up">${ups.join(' · ')}</span>` : ''}</div>`
+  return S.sinceHtml = fresh.length ? `<div class="mh-since"><b>С прошлого раза (${agoTxt})</b><span>${fresh.length} ${gamesWord(fresh.length)} · <b class="${wrClass(w/fresh.length)}">${w}–${fresh.length - w}</b>${top ? ` · чаще всего ${hn(+top[0])}` : ''}${(() => { const ph = new Set((lsGet('dc_pool_' + S.id) || []).map(e => e.h)), k = fresh.filter(g => ph.has(g.hero)).length;
+      return ph.size ? ` · на героях пула <b class="${k >= fresh.length*0.6 ? 'good' : ''}">${k} из ${fresh.length}</b>` : ''; })()}</span>${ups.length ? `<span class="up">${ups.join(' · ')}</span>` : ''}</div>`
     : ago >= 6 ? `<div class="mh-since quiet"><b>С прошлого раза (${agoTxt})</b><span>новых игр нет — план ниже ждёт</span></div>` : '';
 }
 
