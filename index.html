@@ -476,11 +476,14 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-reasons li{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:9px 12px;font-size:14px;line-height:1.4;animation:pop .5s both}
 .mh-reasons li i{width:22px;height:22px;border-radius:50%;background:rgba(61,242,154,.15);color:var(--good);display:flex;align-items:center;justify-content:center;font-style:normal;font-weight:800;font-size:12px}
 .mh-reasons li span{color:#d6d0f5} .mh-reasons li b{color:var(--text)}
-.mh-vs{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:stretch;margin:12px 0 4px;animation:rise .6s .9s both}
+.mh-vs{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:10px;align-items:stretch;margin:12px 0 4px;animation:rise .6s .9s both}
 .mh-vs>div{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
 .mh-vs>div.on{border-color:rgba(61,242,154,.45);background:linear-gradient(160deg,rgba(61,242,154,.12),var(--panel2) 70%)}
 .mh-vs span{font-size:12px;color:var(--muted)} .mh-vs b{font-family:Unbounded,Manrope,sans-serif;font-size:28px;line-height:1.1}
 .mh-vs>i{align-self:center;font-style:normal;color:var(--muted);font-size:20px}
+.mh-vs>div.ceil{border-color:rgba(103,232,249,.5);background:linear-gradient(160deg,rgba(103,232,249,.12),var(--panel2) 70%)}
+/* Телефон: три цифры в ряд не влезают — стрелки прячем, карточки делим поровну */
+@media(max-width:520px){.mh-vs{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px} .mh-vs>i{display:none} .mh-vs>div{padding:8px} .mh-vs b{font-size:21px} .mh-vs span{font-size:11px}}
 .mh-verdict{margin-top:10px;padding:10px 14px;border-radius:12px;background:rgba(61,242,154,.08);border:1px solid rgba(61,242,154,.35);font-weight:700;animation:rise .6s 2.1s both}
 .mh-verdict.meh{background:rgba(255,198,90,.08);border-color:rgba(255,198,90,.35)}
 .mh-alt .a>span{line-height:1.3;font-size:12px}
@@ -1760,7 +1763,7 @@ function mlSimulate(ML, hero, pos, games, perMonth, runs = 250, rules = [], bias
   const ok = c => !(has('night') && c.hour < 6) && !(has('sess4') && c.sessIdx >= 4) && !(party && (party.bad ? c.party > 1 : c.party === 1));
   let recentCtx = ML.ctxs.slice(-200); if(recentCtx.filter(ok).length >= 30) recentCtx = recentCtx.filter(ok);
   const cp = st => ({...st, hero: Object.fromEntries(Object.entries(st.hero).map(([k, v]) => [k, {...v, seq: v.seq.slice()}])), last: st.last.slice()});
-  const out = {wins: [], p5: 0, p20: 0, p50: 0, cross: {1000: [], 2000: []}, traj: []};   // traj[m] — рейтинг после m-го месяца во всех прогонах
+  const out = {wins: [], p5: 0, p20: 0, p50: 0, p100: 0, cross: {1000: [], 2000: []}, traj: []};   // traj[m] — рейтинг после m-го месяца во всех прогонах
   for(let r = 0; r < runs; r++){
     const st = cp(ML.st); let wins = 0, mmr = 0, t = Date.now()/1000; const reached = {};
     for(let g = 0; g < games; g++){
@@ -1770,7 +1773,7 @@ function mlSimulate(ML, hero, pos, games, perMonth, runs = 250, rules = [], bias
       const ctx = hero == null ? {...base, t} : {...base, pos, t, hero};
       const p = clamp(mlPredict(ML.model, ML.z(mlFeatures(st, ctx, ML.total))) + bias, 0.05, 0.95);
       const R = Math.min(runs, 60);
-      if(r < R){ if(g < 5) out.p5 += p/(5*R); else if(g >= 15 && g < 25) out.p20 += p/(10*R); else if(g >= 45 && g < 55) out.p50 += p/(10*R); }
+      if(r < R){ if(g < 5) out.p5 += p/(5*R); else if(g >= 15 && g < 25) out.p20 += p/(10*R); else if(g >= 45 && g < 55) out.p50 += p/(10*R); else if(g >= 95 && g < 105) out.p100 += p/(10*R); }
       const win = rnd() < p ? 1 : 0; wins += win; mmr += win ? 25 : -25; mlUpdate(st, ctx, win);
       [1000, 2000].forEach(k => { if(!reached[k] && mmr >= k) reached[k] = g + 1; });
       if((g + 1) % perMonth === 0) (out.traj[(g + 1)/perMonth] = out.traj[(g + 1)/perMonth] || []).push(mmr);
@@ -2030,9 +2033,11 @@ function pickPerspective(S, p){
   const ctr = a => a.map((v, j) => v - Mc[j]), Cc = ctr(C.map(v => v/wsum));
   const rows = cand.map(h => {
     const s = mlSimulate(ML, h, p, 55, perMonth, 40);
+    // Потолок героя — 100-я игра: отдельный прогон (месячный прогноз и его зерно не меняются, числа на сайте остаются прежними)
+    const s100 = mlSimulate(ML, h, p, 105, perMonth, 20);
     const sims = known.filter(k => k.h !== h).map(k => ({...k, s: cosine(V[h], V[k.h])})).filter(k => k.s >= 0.5).sort((a,b) => b.s - a.s).slice(0, 3);
     const ws = sims.reduce((t, k) => t + k.s*k.s, 0), transfer = ws ? 0.5*sims.reduce((t, k) => t + k.s*k.s*k.d, 0)/ws : 0;   // половина — осторожно
-    return {h, n: rec[h] ? rec[h].n : 0, w: rec[h] ? rec[h].w : 0, now: clamp(s.p5 + transfer, .3, .7), w20: clamp(s.p20 + transfer, .3, .7), month: clamp(s.p50 + transfer, .3, .7),
+    return {h, n: rec[h] ? rec[h].n : 0, w: rec[h] ? rec[h].w : 0, now: clamp(s.p5 + transfer, .3, .7), w20: clamp(s.p20 + transfer, .3, .7), month: clamp(s.p50 + transfer, .3, .7), ceil: clamp(s100.p100 + transfer, .3, .7),
       transfer, sims, fit: own.length ? cosine(ctr(V[h]), Cc) : 0, faces: heroFaces(h), cplx: H(h).complexity || 2};
   });
   // Порядок: стиль героев 45%, совпадение характера 25%, прогноз через месяц 30%; всё приведено к шкале 0..1 среди кандидатов
@@ -2045,13 +2050,14 @@ function pickPerspective(S, p){
   // Нет таких — честно помечаем (noUp), а не выдаём падение 48% → 46% за перспективу
   const posG0 = S.year.filter(g => g.pos === p), posWr0 = posG0.length ? posG0.filter(g => g.win).length/posG0.length : 0;
   // Рост — хотя бы +1 п.п. после округления, иначе на экране «с 43% до 43%»
-  const upF = x => Math.round(x.month*100) > Math.round(posWr0*100);
-  rows.sort((a,b) => (upF(b) - upF(a)) || b.score - a.score);
-  // Роста нет ни у кого — тогда первым тот, кто ближе всего к твоему уровню (меньше всего теряешь)
-  if(!rows.some(upF)) rows.sort((a,b) => Math.round(b.month*100) - Math.round(a.month*100) || b.score - a.score);
+  // Ступени: 2 — выше уже через месяц; 1 — выше к 100-й игре (потолок героя); 0 — не выше
+  const pc = v => Math.round(v*100), cur0 = pc(posWr0), upF = x => pc(x.month) > cur0, upC = x => pc(x.ceil) > cur0, tier = x => upF(x) ? 2 : upC(x) ? 1 : 0;
+  rows.sort((a,b) => (tier(b) - tier(a)) || b.score - a.score);
+  // Роста нет ни у кого — первым тот, у кого выше потолок (ближе всего к твоему уровню)
+  if(!rows.some(x => tier(x))) rows.sort((a,b) => pc(b.ceil) - pc(a.ceil) || b.score - a.score);
   const mine = Object.entries(atPos).filter(([, o]) => o.n >= 10).map(([h, o]) => ({h: +h, n: o.n, wr: o.w/o.n, sc: solid(o.w, o.n)})).sort((a,b) => b.sc - a.sc);
   const posG = S.year.filter(g => g.pos === p);
-  return {best: rows[0], alts: rows.slice(1, 3), all: rows, cur: mine[0] || null, overall: F.overall, posWr: posG.length ? posG.filter(g => g.win).length/posG.length : null, posN: posG.length, nCand: rows.length, perMonth, noUp: !rows.some(upF), nUp: rows.filter(upF).length,
+  return {best: rows[0], alts: rows.slice(1, 3), all: rows, cur: mine[0] || null, overall: F.overall, posWr: posG.length ? posG.filter(g => g.win).length/posG.length : null, posN: posG.length, nCand: rows.length, perMonth, noUp: !rows.some(x => tier(x)), ceilOnly: !rows.some(upF) && rows.some(upC), nUp: rows.filter(x => tier(x)).length,
     ownTop: own.sort((a,b) => b[1].n - a[1].n).slice(0, 3).map(([h]) => +h)};
 }
 
@@ -2353,13 +2359,14 @@ async function renderMyHero(S, sel){
     cache.idx[sel] = h;
     const x = [r.best, ...r.alts].find(y => y.h === h) || r.all.find(y => y.h === h) || r.best;
     const m = mhView(x, r, sel, S), role = roleShort(sel || m.pos).toLowerCase();
-    const vs = sel ? `<div class="mh-vs"><div><span>ты на позиции сейчас (${r.posN} ${gamesWord(r.posN)})</span><b class="${wrClass(r.posWr ?? .5)}">${r.posWr != null ? pct0(r.posWr) : '—'}</b></div><i>→</i><div class="on"><span>${hn(m.h)} через месяц</span><b class="${wrClass(m.month)}">${pct0(m.month)}</b></div></div>` : '';
+    const vs = sel ? `<div class="mh-vs"><div><span>ты на позиции сейчас (${r.posN} ${gamesWord(r.posN)})</span><b class="${wrClass(r.posWr ?? .5)}">${r.posWr != null ? pct0(r.posWr) : '—'}</b></div><i>→</i><div class="on"><span>${hn(m.h)} через месяц</span><b class="${wrClass(m.month)}">${pct0(m.month)}</b></div>${x.ceil != null ? `<i>→</i><div class="on ceil"><span>к 100-й игре</span><b class="${wrClass(x.ceil)}">${pct0(x.ceil)}</b></div>` : ''}</div>` : '';
     const ahead = sel && r.posWr != null && Math.round(m.month*100) > Math.round(r.posWr*100);
+    const aheadC = sel && !ahead && r.posWr != null && x.ceil != null && Math.round(x.ceil*100) > Math.round(r.posWr*100);
     const ace = sel && !r.noUp && r.cur && r.cur.wr > m.month ? ` ${hn(r.cur.h)} у тебя уже ${pct0(r.cur.wr)} за ${r.cur.n} ${gamesWord(r.cur.n)} — держи его как козырь, а этого качай вторым.` : '';
-    const verdict = sel ? `<div class="mh-verdict ${ahead ? '' : 'meh'}">${ahead ? `Через месяц он может поднять твой ${role} с ${pct0(r.posWr)} до ${pct0(m.month)}.` : (r.noUp ? `На позиции «${role}» новые герои пока не поднимут тебя выше ${pct0(r.posWr)}: лучший прогноз через месяц — ${pct0(Math.max(...r.all.map(y => y.month)))} (это ${hn(r.best.h)}). Твой рост здесь — герои, на которых ты уже играешь.${r.cur ? ` Главный — ${hn(r.cur.h)} (${pct0(r.cur.wr)} за ${r.cur.n} ${gamesWord(r.cur.n)}).` : ''} Нового бери, только если хочется разнообразия.${(() => {
+    const verdict = sel ? `<div class="mh-verdict ${ahead || aheadC ? '' : 'meh'}">${ahead ? `Через месяц он может поднять твой ${role} с ${pct0(r.posWr)} до ${pct0(m.month)}${x.ceil > m.month + 0.005 ? `, а к 100-й игре — до ${pct0(x.ceil)}` : ''}.` : aheadC ? `За месяц он ещё не выше твоих ${pct0(r.posWr)} (${pct0(m.month)}), но к 100-й игре — <b>${pct0(x.ceil)}</b>: это его потолок у тебя. Рост медленный — 2–3 месяца на герое, зато выше, чем сейчас.` : (r.noUp ? `На позиции «${role}» новые герои не поднимут тебя выше ${pct0(r.posWr)} ни через месяц, ни к 100-й игре: лучший потолок — ${pct0(Math.max(...r.all.map(y => y.ceil)))} (это ${hn(r.best.h)}). Твой рост здесь — герои, на которых ты уже играешь.${r.cur ? ` Главный — ${hn(r.cur.h)} (${pct0(r.cur.wr)} за ${r.cur.n} ${gamesWord(r.cur.n)}).` : ''} Нового бери, только если хочется разнообразия.${(() => {
       // Где новый герой всё-таки даёт рост — считаем остальные роли (≈0.1 с на роль, только когда здесь роста нет)
       const gr = [1, 2, 3, 4, 5].filter(q => q !== sel).map(q => [q, cache[q] = cache[q] || pickPerspective(S, q)]).filter(([, rr]) => !rr.noUp && rr.best && rr.posWr != null);
-      return gr.length ? `<span class="mh-gorow">Рост новым героем есть на: ${gr.map(([q, rr]) => `<button class="linkbtn mh-gorole" data-p="${q}">${roleShort(q).toLowerCase()} — ${hn(rr.best.h)} ${pct0(rr.posWr)} → ${pct0(rr.best.month)}</button>`).join(' · ')}</span>` : ''; })()}` : 'Этот не выше твоего уровня — выбери героя из тех, что сверху списка.')}${ace}${(() => {
+      return gr.length ? `<span class="mh-gorow">Рост новым героем есть на: ${gr.map(([q, rr]) => `<button class="linkbtn mh-gorole" data-p="${q}">${roleShort(q).toLowerCase()} — ${hn(rr.best.h)} ${pct0(rr.posWr)} → ${pct0(Math.round(rr.best.month*100) > Math.round(rr.posWr*100) ? rr.best.month : rr.best.ceil)}</button>`).join(' · ')}</span>` : ''; })()}` : 'Этот не выше твоего уровня — выбери героя из тех, что сверху списка.')}${ace}${(() => {
       // Счёт почти равный — честно говорим, что выбор за тобой: модель не различает их уверенно
       const rival = [r.best, ...r.alts].find(y => y.h !== m.h);
       return rival && Math.abs((x.score ?? 0) - (rival.score ?? 0)) < 0.03 ? ` <b>Почти вровень с ${hn(rival.h)}</b> — модель их уверенно не различает, бери того, кто больше нравится.` : ''; })()}</div>` : '';
