@@ -2512,7 +2512,7 @@ function defeatReasons(m, L, W){
   if(tw(L) < tw(W)*0.35) out.push(`Почти не давили строения: ${fmtK(tw(L))} против ${fmtK(tw(W))}.`);
   const top = [...L.players].sort((a,b) => L.ev.get(b).score - L.ev.get(a).score)[0], ev = L.ev.get(top);
   if(ev.score >= 30){ const miss = ev.ms.filter(x => !x.ok && x.key !== 'lh10').map(x => x.label.toLowerCase()).join(', ');
-    out.push(`Дальше всех от ожиданий роли — ${name(top)} (${POS[L.pos.get(top)]}): недобор ${ev.score}/100${miss ? `, проседают ${miss}` : ''}.`); }
+    out.push(`Дальше всех от ожиданий роли — ${name(top)} (${POS[L.pos.get(top)]}): роль выполнена на ${100 - ev.score}%${miss ? `, проседают ${miss}` : ''}.`); }
   if(!out.length) out.push('Одной явной причины нет: соперник сыграл ровнее по всем позициям.');
   return out;
 }
@@ -2520,7 +2520,7 @@ function teamHtml(t, showScore){
   return [1,2,3,4,5].map(n => { const p = t.byPos[n], h = heroOf(p), ev = t.ev.get(p);
     const chips = ev.ms.map(x => `<span class="chip ${x.ok ? 'ok' : 'no'}">${x.label}: <b>${x.fmt(x.act)}</b> <span class="muted">/ ${x.lowerBetter ? '≤' : '≥'}${x.fmt(x.exp)}</span></span>`).join('');
     return `<div class="prow"><img src="${CDN + h.img}" alt=""><div><div class="nm">${h.localized_name} · ${POS[n]}</div><div class="meta">${p.personaname || 'Аноним'} · ${p.kills}/${p.deaths}/${p.assists}</div></div>
-      <div class="r">${showScore ? `<span class="muted">недобор</span><br><b class="${ev.score >= 40 ? 'bad' : ev.score >= 20 ? 'warn' : 'good'}">${ev.score}/100</b>` : ''}</div><div class="chips">${chips}</div></div>`; }).join('');
+      <div class="r">${showScore ? `<span class="muted">роль выполнена</span><br><b class="${ev.score >= 40 ? 'bad' : ev.score >= 20 ? 'warn' : 'good'}">${100 - ev.score}%</b>` : ''}</div><div class="chips">${chips}</div></div>`; }).join('');
 }
 async function analyzeMatch(id){
   await ensureHeroes();
@@ -2631,7 +2631,7 @@ async function renderFocus(m, p, team, foes){
 function showTab(name){
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   $('tab-player').classList.toggle('hidden', name !== 'player'); $('tab-match').classList.toggle('hidden', name !== 'match');
-  $('report').classList.add('hidden'); $('mout').classList.add('hidden'); $('err').classList.add('hidden');
+  $('report').classList.add('hidden'); $('mout').classList.add('hidden'); $('err').classList.add('hidden'); $('landing').classList.add('hidden');
 }
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => showTab(b.dataset.tab));
 function showErr(err){ $('progress').classList.add('hidden'); $('err').textContent = /Failed to fetch/.test(err.message) ? 'Не удалось связаться с сервером. Проверь интернет.' : err.message; $('err').classList.remove('hidden'); console.error(err); }
