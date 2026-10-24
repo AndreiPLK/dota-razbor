@@ -2023,12 +2023,16 @@ function pickPerspective(S, p){
   const cand = Object.keys(T).map(Number).filter(h => { const t = T[h], tot = Object.values(t).reduce((s, x) => s + (x.n || 0), 0), tp = (t[p] || {}).n || 0;
     const top = Math.max(...Object.values(t).map(x => x.n || 0));
     return V[h] && tot && tp >= 200 && (tp === top || tp/tot >= 0.35) && pr[h] !== -1 && (rec[h] ? rec[h].n : 0) < 15; });
+  // Стиль считаем относительно «среднего героя позиции»: без этого у всех кандидатов совпадение 80–95% и стиль почти не
+  // различает героев (у двух разных игроков совпадали 3 главных героя из 5). Центрирование: 3 → 1, разброс ×2
+  const wsum = own.reduce((t, [, o]) => t + o.n*(0.5 + solid(o.w, o.n)), 0) || 1, Mc = C.map((_, j) => cand.reduce((t, h) => t + V[h][j], 0)/(cand.length || 1));
+  const ctr = a => a.map((v, j) => v - Mc[j]), Cc = ctr(C.map(v => v/wsum));
   const rows = cand.map(h => {
     const s = mlSimulate(ML, h, p, 55, perMonth, 40);
     const sims = known.filter(k => k.h !== h).map(k => ({...k, s: cosine(V[h], V[k.h])})).filter(k => k.s >= 0.5).sort((a,b) => b.s - a.s).slice(0, 3);
     const ws = sims.reduce((t, k) => t + k.s*k.s, 0), transfer = ws ? 0.5*sims.reduce((t, k) => t + k.s*k.s*k.d, 0)/ws : 0;   // половина — осторожно
     return {h, n: rec[h] ? rec[h].n : 0, w: rec[h] ? rec[h].w : 0, now: clamp(s.p5 + transfer, .3, .7), w20: clamp(s.p20 + transfer, .3, .7), month: clamp(s.p50 + transfer, .3, .7),
-      transfer, sims, fit: own.length ? cosine(V[h], C) : 0, faces: heroFaces(h), cplx: H(h).complexity || 2};
+      transfer, sims, fit: own.length ? cosine(ctr(V[h]), Cc) : 0, faces: heroFaces(h), cplx: H(h).complexity || 2};
   });
   // Порядок: стиль героев 45%, совпадение характера 25%, прогноз через месяц 30%; всё приведено к шкале 0..1 среди кандидатов
   const nrm = (x, a) => { const lo = Math.min(...a), hi = Math.max(...a); return hi > lo ? (x - lo)/(hi - lo) : 0.5; };
