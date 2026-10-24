@@ -2019,10 +2019,11 @@ function pickPerspective(S, p){
   const C = V[Object.keys(V)[0]].map((_, j) => own.reduce((t, [h, o]) => t + o.n*(0.5 + solid(o.w, o.n))*V[h][j], 0));
   // Твой уровень на героях, где 10+ игр: на сколько ты выше/ниже своего среднего (сглажено)
   const known = Object.entries(rec).filter(([h, o]) => o.n >= 10 && V[h]).map(([h, o]) => ({h: +h, n: o.n, wr: o.w/o.n, d: (o.w + 10*F.overall)/(o.n + 10) - F.overall}));
-  // Герой «принадлежит» позиции, если на ней его играют чаще всего или в 35%+ игр — чтобы один герой не кочевал по всем вкладкам
+  // Герой «принадлежит» одной позиции — той, где его играют чаще всего: иначе Pugna (2554 игр роумером, 2275 саппортом)
+  // становился главным сразу на двух вкладках. Кандидатов на роль остаётся 21–29
   const cand = Object.keys(T).map(Number).filter(h => { const t = T[h], tot = Object.values(t).reduce((s, x) => s + (x.n || 0), 0), tp = (t[p] || {}).n || 0;
     const top = Math.max(...Object.values(t).map(x => x.n || 0));
-    return V[h] && tot && tp >= 200 && (tp === top || tp/tot >= 0.35) && pr[h] !== -1 && (rec[h] ? rec[h].n : 0) < 15; });
+    return V[h] && tot && tp >= 200 && tp === top && pr[h] !== -1 && (rec[h] ? rec[h].n : 0) < 15; });
   // Стиль считаем относительно «среднего героя позиции»: без этого у всех кандидатов совпадение 80–95% и стиль почти не
   // различает героев (у двух разных игроков совпадали 3 главных героя из 5). Центрирование: 3 → 1, разброс ×2
   const wsum = own.reduce((t, [, o]) => t + o.n*(0.5 + solid(o.w, o.n)), 0) || 1, Mc = C.map((_, j) => cand.reduce((t, h) => t + V[h][j], 0)/(cand.length || 1));
