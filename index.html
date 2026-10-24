@@ -798,7 +798,7 @@ async function yearLayer(id, posTable, days){
     raw = [...fresh, ...raw]; save();
   }
   for(let skip = raw.length; !full && skip < 6000 && (!raw.length || raw[raw.length-1].startDateTime >= since); skip += 100){
-    prog(PERIOD.cap, `Матчи ${skip + 1}–${skip + 100}…`, 0.03 + Math.min(0.12, 0.12*skip/2000));
+    prog('Читаю твои игры', `Матчи ${skip + 1}–${skip + 100}…`, 0.03 + Math.min(0.12, 0.12*skip/2000));
     let page; try{ page = await fetchPage(skip); }catch(e){ save(); throw failed(); }
     const known = new Set(raw.map(m => m.id));
     raw.push(...page.filter(m => !known.has(m.id)));
@@ -829,7 +829,7 @@ async function monthLayer(id, yearGames, posTable, refTime){
   list.forEach(g => { const s = lsGet(MK(g.id)); if(s && s.parsed) out.push(s); else need.push(g.id); });
   for(let i = 0; i < need.length; i += 20){
     const ids = need.slice(i, i+20);
-    prog('Месяц под микроскопом', `Новые матчи ${i+1}–${Math.min(i+20, need.length)} из ${need.length}`, 0.35 + 0.45*(i+20)/need.length);
+    prog('Последний месяц подробно', `Матчи ${i+1}–${Math.min(i+20, need.length)} из ${need.length}`, 0.35 + 0.45*(i+20)/need.length);
     const page = await gqlMatches(`{ player(steamAccountId: ${id}) { matches(request: {matchIds: [${ids.join(',')}], take: 20}) { ${HEAVY.replace('$ID', id)} } } }`);
     page.forEach(m => { const s = summarize(m, posTable, refTime); if(s){ out.push(s); lsSet(MK(s.id), s); } });
   }
@@ -2373,13 +2373,13 @@ async function renderPros(S){
 // ───────── оркестрация ─────────
 async function runPlayer(id){
   $('report').classList.add('hidden'); $('err').classList.add('hidden'); $('progress').classList.remove('hidden'); $('landing').classList.add('hidden');
-  prog('Профиль', '', 0.01);
+  prog('Ищу твой профиль', '', 0.01);
   await ensureHeroes();
   const pd = await gql(`{ player(steamAccountId: ${id}) { steamAccount { name avatar seasonRank } matchCount winCount } }`);
   const player = pd.player;
   if(!player || !player.steamAccount) throw new Error('Профиль не найден. Проверь ID и что статистика матчей открыта.');
   const bracket = bracketOf(player.steamAccount.seasonRank);
-  prog('Справочник', 'Средние по героям и позициям в твоём ранге…', 0.02);
+  prog('Справочник героев', 'Как играют герои в твоём ранге — для стиля, без винрейтов…', 0.02);
   const posTable = await loadPosTable(bracket);
   const days = +$('period').value || 0;
   PERIOD = days ? {label: 'за год', short: 'год', cap: 'Год'} : {label: 'за всё время', short: 'всё время', cap: 'Всё время'};
@@ -2388,7 +2388,7 @@ async function runPlayer(id){
   const refTime = await loadRefTime(Object.entries(cnt).filter(([,n]) => n >= 2).map(([h]) => +h), bracket);
   year.forEach(g => { g.bench = benchOf(g.raw, g.pos, g.dur, refTime); delete g.raw; });
   const month = await monthLayer(id, year, posTable, refTime);
-  prog('Анализ', 'Психотип, причины, герои…', 0.9);
+  prog('Модель изучает твои игры', 'Стиль, характер, кривая обучения…', 0.9);
   const sessY = sessionStats(year), sessM = sessionStats(month);
   const axY = psychotype(year, sessY), axM = psychotype(month, sessM);
   const rolesY = roleTable(year);
