@@ -377,6 +377,17 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-opt>b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .mh-opt>span{font-size:11px;color:var(--muted)}
 .mh-opt.hidden{display:none}
 @media(prefers-reduced-motion:reduce){.mh-pickbar{animation:none;opacity:1;transform:none}}
+.mh-left{display:flex;flex-direction:column;align-items:center}
+.mh-radar{width:min(300px,90%);margin-top:-18px;position:relative;z-index:2;animation:rise .7s 1.6s both}
+.mh-radar svg{width:100%;height:auto;display:block}
+.rd-grid{fill:none;stroke:rgba(255,255,255,.09)}
+.rd-me{fill:rgba(139,92,246,.28);stroke:#a78bfa;stroke-width:2}
+.rd-hero{fill:rgba(34,211,238,.18);stroke:#67e8f9;stroke-width:2;stroke-dasharray:5 3}
+.rd-lbl{fill:var(--muted);font-size:10.5px;text-anchor:middle;font-weight:700}
+.rd-cap{display:flex;justify-content:center;gap:14px;font-size:12px;color:var(--muted);align-items:center;flex-wrap:wrap}
+.rd-cap i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px} .rd-cap i.me{background:#a78bfa} .rd-cap i.hero{background:#67e8f9}
+.rd-cap b{color:var(--text)}
+@media(prefers-reduced-motion:reduce){.mh-radar{animation:none;opacity:1;transform:none}}
 </style>
 </head>
 <body>
@@ -1587,7 +1598,10 @@ function mlBuild(S){
 // Монте-Карло: hero = null — «ничего не менять»: герой и позиция тоже берутся из твоих последних 200 игр, как ты реально играешь.
 // rules — правила из mlRules: ситуации, которых игрок избегает (ночь, 4-я игра сессии, пати/соло), и перерыв после 2 поражений.
 // bias — поправка к шансу (перенос твоего уровня с похожих героев для героя, на котором ты почти не играл)
+// Генератор с зерном: одинаковые входы → одинаковый прогноз при каждом открытии (иначе главный герой «прыгает»)
+const seededRng = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0)/4294967296; };
 function mlSimulate(ML, hero, pos, games, perMonth, runs = 250, rules = [], bias = 0){
+  const rnd = seededRng((hero || 0)*7919 + (pos || 0)*104729 + games*31 + runs*17 + rules.length*3 + ML.total);
   const has = k => rules.some(r => r.k === k), party = rules.find(r => r.k === 'party');
   const ok = c => !(has('night') && c.hour < 6) && !(has('sess4') && c.sessIdx >= 4) && !(party && (party.bad ? c.party > 1 : c.party === 1));
   let recentCtx = ML.ctxs.slice(-200); if(recentCtx.filter(ok).length >= 30) recentCtx = recentCtx.filter(ok);
@@ -1597,13 +1611,13 @@ function mlSimulate(ML, hero, pos, games, perMonth, runs = 250, rules = [], bias
     const st = cp(ML.st); let wins = 0, mmr = 0, t = Date.now()/1000; const reached = {};
     for(let g = 0; g < games; g++){
       if(has('lose2') && st.streakL >= 2) st.streakL = 0;   // перерыв: следующая игра уже не «сразу после двух поражений»
-      const base = recentCtx[Math.floor(Math.random()*recentCtx.length)];
+      const base = recentCtx[Math.floor(rnd()*recentCtx.length)];
       t += 86400*30/perMonth;
       const ctx = hero == null ? {...base, t} : {...base, pos, t, hero};
       const p = clamp(mlPredict(ML.model, ML.z(mlFeatures(st, ctx, ML.total))) + bias, 0.05, 0.95);
       const R = Math.min(runs, 60);
       if(r < R){ if(g < 5) out.p5 += p/(5*R); else if(g >= 15 && g < 25) out.p20 += p/(10*R); else if(g >= 45 && g < 55) out.p50 += p/(10*R); }
-      const win = Math.random() < p ? 1 : 0; wins += win; mmr += win ? 25 : -25; mlUpdate(st, ctx, win);
+      const win = rnd() < p ? 1 : 0; wins += win; mmr += win ? 25 : -25; mlUpdate(st, ctx, win);
       [1000, 2000].forEach(k => { if(!reached[k] && mmr >= k) reached[k] = g + 1; });
       if((g + 1) % perMonth === 0) (out.traj[(g + 1)/perMonth] = out.traj[(g + 1)/perMonth] || []).push(mmr);
     }
@@ -1829,15 +1843,59 @@ function pickPerspective(S, p){
     return {h, n: rec[h] ? rec[h].n : 0, w: rec[h] ? rec[h].w : 0, now: clamp(s.p5 + transfer, .3, .7), month: clamp(s.p50 + transfer, .3, .7),
       transfer, sims, fit: own.length ? cosine(V[h], C) : 0, faces: heroFaces(h), cplx: H(h).complexity || 2};
   });
-  // Порядок: стиль важнее (65%), прогноз через месяц — 35%; оба приведены к шкале 0..1 среди кандидатов
+  // Порядок: стиль героев 45%, совпадение характера 25%, прогноз через месяц 30%; всё приведено к шкале 0..1 среди кандидатов
   const nrm = (x, a) => { const lo = Math.min(...a), hi = Math.max(...a); return hi > lo ? (x - lo)/(hi - lo) : 0.5; };
   const fits = rows.map(x => x.fit), months = rows.map(x => x.month);
-  rows.forEach(x => { x.fitPct = Math.round(50 + 50*x.fit); x.score = 0.65*nrm(x.fit, fits) + 0.35*nrm(x.month, months); });
+  rows.forEach(x => { x.psy = psyFit(S, x.h, p); x.fitPct = Math.round(50 + 50*x.fit); });
+  const psys = rows.map(x => x.psy);
+  rows.forEach(x => { x.score = 0.45*nrm(x.fit, fits) + 0.25*nrm(x.psy, psys) + 0.30*nrm(x.month, months); });
   rows.sort((a,b) => b.score - a.score);
   const mine = Object.entries(atPos).filter(([, o]) => o.n >= 10).map(([h, o]) => ({h: +h, n: o.n, wr: o.w/o.n, sc: solid(o.w, o.n)})).sort((a,b) => b.sc - a.sc);
   const posG = S.year.filter(g => g.pos === p);
   return {best: rows[0], alts: rows.slice(1, 3), all: rows, cur: mine[0] || null, posWr: posG.length ? posG.filter(g => g.win).length/posG.length : null, posN: posG.length, nCand: rows.length, perMonth,
     ownTop: own.sort((a,b) => b[1].n - a[1].n).slice(0, 3).map(([h]) => +h)};
+}
+
+// ───────── характер: ты против героя ─────────
+// Твой характер в игре — оси психотипа по всем играм (0–100 относительно нормы твоих же героев: агрессивнее ли ты,
+// чем обычно играют этим героем, чаще ли умираешь и т.д.). Характер героя — его профиль среди героев позиции
+// (z-оценки средних по рангу: убийства+урон = агрессия, добивания+золото = фарм, помощь = команда, урон по башням = давление,
+// смерти = риск). Совпадение — косинус двух векторов: герой, который «просит» то же, что ты и так делаешь.
+const PSY = [['aggr', 'Агрессия'], ['farm', 'Фарм'], ['team', 'Команда'], ['push', 'Давление'], ['risk', 'Риск']];
+const playerPsy = S => Object.fromEntries(PSY.map(([k]) => [k, S.axY && S.axY[k] != null ? S.axY[k] : 50]));
+function heroPsy(S, h, p){
+  const v = styleVecs(S, p)[h]; if(!v) return null;   // v[0..6] = z: убийства, смерти, помощь, урон, башни, добивания, золото
+  return {aggr: (v[0] + v[3])/2, farm: (v[5] + v[6])/2, team: v[2], push: v[4], risk: v[1]};
+}
+function psyFit(S, h, p){
+  const hp = heroPsy(S, h, p); if(!hp) return 0; const me = playerPsy(S);
+  return cosine(PSY.map(([k]) => (me[k] - 50)/25), PSY.map(([k]) => hp[k]));
+}
+// Одна-две фразы «почему он под твой характер» — только когда и ты, и герой заметно выражены по оси
+function psyReasons(S, h, p){
+  const hp = heroPsy(S, h, p); if(!hp) return []; const me = playerPsy(S), ax = S.axY || {}, n = hn(h), out = [];
+  if(me.aggr >= 57 && hp.aggr >= 0.35) out.push(`ты <b>ищешь драку</b> (агрессия ${Math.round(me.aggr)}/100) — у ${n} одни из самых высоких убийств и урона на позиции`);
+  if(me.risk >= 58 && hp.risk <= -0.25) out.push(`ты <b>часто умираешь</b> (риск ${Math.round(me.risk)}/100) — ${n} живучий и прощает ошибки`);
+  if(me.farm >= 57 && hp.farm >= 0.35) out.push(`ты <b>фармишь быстрее нормы</b> — ${n} раскрывается именно от золота`);
+  if(me.team >= 57 && hp.team >= 0.35) out.push(`ты <b>всегда в драке с командой</b> — ${n} живёт помощью в драках`);
+  if(me.push >= 57 && hp.push >= 0.35) out.push(`ты <b>любишь ломать башни</b> — ${n} сносит их быстрее других`);
+  if(me.farm <= 43 && hp.farm <= -0.35) out.push(`тебе <b>скучно фармить</b> — ${n} не требует долгого фарма`);
+  if(ax.mental != null && ax.mental <= 40 && (H(h).complexity || 2) === 1) out.push(`после поражений ты <b>проседаешь</b> (ментал ${Math.round(ax.mental)}/100) — простой герой держит уровень даже в тильте`);
+  return out.slice(0, 2);
+}
+// Радар: твой характер (фиолетовый) и характер героя (бирюзовый) по пяти осям
+function psyRadar(S, h, p){
+  const hp = heroPsy(S, h, p); if(!hp) return '';
+  const me = playerPsy(S), R = 78, cx = 110, cy = 100, N = PSY.length;
+  const pt = (i, v) => { const a = -Math.PI/2 + 2*Math.PI*i/N, r = R*clamp((v - 20)/70, 0.06, 1); return [cx + r*Math.cos(a), cy + r*Math.sin(a)]; };
+  const poly = vals => vals.map((v, i) => pt(i, v).map(x => x.toFixed(1)).join(',')).join(' ');
+  const heroV = PSY.map(([k]) => clamp(50 + 22*hp[k], 5, 95)), meV = PSY.map(([k]) => me[k]);
+  const fit = Math.round(50 + 50*psyFit(S, h, p));
+  const grid = [37.5, 55, 72.5, 90].map(l => `<polygon points="${poly(PSY.map(() => l))}" class="rd-grid"/>`).join('');
+  const spokes = PSY.map((_, i) => { const [x, y] = pt(i, 90); return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="rd-grid"/>`; }).join('');
+  const labels = PSY.map(([, l], i) => { const a = -Math.PI/2 + 2*Math.PI*i/N, x = cx + (R + 18)*Math.cos(a), y = cy + (R + 14)*Math.sin(a); return `<text x="${x.toFixed(1)}" y="${(y + 4).toFixed(1)}" class="rd-lbl">${l}</text>`; }).join('');
+  return `<div class="mh-radar"><svg viewBox="0 0 220 205">${grid}${spokes}<polygon points="${poly(meV)}" class="rd-me"/><polygon points="${poly(heroV)}" class="rd-hero"/>${labels}</svg>
+    <div class="rd-cap"><span><i class="me"></i>ты</span><span><i class="hero"></i>${hn(h)}</span><b>характер: ${fit}%</b></div></div>`;
 }
 
 const mhStage = h => { const sh = heroShort(h);
@@ -1870,17 +1928,18 @@ function perspReasons(x, r){
 }
 // Вид героя для показа: заголовок, строка, причины и рост «сейчас → через месяц».
 // Главный и два запасных — из тройки финалистов; любой другой — «твой выбор» из списка, с его местом в рейтинге модели.
-function mhView(x, r, sel){
+function mhView(x, r, sel, S){
   const isBest = x.h === r.best.h, isAlt = r.alts.some(a => a.h === x.h), rank = r.all.findIndex(y => y.h === x.h) + 1;
+  const psy = psyReasons(S, x.h, sel || x.pos), psyLine = psy.length ? [`<b>Под твой характер</b>: ${psy.join('; ')}.`] : [];
   const extra = isBest && r.alts.length && !sel ? [`<b>Лучший прогноз рейтинга из трёх</b>: ${x.g3 >= 0 ? '+' : ''}${x.g3} за 3 месяца, если играть его.`]
     : !isAlt && !isBest ? [`<b>№${rank} из ${r.all.length}</b> в списке модели. ${hn(r.best.h)} даёт больше, но выбор твой — прогноз ниже уже с ним.`] : [];
   if(sel) return {h: x.h, pos: sel, now: x.now, month: x.month, faces: x.faces, persp: x,
     kick: `${isBest ? 'Перспектива' : isAlt ? 'Ещё вариант' : 'Твой выбор'} · ${roleShort(sel)}`,
     line: `${x.n ? `у тебя ${x.w}–${x.n - x.w}` : 'ты на нём ещё не играл'} · ${CPLX[x.cplx]} герой`,
-    short: `стиль ${x.fitPct}%${x.sims.length ? `, как ${hn(x.sims[0].h)}` : ''}`, reasons: [...perspReasons(x, r), ...extra]};
+    short: `стиль ${x.fitPct}%${x.sims.length ? `, как ${hn(x.sims[0].h)}` : ''}`, reasons: (([a, ...b]) => [a, ...psyLine, ...b])(perspReasons(x, r)).concat(extra)};
   return {h: x.h, pos: x.pos, now: x.now, month: x.w50, faces: x.faces,
     kick: isBest ? 'Твой герой' : isAlt ? 'Ещё твой герой' : 'Твой выбор', line: `${roleShort(x.pos)} · у тебя ${x.w}–${x.n - x.w} · ${CPLX[x.cplx]} герой`,
-    short: `${pct0(x.w/x.n)} за ${x.n} ${gamesWord(x.n)}`, reasons: [...mineReasons(x, r), ...extra]};
+    short: `${pct0(x.w/x.n)} за ${x.n} ${gamesWord(x.n)}`, reasons: (([a, ...b]) => [a, ...psyLine, ...b])(mineReasons(x, r)).concat(extra)};
 }
 
 async function renderMyHero(S, sel){
@@ -1920,16 +1979,16 @@ async function renderMyHero(S, sel){
   const show = h => {
     cache.idx[sel] = h;
     const x = [r.best, ...r.alts].find(y => y.h === h) || r.all.find(y => y.h === h) || r.best;
-    const m = mhView(x, r, sel), role = roleShort(sel || m.pos).toLowerCase();
+    const m = mhView(x, r, sel, S), role = roleShort(sel || m.pos).toLowerCase();
     const vs = sel ? `<div class="mh-vs"><div><span>ты на позиции сейчас (${r.posN} ${gamesWord(r.posN)})</span><b class="${wrClass(r.posWr ?? .5)}">${r.posWr != null ? pct0(r.posWr) : '—'}</b></div><i>→</i><div class="on"><span>${hn(m.h)} через месяц</span><b class="${wrClass(m.month)}">${pct0(m.month)}</b></div></div>` : '';
     const ahead = sel && r.posWr != null && m.month > r.posWr;
     const ace = sel && r.cur && r.cur.wr > m.month ? ` ${hn(r.cur.h)} у тебя уже ${pct0(r.cur.wr)} за ${r.cur.n} ${gamesWord(r.cur.n)} — держи его как козырь, а этого качай вторым.` : '';
     const verdict = sel ? `<div class="mh-verdict ${ahead ? '' : 'meh'}">${ahead ? `Через месяц он может поднять твой ${role} с ${pct0(r.posWr)} до ${pct0(m.month)}.` : 'Пока он не выше твоего уровня на позиции, но из новых героев он среди самых перспективных.'}${ace}</div>` : '';
-    const sides = [r.best, ...r.alts].filter(y => y.h !== m.h).slice(0, 2).map(y => mhView(y, r, sel)).map(t => `<button class="mh-side" data-h="${t.h}"><img src="${CDN + H(t.h).img}" alt=""><div><span class="k">${t.kick}</span><b>${hn(t.h)}</b>
+    const sides = [r.best, ...r.alts].filter(y => y.h !== m.h).slice(0, 2).map(y => mhView(y, r, sel, S)).map(t => `<button class="mh-side" data-h="${t.h}"><img src="${CDN + H(t.h).img}" alt=""><div><span class="k">${t.kick}</span><b>${hn(t.h)}</b>
       <span>${pct0(t.now)} → <b class="${wrClass(t.month)}">${pct0(t.month)}</b> через месяц · ${t.short}</span></div><em>Сделать главным →</em></button>`).join('');
     const list = r.all.slice().sort((a,b) => ord(b) - ord(a)).map(y => `<button class="mh-opt ${y.h === m.h ? 'on' : ''}" data-h="${y.h}" data-n="${hn(y.h).toLowerCase()}"><img src="${CDN + H(y.h).img}" alt="">
       <b>${hn(y.h)}</b><span><b class="${wrClass(fc(y))}">${pct0(fc(y))}</b> через месяц${sel ? ` · стиль ${y.fitPct}%` : ''}${y.n ? ` · у тебя ${y.w}–${y.n - y.w}` : ''}</span></button>`).join('');
-    box.innerHTML = `<div class="mh-flash"></div>${tabs}<div class="mh-grid">${mhStage(m.h)}<div class="mh-info"><div class="mh-kick">${m.kick}</div><div class="mh-name">${hn(m.h)}</div>
+    box.innerHTML = `<div class="mh-flash"></div>${tabs}<div class="mh-grid"><div class="mh-left">${mhStage(m.h)}${psyRadar(S, m.h, m.pos)}</div><div class="mh-info"><div class="mh-kick">${m.kick}</div><div class="mh-name">${hn(m.h)}</div>
       <div class="mh-line">${m.line}</div>${vs}${sel ? '' : `<p class="mh-say">Модель перебрала ${r.n} твоих героев. Почему он:</p>`}${mhList(m.reasons)}${verdict}${mhFaces(m.faces)}
       <div class="mh-pickbar"><button class="mh-no" title="Убрать героя из подбора на всех вкладках">👎 Не мой герой — убрать</button><button class="mh-open">Выбрать самому из ${r.all.length} ▾</button></div></div></div>
       ${sides ? `<div class="mh-sides"><div class="mh-sides-t">Ещё два варианта — нажми, чтобы сделать главным</div>${sides}</div>` : ''}
