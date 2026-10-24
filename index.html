@@ -734,7 +734,16 @@ function parseId(raw){
 async function gql(query, retry = 3){
   const tok = window.STRATZ_TOKEN || lsGet('stratz_token');
   if(!tok) throw new Error('Нет токена Stratz. Положи его в config.js рядом со страницей.');
-  const r = await fetch(STRATZ, {method:'POST', headers:{'Authorization':'Bearer ' + tok, 'Content-Type':'application/json', 'User-Agent':'STRATZ_API'}, body: JSON.stringify({query})});
+  // Обрыв связи (мобильная сеть, VPN, лимит Stratz без CORS-заголовков) браузер отдаёт как «Failed to fetch» —
+  // раньше разбор сразу падал. Теперь 3 повтора с паузой 3/6/12 с, на экране видно, что идёт повтор
+  let r;
+  try{ r = await fetch(STRATZ, {method:'POST', headers:{'Authorization':'Bearer ' + tok, 'Content-Type':'application/json'}, body: JSON.stringify({query})}); }
+  catch(e){
+    if(!retry) throw new Error('NET');
+    const wait = 3 * 2**(3 - retry);
+    for(let s = wait; s > 0; s--){ if($('pStep')) $('pStep').textContent = `Связь со Stratz оборвалась, повторяю через ${s} с…`; await sleep(1000); }
+    return gql(query, retry - 1);
+  }
   if(r.status === 429 && retry){ for(let s = 15; s > 0; s--){ $('pStep').textContent = `Лимит Stratz, жду ${s} с…`; await sleep(1000); } return gql(query, retry - 1); }
   if(!r.ok) throw new Error(`Stratz ответил ${r.status}`);
   const j = await r.json();
@@ -2775,7 +2784,7 @@ function renderRecentMatches(){
   box.querySelectorAll('.rm-g').forEach(b => b.onclick = () => { $('qm').value = b.dataset.id; $('fm').requestSubmit(); });
 }
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => showTab(b.dataset.tab));
-function showErr(err){ $('progress').classList.add('hidden'); $('err').textContent = /Failed to fetch/.test(err.message) ? 'Не удалось связаться с сервером. Проверь интернет.' : err.message; $('err').classList.remove('hidden'); console.error(err); }
+function showErr(err){ $('progress').classList.add('hidden'); $('err').textContent = /Failed to fetch|^NET$/.test(err.message) ? 'Не удалось связаться со Stratz (сервер статистики) после 3 попыток. Если включён VPN — выключи его и нажми «Разобрать» ещё раз: Stratz часто блокирует VPN. Иначе — подожди минуту, это может быть лимит запросов.' : err.message; $('err').classList.remove('hidden'); console.error(err); }
 
 $('f').onsubmit = async e => {
   e.preventDefault(); const id = parseId($('q').value);
