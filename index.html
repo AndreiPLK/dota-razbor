@@ -491,7 +491,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-empty-own{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0} .mh-empty-own div{display:grid;grid-template-columns:44px 1fr;gap:0 8px;align-items:center;padding:6px 10px;border-radius:12px;border:1px solid rgba(61,242,154,.35);background:var(--panel2)}
 .mh-empty-own img{width:44px;height:25px;object-fit:cover;border-radius:6px;grid-row:1/3} .mh-empty-own span{font-size:12px}
 .mh-empty .mh-opts{margin-top:10px} .mh-empty .mh-opt{display:flex;gap:8px;align-items:center;padding:4px 0} .mh-empty .mh-opt img{width:44px;height:25px;border-radius:5px} .mh-empty .mh-opt span{color:var(--muted);font-size:12px}
-.mh-grow{margin:6px 0 2px;font-size:13px;color:var(--muted)}
+.mh-story{margin:10px 0 6px;font-size:14px;line-height:1.5} .mh-grow{margin:6px 0 2px;font-size:13px;color:var(--muted)}
 @media(max-width:700px){.mh-empty{margin:12px 14px 6px;padding:16px}}
 .mh-vs>div.ceil{border-color:rgba(103,232,249,.5);background:linear-gradient(160deg,rgba(103,232,249,.12),var(--panel2) 70%)}
 /* Телефон: три цифры в ряд не влезают — стрелки прячем, карточки делим поровну */
@@ -2075,13 +2075,16 @@ function pickPerspective(S, p){
   // Ступени: 2 — выше уже через месяц; 1 — выше к 100-й игре (потолок героя); 0 — не выше
   // Правило основателя: рекомендуем только героя, с которым ты будешь ВЫИГРЫВАТЬ — прогноз 51%+ и выше твоего уровня сейчас.
   // 45% — не рекомендация, даже если сейчас 43%
-  const WIN = 51, pc = v => Math.round(v*100), cur0 = pc(posWr0), upF = x => pc(x.month) >= WIN && pc(x.month) > cur0, upC = x => pc(x.ceil) >= WIN && pc(x.ceil) > cur0, tier = x => upF(x) ? 2 : upC(x) ? 1 : 0;
+  // Ступени: 3 — 51%+ уже через месяц; 2 — 51%+ к 100-й игре; 1 — «шаг вверх»: +3 п.п. к твоему уровню на роли, но ещё не 51%
+  // (44% → 49% — настоящий рост; 43% → 45% — нет). Без ступени 1 после «не мой герой» вкладка пустела целиком
+  const WIN = 51, STEP = 3, pc = v => Math.round(v*100), cur0 = pc(posWr0), upF = x => pc(x.month) >= WIN && pc(x.month) > cur0, upC = x => pc(x.ceil) >= WIN && pc(x.ceil) > cur0,
+    upS = x => Math.max(pc(x.month), pc(x.ceil)) >= cur0 + STEP, tier = x => upF(x) ? 3 : upC(x) ? 2 : upS(x) ? 1 : 0;
   rows.sort((a,b) => (tier(b) - tier(a)) || b.score - a.score);
   // Роста нет ни у кого — первым тот, у кого выше потолок (ближе всего к твоему уровню)
   if(!rows.some(x => tier(x))) rows.sort((a,b) => pc(b.ceil) - pc(a.ceil) || b.score - a.score);
   const mine = Object.entries(atPos).filter(([, o]) => o.n >= 10).map(([h, o]) => ({h: +h, n: o.n, wr: o.w/o.n, sc: solid(o.w, o.n)})).sort((a,b) => b.sc - a.sc);
   const posG = S.year.filter(g => g.pos === p);
-  return {best: rows[0], alts: (tier(rows[0] || {}) ? rows.slice(1).filter(x => tier(x)) : rows.slice(1)).slice(0, 2), all: rows, cur: mine[0] || null, mine51: mine.filter(o => o.n >= 20 && Math.round(100*o.wr) >= 51).slice(0, 3), mineTop: mine.slice().sort((a,b) => b.n - a.n).slice(0, 6).sort((a,b) => b.sc - a.sc).slice(0, 4), overall: F.overall, posWr: posG.length ? posG.filter(g => g.win).length/posG.length : null, posN: posG.length, nCand: rows.length, perMonth, noUp: !rows.some(x => tier(x)), ceilOnly: !rows.some(upF) && rows.some(upC), nUp: rows.filter(x => tier(x)).length,
+  return {best: rows[0], alts: (tier(rows[0] || {}) ? rows.slice(1).filter(x => tier(x)) : rows.slice(1)).slice(0, 2), all: rows, cur: mine[0] || null, mine51: mine.filter(o => o.n >= 20 && Math.round(100*o.wr) >= 51).slice(0, 3), mineTop: mine.slice().sort((a,b) => b.n - a.n).slice(0, 6).sort((a,b) => b.sc - a.sc).slice(0, 4), overall: F.overall, posWr: posG.length ? posG.filter(g => g.win).length/posG.length : null, posN: posG.length, nCand: rows.length, perMonth, noUp: !rows.some(x => tier(x)), stepOnly: !rows.some(x => tier(x) >= 2) && rows.some(x => tier(x) === 1), ceilOnly: !rows.some(upF) && rows.some(upC), nUp: rows.filter(x => tier(x)).length,
     ownTop: own.sort((a,b) => b[1].n - a[1].n).slice(0, 3).map(([h]) => +h)};
 }
 
@@ -2166,7 +2169,7 @@ function mhView(x, r, sel, S){
     : isBest && r.alts.length && !sel ? [x.g3 >= 0 ? `<b>Лучший прогноз рейтинга из трёх</b>: +${x.g3} за 3 месяца, если играть его.` : `<b>Из трёх с ним рейтинг теряет меньше всего</b>: ${x.g3} за 3 месяца — остальные проседают сильнее.`]
     : !isAlt && !isBest ? [`<b>№${rank} из ${r.all.length}</b> в списке модели. ${hn(r.best.h)} даёт больше, но выбор твой — прогноз ниже уже с ним.`] : [];
   if(sel) return {h: x.h, pos: sel, now: x.now, month: x.month, faces: x.faces, persp: x,
-    kick: `${isBest ? (r.noUp ? 'Лучший из новых' : 'Перспектива') : isAlt ? 'Ещё вариант' : 'Твой выбор'} · ${roleShort(sel)}`,
+    kick: `${isBest ? (r.noUp ? 'Лучший под твой стиль' : r.stepOnly ? 'Шаг вверх' : 'Перспектива') : isAlt ? 'Ещё вариант' : 'Твой выбор'} · ${roleShort(sel)}`,
     line: `${x.n ? `у тебя ${x.w}–${x.n - x.w}` : 'ты на нём ещё не играл'} · ${CPLX[x.cplx]} герой`,
     short: `стиль ${x.fitPct}%${x.sims.length ? `, как ${hn(x.sims[0].h)}` : ''}`, reasons: (([a, ...b]) => [a, ...psyLine, ...b])(perspReasons(x, r)).concat(extra)};
   return {h: x.h, pos: x.pos, now: x.now, month: x.w50, faces: x.faces,
@@ -2387,22 +2390,7 @@ async function renderMyHero(S, sel){
     `<button class="mh-own" data-h="${o.h}"><img src="${CDN + H(o.h).img}" alt=""><b>${hn(o.h)}</b><span class="${wrClass(o.wr)}">${pct0(o.wr)} · ${o.n} ${gamesWord(o.n)}</span></button>`).join('')}</div>
     <div class="mh-newhead">Новые герои на вырост · ${roleShort(sel)} <small>на них у тебя меньше 15 игр — только те, с кем прогноз 51%+</small></div></div>`;
   const bindOwn = () => box.querySelectorAll('.mh-own').forEach(b => b.onclick = () => { cache.idx[0] = +b.dataset.h; lsSet('dc_mh_' + S.id, 0); renderMyHero(S, 0); });
-  // Нет новых героев с 51%+ — карточку «бери его» не показываем вообще: падение — не рекомендация
-  if(sel && r.noUp){
-    const gr = [1, 2, 3, 4, 5].filter(q => q !== sel).map(q => [q, cache[q] = cache[q] || pickPerspective(S, q)]).filter(([, rr]) => !rr.noUp && rr.best);
-    const role = roleShort(sel).toLowerCase(), topN = Math.max(...r.all.map(y => Math.max(y.month, y.ceil)));
-    box.innerHTML = `${tabs}${poolBar()}${ownRow()}<div class="mh-empty"><div class="mh-kick">Новые герои · ${roleShort(sel)}</div>
-      <h3>На позиции «${role}» нет нового героя, с которым ты будешь выигрывать</h3>
-      <p>Сейчас у тебя тут ${r.posWr != null ? `<b>${pct0(r.posWr)}</b> за ${r.posN} ${gamesWord(r.posN)}` : 'мало игр'}. Лучший из ${r.all.length} новых даже к 100-й игре даёт только ${pct0(topN)} — это хуже или вровень, советовать его не буду. Цель — 51%+.</p>
-      ${r.mine51.length ? `<p><b>Твой путь к 51%+ здесь — герои, на которых ты уже выигрываешь:</b></p><div class="mh-empty-own">${r.mine51.map(o => `<div><img src="${CDN + H(o.h).img}" alt=""><b>${hn(o.h)}</b><span class="good">${pct0(o.wr)} за ${o.n} ${gamesWord(o.n)}</span></div>`).join('')}</div>` : `<p>Героев с 51%+ на этой роли у тебя пока нет — сильнее всего вырастешь на другой роли.</p>`}
-      ${gr.length ? `<p><b>Новый герой с 51%+ есть на:</b> ${gr.map(([q, rr]) => `<button class="linkbtn mh-gorole" data-p="${q}">${roleShort(q).toLowerCase()} — ${hn(rr.best.h)} ${pct0(rr.posWr)} → ${pct0(Math.max(rr.best.month, rr.best.ceil))}</button>`).join(' · ')}</p>` : `<p>На других ролях новых героев с 51%+ тоже нет — твой рост сейчас в героях, которые у тебя уже идут (вкладка «Твой герой»).</p>`}
-      <button class="linkbtn mh-showall">Всё равно показать новых героев (${r.all.length}) ▾</button><div class="mh-opts hidden">${r.all.map(y => `<div class="mh-opt"><img src="${CDN + H(y.h).img}" alt=""><b>${hn(y.h)}</b><span>${pct0(y.month)} через месяц · ${pct0(y.ceil)} к 100-й</span></div>`).join('')}</div></div>`;
-    bindTabs(); bindRestore();
-    box.querySelectorAll('.mh-gorole').forEach(b => b.onclick = () => { lsSet('dc_mh_' + S.id, +b.dataset.p); renderMyHero(S, +b.dataset.p); });
-    bindOwn(); const sa = box.querySelector('.mh-showall'); if(sa) sa.onclick = () => box.querySelector('.mh-empty .mh-opts').classList.toggle('hidden');
-    const pa = box.querySelector('.mh-pool-auto'); if(pa) pa.style.display = 'none';
-    return;
-  }
+  // Пустого «нет» больше нет (основатель, 24.10): на каждой роли — лучший кандидат с объяснением, стартом и ростом
 
   // Показ: главный крупно, два запасных карточками, ниже — весь список модели, чтобы выбрать самому
   const show = h => {
@@ -2421,7 +2409,12 @@ async function renderMyHero(S, sel){
         + `</div><p class="mh-grow">Как расти: ${!nx ? `держи уровень — ты на высшей ступени` : tgt != null ? `подними винрейт с ${pct0(ms.wr)} до ${pct0(tgt)} — это примерно на ${Math.max(1, Math.ceil((tgt - ms.wr)*(ms.n + Math.max(needG, 20))))} побед больше за следующие ${Math.max(needG, 20)} игр${needG ? ` (и ещё ${needG} ${gamesWord(needG)} до порога)` : ''}` : `сыграй на нём ещё ${needG} ${gamesWord(needG)}, держа ${pct0(Math.max(avg + Math.max(nx[3], 0), 0.51))}+ побед`}. План по шагам — во вкладке «Как развиваться» ниже.</p>`; })() : '';
     const aheadC = sel && !ahead && r.posWr != null && x.ceil != null && Math.round(x.ceil*100) > Math.round(r.posWr*100);
     const ace = sel && !r.noUp && r.cur && r.cur.wr > m.month ? ` ${hn(r.cur.h)} у тебя уже ${pct0(r.cur.wr)} за ${r.cur.n} ${gamesWord(r.cur.n)} — держи его как козырь, а этого качай вторым.` : '';
-    const verdict = sel ? `<div class="mh-verdict ${ahead || aheadC ? '' : 'meh'}">${ahead ? `Через месяц он может поднять твой ${role} с ${pct0(r.posWr)} до ${pct0(m.month)}${Math.round(x.ceil*100) > Math.round(m.month*100) ? `, а к 100-й игре — до ${pct0(x.ceil)}` : ''}.` : aheadC ? `За месяц он ещё не выше твоих ${pct0(r.posWr)} (${pct0(m.month)}), но к 100-й игре — <b>${pct0(x.ceil)}</b>: это его потолок у тебя. Рост медленный — 2–3 месяца на герое, зато выше, чем сейчас.` : (r.noUp ? `На позиции «${role}» новые герои не поднимут тебя выше ${pct0(r.posWr)} ни через месяц, ни к 100-й игре: лучший потолок — ${pct0(Math.max(...r.all.map(y => y.ceil)))} (это ${hn(r.best.h)}). Твой рост здесь — герои, на которых ты уже играешь.${r.cur ? ` Главный — ${hn(r.cur.h)} (${pct0(r.cur.wr)} за ${r.cur.n} ${gamesWord(r.cur.n)}).` : ''} Нового бери, только если хочется разнообразия.${(() => {
+    // Рассказ по-человечески: на чём ты тут играл (где выигрывал / проигрывал) → почему он → с чего начнёшь → докуда вырастешь
+    const story = sel ? (() => { const mt = (r.mineTop || []).filter(o => o.h !== x.h), wins = mt.filter(o => Math.round(o.wr*100) >= 51), loss = mt.filter(o => Math.round(o.wr*100) < 50);
+      const played = mt.length ? `На позиции «${role}» ты играл: ${wins.length ? `выигрывал на ${wins.map(o => `${hn(o.h)} (${pct0(o.wr)})`).join(', ')}` : ''}${wins.length && loss.length ? ', ' : ''}${loss.length ? `проигрывал на ${loss.map(o => `${hn(o.h)} (${pct0(o.wr)})`).join(', ')}` : ''}${!wins.length && !loss.length ? mt.map(o => `${hn(o.h)} (${pct0(o.wr)})`).join(', ') : ''}. ` : `На позиции «${role}» у тебя пока мало игр. `;
+      const why = x.sims && x.sims.length ? `${hn(x.h)} играется как твои ${x.sims.map(k => hn(k.h)).join(', ')}` : `${hn(x.h)} по профилю ближе всего к тому, как ты играешь`;
+      return `<p class="mh-story">${played}Я думаю, тебе подойдёт <b>${hn(x.h)}</b>: ${why}. Начнёшь примерно с <b>${pct0(x.now)}</b>, через месяц — <b>${pct0(m.month)}</b>, к 100-й игре — <b>${pct0(x.ceil)}</b>.</p>`; })() : '';
+    const verdict = sel ? `${story}<div class="mh-verdict ${ahead || aheadC ? '' : 'meh'}">${ahead ? `Через месяц он может поднять твой ${role} с ${pct0(r.posWr)} до ${pct0(m.month)}${Math.round(x.ceil*100) > Math.round(m.month*100) ? `, а к 100-й игре — до ${pct0(x.ceil)}` : ''}.` : aheadC ? `За месяц он ещё не выше твоих ${pct0(r.posWr)} (${pct0(m.month)}), но к 100-й игре — <b>${pct0(x.ceil)}</b>: это его потолок у тебя. Рост медленный — 2–3 месяца на герое, зато выше, чем сейчас.` : (r.noUp ? `Честно: твоих ${pct0(r.posWr)} на позиции он быстро не обгонит — это новый герой «вторым номером», чтобы не зависеть от одного.${r.cur ? ` Сильнейший у тебя здесь — ${hn(r.cur.h)} (${pct0(r.cur.wr)} за ${r.cur.n} ${gamesWord(r.cur.n)}).` : ''}${(() => {
       // Где новый герой всё-таки даёт рост — считаем остальные роли (≈0.1 с на роль, только когда здесь роста нет)
       const gr = [1, 2, 3, 4, 5].filter(q => q !== sel).map(q => [q, cache[q] = cache[q] || pickPerspective(S, q)]).filter(([, rr]) => !rr.noUp && rr.best && rr.posWr != null);
       return gr.length ? `<span class="mh-gorow">Рост новым героем есть на: ${gr.map(([q, rr]) => `<button class="linkbtn mh-gorole" data-p="${q}">${roleShort(q).toLowerCase()} — ${hn(rr.best.h)} ${pct0(rr.posWr)} → ${pct0(Math.round(rr.best.month*100) > Math.round(rr.posWr*100) ? rr.best.month : rr.best.ceil)}</button>`).join(' · ')}</span>` : ''; })()}` : 'Этот не выше твоего уровня — выбери героя из тех, что сверху списка.')}${ace}${(() => {
