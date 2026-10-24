@@ -1992,7 +1992,7 @@ const growType = F => [1,2,3].map(c => { const cv = F.curves[c]; return !cv || c
 // с кем рейтинг растёт сильнее всего (тот же расчёт, что в «Твоём будущем», поэтому цифры не спорят)
 function mhOrderTrio(ML, xs, posOf, perMonth){
   return xs.map(x => { const s = mlSimulate(ML, x.h, posOf(x), perMonth*3, perMonth, 150, [], x.transfer || 0);
-    return {...x, g3: quant(s.traj[3], 0.5)}; }).sort((a,b) => b.g3 - a.g3);
+    return {...x, g3: quant(s.traj[3], 0.5)}; }).sort((a,b) => ((b.win51 ? 1 : 0) - (a.win51 ? 1 : 0)) || b.g3 - a.g3);
 }
 
 function pickMyHero(S){
@@ -2004,8 +2004,8 @@ function pickMyHero(S){
     const fit = !!(grow && grow.d >= 0.04 && x.cplx === grow.c);
     const score = 4*(s.p50 - F.overall) + 0.12*Math.min(1, faces.length/5) + 0.03*Math.min(1, myPos.length/3) + (fit ? 0.05 : 0)
       + 0.04*Math.log1p(x.n)/Math.log1p(maxN) + (pr[x.h] === 1 ? 0.05 : 0);
-    return {...x, pos, now: s.p5, w20: s.p20, w50: s.p50, faces, myPos, fit, score};
-  }).sort((a,b) => b.score - a.score);
+    return {...x, pos, now: s.p5, w20: s.p20, w50: s.p50, faces, myPos, fit, score, win51: x.n >= 30 && x.w/x.n >= 0.51};
+  }).sort((a,b) => (b.win51 - a.win51) || b.score - a.score);   // правило 51%: сначала герои, на которых ты реально выигрываешь (30+ игр)
   const big = rows.filter(x => x.n >= 30).sort((a,b) => b.w/b.n - a.w/a.n), byW50 = rows.slice().sort((a,b) => b.w50 - a.w50);
   const [best, ...alts] = mhOrderTrio(ML, rows.slice(0, 3), x => x.pos, perMonth);
   return {best, alts, all: rows, n: rows.length, grow, overall: F.overall, big, perMonth,
@@ -2154,7 +2154,9 @@ function perspReasons(x, r){
 function mhView(x, r, sel, S){
   const isBest = x.h === r.best.h, isAlt = r.alts.some(a => a.h === x.h), rank = r.all.findIndex(y => y.h === x.h) + 1;
   const psy = psyReasons(S, x.h, sel || x.pos), psyLine = psy.length ? [`<b>Под твой характер</b>: ${psy.join('; ')}.`] : [];
-  const extra = isBest && r.alts.length && !sel ? [x.g3 >= 0 ? `<b>Лучший прогноз рейтинга из трёх</b>: +${x.g3} за 3 месяца, если играть его.` : `<b>Из трёх с ним рейтинг теряет меньше всего</b>: ${x.g3} за 3 месяца — остальные проседают сильнее.`]
+  const topG3 = !sel && [r.best, ...r.alts].every(y => (y.g3 ?? -1e9) <= (x.g3 ?? -1e9));
+  const extra = isBest && r.alts.length && !sel && !topG3 && x.win51 ? [`<b>Главный по правилу 51%</b>: на нём ты реально выигрываешь — ${pct0(x.w/x.n)} за ${x.n} ${gamesWord(x.n)}. Остальные из тройки ниже 51%.`]
+    : isBest && r.alts.length && !sel ? [x.g3 >= 0 ? `<b>Лучший прогноз рейтинга из трёх</b>: +${x.g3} за 3 месяца, если играть его.` : `<b>Из трёх с ним рейтинг теряет меньше всего</b>: ${x.g3} за 3 месяца — остальные проседают сильнее.`]
     : !isAlt && !isBest ? [`<b>№${rank} из ${r.all.length}</b> в списке модели. ${hn(r.best.h)} даёт больше, но выбор твой — прогноз ниже уже с ним.`] : [];
   if(sel) return {h: x.h, pos: sel, now: x.now, month: x.month, faces: x.faces, persp: x,
     kick: `${isBest ? (r.noUp ? 'Лучший из новых' : 'Перспектива') : isAlt ? 'Ещё вариант' : 'Твой выбор'} · ${roleShort(sel)}`,
