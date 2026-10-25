@@ -895,7 +895,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261025225455';
+const BUILD = '20261025225732';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2802,10 +2802,11 @@ async function renderLove(S, box, tabsHtml, bindTabs){
   const FS = Object.fromEntries(FEELS.map(f => [f[0], fstat(f)]));
   const pool = new Set([...FEELS.flatMap(f => f[4]).map(id), ...Object.keys(rec).filter(h => rec[h].n >= 15).map(Number)]);
   const rows = [...pool].filter(h => h && heroes[h] && !rej[h] && !skip.has(h) && !MICRO.has(hn(h))).map(h => {
-    const o = rec[h] || {n: 0, w: 0, pos: {}}, fs = feelsOf(h), mp = Object.entries(o.pos).sort((a,b) => b[1] - a[1])[0];
+    const o = {...(rec[h] || {n: 0, w: 0, pos: {}})}, fs = feelsOf(h), mp = Object.entries(o.pos).sort((a,b) => b[1] - a[1])[0];
     let pos = mp && mp[1] >= 3 ? +mp[0] : +(Object.entries(T[h] || {}).sort((a,b) => (b[1].n || 0) - (a[1].n || 0))[0] || [2])[0] || 2;
     // в дуо — только герои твоей роли в связке (друг на керри — ты на миде)
-    if(duoOn){ const fits = pos === D.me || (o.pos[D.me] || 0) >= 3 || (T[h] && T[h][D.me] && T[h][D.me].n >= ((T[h][pos] || {n: 1}).n)*0.3); if(!fits) return null; pos = D.me; }
+    if(duoOn){ const fits = (o.pos[D.me] || 0) >= 5 || (pos === D.me && (o.pos[pos] || 0) < 5); if(!fits) return null; pos = D.me;
+      if(o.n >= 15 && (o.pos[D.me] || 0) >= 5){ const mg = S.year.filter(g => g.hero === h && g.pos === D.me); o.n = mg.length; o.w = mg.filter(g => g.win).length; } }   // в дуо — твои цифры именно на этой роли
     const own = o.n >= 15, exp = own ? (o.w + 5*0.5)/(o.n + 10) : mlSimulate(ML, h, pos, 6, perM, 15).p5;
     const g = pathTo(S, own ? {h, n: 0, now: o.w/o.n} : {h, n: o.n, now: exp}, 0.52), fit = fs.length ? Math.max(...fs.map(f => FS[f[0]].sm)) : avg;
     const grow = g.far ? 0 : 1 - Math.min(g.left, 300)/300, cplx = H(h).complexity || 2;
