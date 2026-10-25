@@ -895,7 +895,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261025225308';
+const BUILD = '20261025225455';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2699,14 +2699,14 @@ async function renderDraft(S, box, tabsHtml, bindTabs, best){
   const cache = S.mhCache = S.mhCache || {idx: {}}, rej = lsGet('dc_rej_' + S.id) || {}, taken = new Set(), ps = S.posStats || {};
   let q = best || 2, first = null, D = null, fh = null, touched = false;
   const list = p => { const r = cache[p] = cache[p] || pickPerspective(S, p);
-    const own = (r.mineAll || []).filter(o => !rej[o.h]).map(o => ({h: o.h, own: true, n: o.n, wr: o.wr, exp: o.sc}));
-    const fresh = (r.all || []).filter(y => !rej[y.h]).map(y => ({h: y.h, own: false, y, exp: y.ceil}));
+    const own = (r.mineAll || []).filter(o => !rej[o.h] && !MICRO.has(hn(o.h))).map(o => ({h: o.h, own: true, n: o.n, wr: o.wr, exp: o.sc}));   // без юнитов: «не хочу управлять миллионами этих» (основатель)
+    const fresh = (r.all || []).filter(y => !rej[y.h] && !MICRO.has(hn(y.h))).map(y => ({h: y.h, own: false, y, exp: y.ceil}));
     return [...own, ...fresh].sort((a,b) => b.exp - a.exp).filter((v, k, a) => a.findIndex(z => z.h === v.h) === k); };
   const why0 = t => t.own ? `у тебя <b class="${wrClass(t.wr)}">${pct0(t.wr)}</b> за ${t.n} ${gamesWord(t.n)}` : `новый: старт ${pct0(t.y.now)} · ${(g => g.far ? 'до 51% далеко' : !g.left ? 'сразу в плюсе' : '51% ' + goalTxt(g))(pathTo(S, t.y, 0.51))}`;
   const why = t => { if(!D) return why0(t);
     if(fh){ const pr = duoPair(D, t.h, fh); return why0(t) + (pr.n ? ` · с его ${hn(fh)} <b class="${wrClass(pr.w/pr.n)}">${pr.w}–${pr.n - pr.w}</b>` : ''); }
     const bw = duoBestWith(D, t.h); return why0(t) + (bw ? ` · лучше всего с его ${hn(bw.h)} (${bw.w}–${bw.n - bw.w})` : ''); };
-  const goodPair = t => { const pr = duoPair(D, t.h, fh); return pr.n >= 2 && pr.w/pr.n >= 0.5 ? pr.sc : 0; };
+  const goodPair = t => { const pr = duoPair(D, t.h, fh); return pr.n >= 3 && pr.w/pr.n >= 0.5 ? pr.sc : 0; };
   const draw = () => {
     let L = list(q).filter(t => !taken.has(t.h));
     if(D && fh){ const gp = L.filter(goodPair).sort((a,b) => goodPair(b) - goodPair(a)); L = [...gp, ...L.filter(t => !goodPair(t))]; }   // под героя друга — сначала ваши проверенные пары
