@@ -869,7 +869,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261025220827';
+const BUILD = '20261025221021';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2640,7 +2640,7 @@ async function renderDraft(S, box, tabsHtml, bindTabs, best){
     const own = (r.mineAll || []).filter(o => !rej[o.h]).map(o => ({h: o.h, own: true, n: o.n, wr: o.wr, exp: o.sc}));
     const fresh = (r.all || []).filter(y => !rej[y.h]).map(y => ({h: y.h, own: false, y, exp: y.ceil}));
     return [...own, ...fresh].sort((a,b) => b.exp - a.exp).filter((v, k, a) => a.findIndex(z => z.h === v.h) === k); };
-  const why = t => t.own ? `у тебя <b class="${wrClass(t.wr)}">${pct0(t.wr)}</b> за ${t.n} ${gamesWord(t.n)}` : `новый: старт ${pct0(t.y.now)} · ${(g => g.far ? 'до 51% далеко' : '51% ' + goalTxt(g))(pathTo(S, t.y, 0.51))}`;
+  const why = t => t.own ? `у тебя <b class="${wrClass(t.wr)}">${pct0(t.wr)}</b> за ${t.n} ${gamesWord(t.n)}` : `новый: старт ${pct0(t.y.now)} · ${(g => g.far ? 'до 51% далеко' : !g.left ? 'сразу в плюсе' : '51% ' + goalTxt(g))(pathTo(S, t.y, 0.51))}`;
   const draw = () => {
     let L = list(q).filter(t => !taken.has(t.h)); const fi = L.findIndex(t => t.h === first); if(fi > 0) L = [L[fi], ...L.filter((_, k) => k !== fi)];
     const m = L[0], alt = L.slice(1, 5);
@@ -2685,12 +2685,13 @@ async function renderFeel(S, box, tabsHtml, bindTabs, sel){
     const myPos = Object.entries(o.pos).sort((a,b) => b[1] - a[1])[0], pos = myPos && myPos[1] >= 3 ? +myPos[0] : +(Object.entries(T[h] || {}).sort((a,b) => (b[1].n || 0) - (a[1].n || 0))[0] || [2])[0] || 2;
     if(st.p && pos !== st.p && !(o.pos[st.p] >= 3) && !(T[h] && T[h][st.p] && T[h][st.p].n >= (T[h][pos] || {n: 1}).n*0.3)) return null;
     const p = st.p || pos, sm = (o.w + 5*0.5)/(o.n + 10);
-    if(o.n >= 15) return {h, pos: p, own: true, n: o.n, w: o.w, wr: o.w/o.n, score: 1 + sm};
-    const y = {h, n: o.n, now: mlSimulate(ML, h, p, 6, perM, 15).p5}, g = pathTo(S, y, 0.51);
-    return {h, pos: p, own: false, n: o.n, w: o.w, now: y.now, g, score: g.far ? 0 : 1 - g.need/1000};
+    if(o.n >= 15 && o.w/o.n >= 0.505) return {h, pos: p, own: true, n: o.n, w: o.w, wr: o.w/o.n, score: 2 + sm};
+    const y = o.n >= 15 ? {h, n: 0, now: o.w/o.n} : {h, n: o.n, now: mlSimulate(ML, h, p, 6, perM, 15).p5}, g = pathTo(S, y, 0.51);
+    return {h, pos: p, own: o.n >= 15, n: o.n, w: o.w, wr: o.w/o.n, now: y.now, g, score: g.far ? 0 : 1 - g.need/1000};
   }).filter(Boolean).sort((a,b) => b.score - a.score);
-  const line = x => x.own ? (x.wr >= 0.505 ? `уже тащишь: <b class="good">${pct0(x.wr)}</b> за ${x.n} ${gamesWord(x.n)}` : `у тебя ${pct0(x.wr)} за ${x.n} ${gamesWord(x.n)} — пока в минусе`)
-    : `старт ${pct0(x.now)} → ${x.g.far ? '<b class="bad">51% больше 300 игр</b>' : `<b class="good">51% ${goalTxt(x.g)}</b>`}`;
+  const to51 = g => g.far ? '<b class="bad">51% — больше 300 игр</b>' : !g.left ? '<b class="good">сразу в плюсе</b>' : `<b class="good">51% ${goalTxt(g)}</b>`;
+  const line = x => x.own && !x.g ? `уже тащишь: <b class="good">${pct0(x.wr)}</b> за ${x.n} ${gamesWord(x.n)}`
+    : x.own ? `у тебя ${pct0(x.wr)} за ${x.n} ${gamesWord(x.n)} → ${to51(x.g)}` : `старт ${pct0(x.now)} → ${to51(x.g)}`;
   const draw = () => {
     const f = FEELS.find(z => z[0] === st.f), R = f ? rows(f) : [], top = R.slice(0, 3), rest = R.slice(3, 11);
     box.innerHTML = `${tabsHtml}<div class="mh-pk-panel mh-fl"><div class="mh-ovhead">💥 Что тебе в кайф? <small>Выбери ощущение — подберу героев этого вкуса, на которых ты потащишь. Под каждым — твой реальный результат на таких героях.</small></div>
