@@ -499,7 +499,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-drtaken{font-weight:800;padding:10px 16px !important}
 .mh-drnext{display:flex;flex-direction:column;gap:6px;margin-top:12px} .mh-drnext>span{font-size:12px;color:var(--muted);font-weight:700}
 .mh-drnx{display:grid !important;grid-template-columns:22px 64px 1fr;gap:10px;align-items:center;text-align:left;padding:6px 10px !important;border-radius:12px}
-.mh-drnx>b{color:#ffd88a} .mh-drnx img{width:64px;height:36px;object-fit:cover;border-radius:6px} .mh-drnx div{display:flex;flex-direction:column} .mh-drnx small{font-size:12px;color:var(--muted)}
+.mh-drnx{background:var(--panel2) !important;color:#e9e4ff !important;border:1px solid var(--line) !important;box-shadow:none !important} .mh-drnx:hover{border-color:#6ee7a8 !important} .mh-drnx>b{color:#ffd88a} .mh-drnx img{width:64px;height:36px;object-fit:cover;border-radius:6px} .mh-drnx div{display:flex;flex-direction:column} .mh-drnx small{font-size:12px;color:var(--muted)}
 .mh-drhint{font-size:13px;color:#ffd88a;margin-top:10px} .mh-drreset{margin-top:10px}
 .mh-flfeels{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
 .mh-flf{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;padding:16px 10px !important;border-radius:18px;border:2px solid transparent !important}
@@ -869,7 +869,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261025221021';
+const BUILD = '20261025221211';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
