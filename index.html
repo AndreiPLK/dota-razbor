@@ -488,6 +488,19 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-mini:hover{transform:translateY(-2px);border-color:rgba(196,181,253,.6)} .mh-mini img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:9px}
 .mh-mini>b{font-size:15px} .mh-mini em{font-style:normal;font-size:11.5px;color:#c4b5fd;font-weight:700} .mh-mini span{font-size:13px} .mh-mini span b{font-size:14px}
 .mh-ov-all{margin-top:10px}
+.mh-bigbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 28px 0}
+.mh-big{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:14px 18px;border-radius:16px;font-size:17px;font-weight:800;text-align:left}
+.mh-big small{font-size:12px;font-weight:500;opacity:.85}
+.mh-pk-panel{margin:14px 28px 10px;text-align:left} .mh-pkform{display:flex;gap:8px;margin-top:10px} .mh-pkform input{flex:1;min-width:0} .mh-pkgo{font-weight:800;padding:10px 20px}
+.mh-pkchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px} .mh-pkchips:empty{display:none}
+.mh-pkcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:14px}
+.mh-pkcard{display:grid;grid-template-columns:90px 1fr;gap:10px;align-items:center;padding:12px;border-radius:18px;border:1px solid var(--line);border-top:3px solid var(--c);background:var(--panel2)}
+.mh-pkcard.top{background:linear-gradient(160deg,rgba(255,216,138,.14),var(--panel2) 70%)}
+.mh-pkcard img{width:90px;height:120px;object-fit:contain;filter:drop-shadow(0 8px 14px rgba(0,0,0,.6))} .mh-pkcard>div{display:flex;flex-direction:column;gap:3px}
+.mh-pkcard em{font-style:normal;font-size:11px;font-weight:800;color:var(--c)} .mh-pkcard>div>b{font-size:19px} .mh-pkverd{font-size:16px;font-weight:800} .mh-pkverd.good{color:#6ee7a8} .mh-pkverd.bad{color:#ff6b8a}
+.mh-pkcard span{font-size:13px} .mh-pkcard small{font-size:11.5px;color:var(--muted)}
+.mh-pkchart{width:100%;height:auto;margin-top:8px}
+@media(max-width:700px){.mh-bigbtns{margin:10px 14px 0} .mh-big{font-size:15px;padding:12px} .mh-pk-panel{margin:12px 14px 8px}}
 .mh-ovbtns .mh-no2{background:transparent !important;border:1px solid rgba(214,208,245,.35) !important;color:#e9e4ff !important;box-shadow:none !important} .mh-ovbtns .mh-tell{color:#fff !important}
 .mh-rejbox.hidden,.mh-morebox.hidden,.mh-whybox.hidden{display:none !important} .mh-ov,.mh-ovinfo,.mh-fig,.mh-duo-panel{text-align:left}
 .mh-duo-panel{margin:14px 28px 10px} .mh-duoform{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
@@ -772,7 +785,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261025121115';
+const BUILD = '20261025122319';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2412,6 +2425,57 @@ async function heroShareCard(S, m, x){
 
 // 👥 Дуо (основатель, 25.10): «я играю в дуо с одним и тем же человеком — какие герои подойдут нам вместе на наших позициях».
 // Берём ваши настоящие общие матчи из Stratz (withFriendSteamAccountIds) и считаем пары героев, твоих и его героев в дуо
+// 🔮 Подобрать героев (основатель, 25.10): «перечислю Invoker, Storm, Templar — какой из них лучше на вырост, если я 100 матчей
+// на нём проведу и научусь — потащу или нет?» Для каждого: старт → 100 игр → дальний потолок (твой уровень на похожих героях),
+// вердикт одной фразой и график рейтинга по месяцам. Минимум кнопок: вписал героев — нажал «Сравнить»
+async function renderPicker(S, box, tabsHtml, bindTabs){
+  const key = 'dc_pick_' + S.id, saved = lsGet(key) || [], picked = saved.filter(h => heroes[h]).slice(0, 5);
+  const byName = v => +(Object.keys(heroes).find(k => heroes[k].localized_name.toLowerCase() === v.trim().toLowerCase()) || 0);
+  box.innerHTML = `${tabsHtml}<div class="mh-pk-panel"><div class="mh-ovhead">🔮 Подобрать героев <small>Впиши 2–5 героев, которые тебе интересны. Посчитаю по твоим играм: что будет через 100 матчей на каждом и потащишь ли ты.</small></div>
+    <div class="mh-pkform"><input class="mh-pkin" list="mhPkList" placeholder="Начни писать героя…" autocomplete="off"><datalist id="mhPkList">${Object.values(heroes).map(hh => `<option value="${hh.localized_name}">`).join('')}</datalist><button class="mh-pkgo">Сравнить</button></div>
+    <div class="mh-pkchips"></div><div class="mh-pkres"></div></div>`;
+  bindTabs();
+  const chips = () => { box.querySelector('.mh-pkchips').innerHTML = picked.map(h => `<button class="mh-dchip" data-h="${h}"><img src="${CDN + H(h).img}" alt="">${hn(h)} ✕</button>`).join('');
+    box.querySelectorAll('.mh-pkchips .mh-dchip').forEach(b => b.onclick = () => { picked.splice(picked.indexOf(+b.dataset.h), 1); chips(); }); };
+  const inp = box.querySelector('.mh-pkin');
+  const add = () => { inp.value.split(/[,;]/).map(byName).filter(h => h && !picked.includes(h)).forEach(h => picked.length < 5 && picked.push(h)); inp.value = ''; chips(); };
+  inp.onchange = add; inp.onkeydown = e => { if(e.key === 'Enter') add(); };
+  const go = () => {
+    add(); const out = box.querySelector('.mh-pkres');
+    if(!picked.length){ out.innerHTML = '<p class="muted">Впиши хотя бы одного героя.</p>'; return; }
+    lsSet(key, picked);
+    const ML = S.ML = S.ML || mlBuild(S), perM = mhPerMonth(S), T = S.posTable || {};
+    const rec = {}; S.year.forEach(g => { const o = rec[g.hero] = rec[g.hero] || {n: 0, w: 0}; o.n++; o.w += g.win ? 1 : 0; });
+    const rows = picked.map(h => {
+      // позиция героя: где его чаще играют все; если у тебя на нём есть игры — твоя
+      const t = T[h] || {}, mine = S.year.filter(g => g.hero === h && g.pos), myPos = mine.length >= 5 ? +Object.entries(mine.reduce((o, g) => (o[g.pos] = (o[g.pos] || 0) + 1, o), {})).sort((a,b) => b[1] - a[1])[0][0] : null;
+      const pos = myPos || +(Object.entries(t).sort((a,b) => (b[1].n || 0) - (a[1].n || 0))[0] || [2])[0] || 2;
+      const sim = mlSimulate(ML, h, pos, 105, perM, 40), V = styleVecs(S, pos);
+      const sims = V[h] ? Object.entries(rec).filter(([k, o]) => +k !== h && o.n >= 10 && V[k]).map(([k, o]) => ({h: +k, n: o.n, wr: o.w/o.n, s: cosine(V[h], V[k])})).filter(k => k.s >= 0.5).sort((a,b) => b.s - a.s).slice(0, 3) : [];
+      const sn = sims.reduce((a, k) => a + k.n, 0), sd = sims.reduce((a, k) => a + k.s*k.s*k.n, 0), simWr = sd ? sims.reduce((a, k) => a + k.s*k.s*k.wr*k.n, 0)/sd : null;
+      const far = Math.max(sim.p100, sn >= 40 && simWr != null ? simWr : 0);
+      const months = Math.max(1, Math.floor(105/perM)), traj = Array.from({length: months + 1}, (_, m) => m ? quant(sim.traj[m] || [0], 0.5) : 0);
+      return {h, pos, n: (rec[h] || {}).n || 0, w: (rec[h] || {}).w || 0, now: sim.p5, d100: sim.p100, far, sims, simWr, traj, cplx: H(h).complexity || 2};
+    }).sort((a,b) => b.far - a.far);
+    const verdict = v => v >= 0.53 ? ['💪', 'Потащишь', 'good'] : v >= 0.5 ? ['🙂', 'Будешь в плюсе', 'good'] : v >= 0.47 ? ['😐', 'Около нуля', ''] : ['❌', 'Тяжело', 'bad'];
+    // график: рейтинг по месяцам, если играть только этого героя (медиана прогонов)
+    const W = 640, Hh = 220, P = 34, all = rows.flatMap(x => x.traj), lo = Math.min(0, ...all), hi = Math.max(50, ...all), mx = Math.max(...rows.map(x => x.traj.length - 1));
+    const X = m => P + (W - 2*P)*m/mx, Y = v => Hh - P - (Hh - 2*P)*(v - lo)/(hi - lo || 1), COL = ['#ffd88a', '#67e8f9', '#f472b6', '#6ee7a8', '#c4b5fd'];
+    const chart = `<svg class="mh-pkchart" viewBox="0 0 ${W} ${Hh}"><line x1="${P}" x2="${W - P}" y1="${Y(0)}" y2="${Y(0)}" stroke="rgba(255,255,255,.25)" stroke-dasharray="4 4"/>
+      <text x="${P}" y="${Y(0) - 6}" fill="rgba(255,255,255,.5)" font-size="11">сейчас</text>
+      ${rows.map((x, i) => `<polyline fill="none" stroke="${COL[i]}" stroke-width="3" stroke-linejoin="round" points="${x.traj.map((v, m) => `${X(m)},${Y(v)}`).join(' ')}"/><text x="${X(x.traj.length - 1) + 4}" y="${Y(x.traj[x.traj.length - 1]) + 4}" fill="${COL[i]}" font-size="12" font-weight="700">${x.traj[x.traj.length - 1] >= 0 ? '+' : ''}${Math.round(x.traj[x.traj.length - 1])}</text>`).join('')}
+      ${Array.from({length: mx + 1}, (_, m) => `<text x="${X(m)}" y="${Hh - 10}" fill="rgba(255,255,255,.45)" font-size="11" text-anchor="middle">${m ? m + ' мес' : ''}</text>`).join('')}</svg>`;
+    out.innerHTML = `<div class="mh-pkcards">${rows.map((x, i) => { const [ic, tx, cl] = verdict(x.far);
+      return `<div class="mh-pkcard ${i ? '' : 'top'}" style="--c:${COL[i]}"><img src="${CDN + RENDER + heroShort(x.h)}.png" alt=""><div><em>${i ? `#${i + 1}` : '🏆 Лучший выбор'} · ${roleShort(x.pos).toLowerCase()}</em><b>${hn(x.h)}</b>
+        <div class="mh-pkverd ${cl}">${ic} ${tx}</div>
+        <span>старт <b class="${wrClass(x.now)}">${pct0(x.now)}</b> → 100 матчей <b class="${wrClass(x.d100)}">${pct0(x.d100)}</b>${x.far > x.d100 + 0.005 ? ` → потолок <b class="${wrClass(x.far)}">${pct0(x.far)}</b>` : ''}</span>
+        <small>${x.simWr != null && x.sims.length ? `играется как твои ${x.sims.map(k => hn(k.h)).join(', ')} (${pct0(x.simWr)})` : 'похожих героев у тебя мало — прогноз только по модели'}${x.n ? ` · у тебя на нём ${x.w}–${x.n - x.w}` : ''}</small></div></div>`; }).join('')}</div>
+      <div class="mh-newhead">Куда дойдёшь по рейтингу <small>если играть только этого героя, по месяцам (≈${perM} игр в месяц, как сейчас)</small></div>${chart}`;
+  };
+  box.querySelector('.mh-pkgo').onclick = go;
+  chips(); if(picked.length) go();
+}
+
 async function renderDuo(S, box, tabsHtml, bindTabs){
   const key = 'dc_duo_' + S.id, saved = lsGet(key) || {}, best = (S.posStats && S.posStats.best) || 2;
   const sel = (name, v) => `<select class="mh-duosel" data-k="${name}">${[1, 2, 3, 4, 5].map(q => `<option value="${q}" ${q === v ? 'selected' : ''}>${roleShort(q)}</option>`).join('')}</select>`;
@@ -2463,12 +2527,12 @@ async function renderMyHero(S, sel){
   const ps = S.posStats = S.posStats || (() => { const all = S.year.filter(g => g.win).length/S.year.length, o = {};
     [1,2,3,4,5].forEach(p => { const g = S.year.filter(x => x.pos === p), w = g.filter(x => x.win).length; o[p] = {n: g.length, wr: g.length ? w/g.length : null, sm: (w + 20*all)/(g.length + 20)}; });
     o.best = +Object.keys(o).filter(p => o[p].n >= 30).sort((a,b) => o[b].sm - o[a].sm)[0] || null; return o; })();
-  const tabs = `<div class="mh-who">${acc.name || ''}${mmr != null ? ' · ' + mmrToRank(mmr) : ''} · ${S.year.length} игр разобрано <button class="mh-link" title="Скопировать ссылку — другу откроется этот же разбор">🔗 Ссылка на разбор</button> <button class="mh-link mh-duo">👥 Дуо с другом</button></div>${sinceLast(S)}
+  const tabs = `<div class="mh-who">${acc.name || ''}${mmr != null ? ' · ' + mmrToRank(mmr) : ''} · ${S.year.length} игр разобрано <button class="mh-link" title="Скопировать ссылку — другу откроется этот же разбор">🔗 Ссылка на разбор</button></div>${sinceLast(S)}
     <div class="mh-tabs">${MH_TABS.map(([p, l]) => `<button class="mh-tab ${p === sel ? 'on' : ''} ${p && p === ps.best ? 'best' : ''}" data-p="${p}">${p === ps.best ? '★ ' : ''}${l}${p ? `<small>${ps[p].n ? `${pct0(ps[p].wr)} · ${ps[p].n}` : 'нет игр'}</small>` : '<small>из твоих</small>'}</button>`).join('')}</div>
-    ${ps.best ? `<div class="mh-rolehint">★ Твоя роль по играм — <b>${roleShort(ps.best).toLowerCase()}</b>: ${pct0(ps[ps.best].wr)} за ${ps[ps.best].n} ${gamesWord(ps[ps.best].n)}</div>` : ''}
-    <div class="mh-rolehint">${sel ? `Вкладка роли — <b>новые герои на вырост</b>: на них у тебя меньше 15 игр, подобраны под твой стиль и характер` : `«Твой герой» — <b>из тех, на ком ты уже играешь</b>. Вкладки ролей — новые герои на вырост`}</div>`;
+    <div class="mh-bigbtns"><button class="mh-big mh-duo">👥 Дуо с другом<small>герои под вас двоих</small></button><button class="mh-big mh-pk">🔮 Подобрать героев<small>впиши — скажу, потащишь ли</small></button></div>`;
   const bindTabs = () => { box.querySelectorAll('.mh-tab').forEach(b => b.onclick = () => { lsSet('dc_mh_' + S.id, +b.dataset.p); renderMyHero(S, +b.dataset.p); });
     const db = box.querySelector('.mh-duo'); if(db) db.onclick = () => renderDuo(S, box, tabs, bindTabs);
+    const pk = box.querySelector('.mh-pk'); if(pk) pk.onclick = () => renderPicker(S, box, tabs, bindTabs);
     const lb = box.querySelector('.mh-link:not(.mh-duo)'); if(lb) lb.onclick = async () => { const url = location.origin + location.pathname + '#' + S.id;
       try{ await navigator.clipboard.writeText(url); lb.textContent = '✓ Скопировано'; }catch{ prompt('Ссылка на разбор:', url); } setTimeout(() => lb.textContent = '🔗 Ссылка на разбор', 2000); }; };
   const T = S.posTable || {};
