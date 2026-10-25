@@ -488,6 +488,17 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-mini:hover{transform:translateY(-2px);border-color:rgba(196,181,253,.6)} .mh-mini img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:9px}
 .mh-mini>b{font-size:15px} .mh-mini em{font-style:normal;font-size:11.5px;color:#c4b5fd;font-weight:700} .mh-mini span{font-size:13px} .mh-mini span b{font-size:14px}
 .mh-ov-all{margin-top:10px}
+.mh-ovhead{font-size:20px;font-weight:800} .mh-ovhead small{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-top:4px}
+.mh-trios{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.mh-trio{display:flex !important;flex-direction:column;gap:6px;padding:12px;border-radius:16px;border:1px solid var(--line);background:var(--panel2);text-align:left}
+.mh-trio.first{border-color:rgba(255,198,90,.7);background:linear-gradient(160deg,rgba(255,198,90,.16),var(--panel2) 70%);box-shadow:0 0 24px rgba(255,198,90,.15)}
+.mh-trio img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:10px} .mh-trio>div{display:flex;flex-direction:column;gap:3px}
+.mh-trio em{font-style:normal;font-size:11.5px;font-weight:800;color:#ffd88a} .mh-trio b{font-size:17px} .mh-trio span{font-size:12.5px;line-height:1.4} .mh-trio span b{font-size:13px}
+.mh-trio-up{margin-top:2px}
+.mh-newhead.dream{color:#f0abfc} .mh-dream{display:grid !important;grid-template-columns:180px 1fr;gap:14px;align-items:center;width:100%;margin-top:10px;padding:14px;border-radius:18px;border:1px solid rgba(240,171,252,.6);background:linear-gradient(160deg,rgba(240,171,252,.16),var(--panel2) 70%);text-align:left}
+.mh-dream img{width:180px;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:12px} .mh-dream>div{display:flex;flex-direction:column;gap:6px} .mh-dream b{font-size:20px} .mh-dream span{font-size:13.5px;line-height:1.45}
+.mh-dream em{font-style:normal;font-size:15px;color:#f0abfc;font-weight:800} .mh-dream em b{font-size:20px}
+@media(max-width:700px){.mh-trios{grid-template-columns:1fr} .mh-trio{flex-direction:row !important;align-items:center} .mh-trio img{width:110px;flex:none} .mh-dream{grid-template-columns:1fr} .mh-dream img{width:100%}}
 .mh-newhead.far{color:#67e8f9} .mh-anoms{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-top:10px}
 .mh-anom{display:grid !important;grid-template-columns:120px 1fr;gap:12px;align-items:center;border-color:rgba(103,232,249,.55) !important;background:linear-gradient(160deg,rgba(103,232,249,.12),var(--panel2) 70%) !important}
 .mh-anom>div{display:flex;flex-direction:column;gap:4px} .mh-anom span{font-size:13px;line-height:1.45} .mh-anom em{font-style:normal;font-size:12px;color:#67e8f9;font-weight:700}
@@ -728,7 +739,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261024194035';
+const BUILD = '20261025114958';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2116,7 +2127,7 @@ function pickPerspective(S, p){
     x.startP = x.n >= 4 && x.w/x.n >= 0.6 ? binTail(x.w, x.n, posWr0 || 0.5) : 1; x.farStart = x.startP <= 0.1;
     x.far = x.farSim || x.farStart ? Math.max(x.ceil, x.farSim ? x.simWr : 0) : null; });
   const anoms = rows.filter(x => x.far != null).sort((a,b) => (b.far - b.ceil) - (a.far - a.ceil) || (a.startP - b.startP)).slice(0, 2);
-  return {anoms, ownBest, ownBetter, best: rows[0], alts: (tier(rows[0] || {}) ? rows.slice(1).filter(x => tier(x)) : rows.slice(1)).slice(0, 2), all: rows, cur: mine[0] || null, mine51: mine.filter(o => o.n >= 20 && Math.round(100*o.wr) >= 51).slice(0, 3), mineTop: mine.slice().sort((a,b) => b.n - a.n).slice(0, 6).sort((a,b) => b.sc - a.sc).slice(0, 4), overall: F.overall, posWr: posG.length ? posG.filter(g => g.win).length/posG.length : null, posN: posG.length, nCand: rows.length, perMonth, noUp: !rows.some(x => tier(x)), stepOnly: !rows.some(x => tier(x) >= 2) && rows.some(x => tier(x) === 1), ceilOnly: !rows.some(upF) && rows.some(upC), nUp: rows.filter(x => tier(x)).length,
+  return {mineAll: mine, anoms, ownBest, ownBetter, best: rows[0], alts: (tier(rows[0] || {}) ? rows.slice(1).filter(x => tier(x)) : rows.slice(1)).slice(0, 2), all: rows, cur: mine[0] || null, mine51: mine.filter(o => o.n >= 20 && Math.round(100*o.wr) >= 51).slice(0, 3), mineTop: mine.slice().sort((a,b) => b.n - a.n).slice(0, 6).sort((a,b) => b.sc - a.sc).slice(0, 4), overall: F.overall, posWr: posG.length ? posG.filter(g => g.win).length/posG.length : null, posN: posG.length, nCand: rows.length, perMonth, noUp: !rows.some(x => tier(x)), stepOnly: !rows.some(x => tier(x) >= 2) && rows.some(x => tier(x) === 1), ceilOnly: !rows.some(upF) && rows.some(upC), nUp: rows.filter(x => tier(x)).length,
     ownTop: own.sort((a,b) => b[1].n - a[1].n).slice(0, 3).map(([h]) => +h)};
 }
 
@@ -2428,27 +2439,40 @@ async function renderMyHero(S, sel){
   cache.open = cache.open || {};
   const posWrOf = rr => rr.posWr ?? 0.5;
   const overview = () => {
-    const role = roleShort(sel).toLowerCase(), o = r.ownBest, top = r.all.slice(0, 6), perM = r.perMonth || 30, bestNew = r.best;
-    const TAGS = [['Выше всех к 100-й игре', y => y.ceil], ['Быстрее всех растёт', y => y.month - y.now], ['Ближе всего к твоему стилю', y => y.fitPct || 0],
-      ['Под твой характер', y => y.psy || 0], ['Самый простой — быстро освоишь', y => -(y.cplx || 2)], ['Больше всего ролей в игре', y => (y.faces || []).length]];
-    const tag = {}; TAGS.forEach(([t, f]) => { const free = top.filter(y => !tag[y.h]); if(!free.length) return; const w = free.reduce((a, b) => f(b) > f(a) ? b : a); tag[w.h] = t; });
-    top.forEach(y => { if(!tag[y.h]) tag[y.h] = y.sims && y.sims[0] ? `Похож на твоего ${hn(y.sims[0].h)}` : 'Под твой стиль'; });
-    const main = o ? `<div class="mh-main-own"><img src="${CDN + H(o.h).img}" alt=""><div><div class="mh-kick">Главный герой на позиции «${role}»</div><b>${hn(o.h)} — ${pct0(o.wr)} за ${o.n} ${gamesWord(o.n)}</b>
-        <span>${r.ownBetter ? `Он выигрывает больше, чем даст любой новый (лучший новый к 100-й игре — ${pct0(Math.max(bestNew.month, bestNew.ceil))}). Играй его чаще: цель ${Math.max(10, Math.round(perM/2))} ${gamesWord(Math.max(10, Math.round(perM/2)))} в месяц, держать 51%+.`
-          : `Это твой основной здесь. Новые ниже могут поднять тебя выше: ${hn(bestNew.h)} — до ${pct0(Math.max(bestNew.month, bestNew.ceil))} к 100-й игре.`}</span>
-        <button class="linkbtn mh-own" data-h="${o.h}">Открыть ${hn(o.h)} и план роста →</button></div></div>`
-      : `<div class="mh-main-own none"><div><div class="mh-kick">Главный герой на позиции «${role}»</div><b>Своего героя здесь пока нет</b><span>На этой позиции у тебя нет героя с 20+ играми. Выбери одного из новых ниже и сыграй на нём 20 игр — он станет главным.</span></div></div>`;
-    const others = (r.mineTop || []).filter(y => !o || y.h !== o.h);
-    box.innerHTML = `<div class="mh-flash"></div>${tabs}${poolBar()}<div class="mh-ov">${main}
-      ${others.length ? `<div class="mh-ownrow-t">Ещё твои на этой позиции</div><div class="mh-ownrow-l">${others.map(y => `<button class="mh-own" data-h="${y.h}"><img src="${CDN + H(y.h).img}" alt=""><b>${hn(y.h)}</b><span class="${wrClass(y.wr)}">${pct0(y.wr)} · ${y.n} ${gamesWord(y.n)}</span></button>`).join('')}</div>` : ''}
-      ${r.anoms && r.anoms.length ? `<div class="mh-newhead far">💎 Дальний потенциал · ${roleShort(sel)} <small>то, чего не видит прогноз на 100 игр: скрытые сигналы в твоих играх</small></div>
-      <div class="mh-anoms">${r.anoms.map(y => `<button class="mh-anom mh-mini" data-h="${y.h}"><img src="${CDN + H(y.h).img}" alt=""><div><b>${hn(y.h)}</b>
-        <span>${y.farSim ? `Играется как твои ${y.sims.slice(0, 3).map(k => hn(k.h)).join(', ')} — на них ты выигрываешь <b class="good">${pct0(y.simWr)}</b> (${y.simN} игр). Прогноз модели к 100-й игре — ${pct0(y.ceil)}, но твой уровень на таких героях выше: потолок — до ${pct0(y.simWr)}.` : ''}
-        ${y.farStart ? `Аномальный старт: <b class="good">${y.w}–${y.n - y.w}</b> за ${y.n} ${gamesWord(y.n)} при твоих ${pct0(posWrOf(r))} на позиции — случайно так бывает реже чем в 1 из ${Math.max(10, Math.round(1/Math.max(y.startP, 0.001)))}.` : ''}</span>
-        <em>Старт ${pct0(y.now)} → месяц ${pct0(y.month)} → 100 игр ${pct0(y.ceil)} → потенциал до ${pct0(y.far)}</em></div></button>`).join('')}</div>` : ''}
-      <div class="mh-newhead">Новые герои на вырост · ${roleShort(sel)} <small>на них у тебя меньше 15 игр. Цифры: старт → через месяц → к 100-й игре. Нажми — подробно, почему он и как расти</small></div>
-      <div class="mh-minis">${top.map(y => `<button class="mh-mini" data-h="${y.h}"><img src="${CDN + H(y.h).img}" alt=""><b>${hn(y.h)}</b><em>${tag[y.h]}</em>
-        <span><b class="${wrClass(y.now)}">${pct0(y.now)}</b> → <b class="${wrClass(y.month)}">${pct0(y.month)}</b> → <b class="${wrClass(y.ceil)}">${pct0(y.ceil)}</b></span></button>`).join('')}</div>
+    const role = roleShort(sel).toLowerCase(), cur = r.posWr ?? 0.5;
+    // 1) Пул роли из трёх по местам: твои герои (ожидание — твой результат, сглаженный к 50%) и новые (ожидание — к 100-й игре)
+    const own = (r.mineAll || []).map(o => ({h: o.h, own: true, n: o.n, wr: o.wr, exp: o.sc}));
+    const fresh = r.all.map(y => ({h: y.h, own: false, y, exp: y.ceil}));
+    const trio = [...own, ...fresh].sort((a,b) => b.exp - a.exp).filter((v, k, a) => a.findIndex(z => z.h === v.h) === k).slice(0, 3);
+    const PLACE = ['🥇 1-е место — бери его', '🥈 2-е место — если первого забанили', '🥉 3-е место — третий в пул'];
+    const trioCard = (t, k) => `<button class="mh-trio ${k ? '' : 'first'} ${t.own ? 'mh-own' : 'mh-mini'}" data-h="${t.h}"><img src="${CDN + H(t.h).img}" alt=""><div><em>${PLACE[k]}</em><b>${hn(t.h)}</b>
+      <span>${t.own ? `Твой: <b class="${wrClass(t.wr)}">${pct0(t.wr)}</b> за ${t.n} ${gamesWord(t.n)}` : `Новый: старт ${pct0(t.y.now)}, к 100-й игре <b class="${wrClass(t.y.ceil)}">${pct0(t.y.ceil)}</b>`}</span>
+      <span class="mh-trio-up">Твой ${role} <b class="${wrClass(cur)}">${pct0(cur)}</b> → <b class="${wrClass(t.exp)}">~${pct0(t.exp)}</b>${k === 0 ? ', если играть его основным' : k === 1 ? ` — замена, если ${hn(trio[0].h)} забанят` : ''}</span></div></button>`;
+    // 2) 🌟 Мечта: сложный герой с самым высоким дальним потолком (твой уровень на похожих героях или прогноз к 100-й игре)
+    const farPot = y => Math.max(y.ceil, y.simN >= 30 && y.simWr != null ? y.simWr : 0);
+    const shown = new Set(trio.map(t => t.h));
+    const pool3 = r.all.filter(y => !shown.has(y.h) && (y.cplx || 2) >= 3), pool2 = r.all.filter(y => !shown.has(y.h) && (y.cplx || 2) >= 2);
+    const dream = (pool3.length ? pool3 : pool2).slice().sort((a,b) => farPot(b) - farPot(a))[0];
+    if(dream) shown.add(dream.h);
+    // 3) 💎 скрытое — аномалии, которых ещё не показали; 4) ещё варианты
+    const hidden = (r.anoms || []).filter(y => !shown.has(y.h)); hidden.forEach(y => shown.add(y.h));
+    const more = r.all.filter(y => !shown.has(y.h)).slice(0, 6);
+    const dreamSim = dream && dream.simN >= 30 && dream.simWr != null && farPot(dream) > dream.ceil;
+    box.innerHTML = `<div class="mh-flash"></div>${tabs}${poolBar()}<div class="mh-ov">
+      <div class="mh-ovhead">Хочешь играть ${role}? <small>Сейчас у тебя здесь ${r.posN ? `${pct0(cur)} за ${r.posN} ${gamesWord(r.posN)}` : 'мало игр'}. Вот твой пул на позицию — три героя по местам.</small></div>
+      <div class="mh-trios">${trio.map(trioCard).join('')}</div>
+      ${dream ? `<div class="mh-newhead dream">🌟 Мечта · сложный герой <small>трудно освоить, но это самый высокий потолок, который видно по твоим играм</small></div>
+      <button class="mh-dream mh-mini" data-h="${dream.h}"><img src="${CDN + H(dream.h).img}" alt=""><div><b>${hn(dream.h)}</b>
+        <span>${cap(CPLX[dream.cplx || 2])} герой. Начнёшь с ${pct0(dream.now)} — первые десятки игр будет тяжело.${dreamSim ? ` Но он играется как твои ${dream.sims.slice(0, 3).map(k => hn(k.h)).join(', ')}, а на них ты выигрываешь ${pct0(dream.simWr)}.` : ''}</span>
+        <em>Если освоишь — до <b>${pct0(farPot(dream))}</b> когда-нибудь в будущем${farPot(dream) >= 0.6 ? ' 🔥' : ''}</em></div></button>` : ''}
+      ${hidden.length ? `<div class="mh-newhead far">💎 Скрытое · то, чего не видно сразу <small>сигналы в твоих играх, которые не ловит обычный прогноз</small></div>
+      <div class="mh-anoms">${hidden.map(y => `<button class="mh-anom mh-mini" data-h="${y.h}"><img src="${CDN + H(y.h).img}" alt=""><div><b>${hn(y.h)}</b>
+        <span>${y.farSim ? `Играется как твои ${y.sims.slice(0, 3).map(k => hn(k.h)).join(', ')} — на них ты выигрываешь <b class="good">${pct0(y.simWr)}</b> (${y.simN} игр), а прогноз к 100-й игре — только ${pct0(y.ceil)}.` : ''}
+        ${y.farStart ? `Аномальный старт: <b class="good">${y.w}–${y.n - y.w}</b> за ${y.n} ${gamesWord(y.n)} при твоих ${pct0(cur)} на позиции — случайно так бывает реже чем в 1 из ${Math.max(10, Math.round(1/Math.max(y.startP, 0.001)))}.` : ''}</span>
+        <em>Потенциал до ${pct0(y.far)}</em></div></button>`).join('')}</div>` : ''}
+      ${more.length ? `<div class="mh-newhead">Ещё новые варианты · ${roleShort(sel)} <small>старт → через месяц → к 100-й игре; нажми — подробно</small></div>
+      <div class="mh-minis">${more.map(y => `<button class="mh-mini" data-h="${y.h}"><img src="${CDN + H(y.h).img}" alt=""><b>${hn(y.h)}</b>
+        <span><b class="${wrClass(y.now)}">${pct0(y.now)}</b> → <b class="${wrClass(y.month)}">${pct0(y.month)}</b> → <b class="${wrClass(y.ceil)}">${pct0(y.ceil)}</b></span></button>`).join('')}</div>` : ''}
       <button class="linkbtn mh-ov-all">Все новые герои на позиции (${r.all.length}) →</button></div>`;
     bindTabs(); bindRestore(); bindOwn();
     const pa = box.querySelector('.mh-pool-auto'); if(pa) pa.style.display = 'none';
