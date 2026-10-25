@@ -889,7 +889,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261025224035';
+const BUILD = '20261025224207';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2755,7 +2755,7 @@ async function renderLove(S, box, tabsHtml, bindTabs){
     // «Супер-многослойный» (основатель): сначала герои с 2–3 стилями в одном, на которых ты не проигрываешь
     const multi = fs.length >= 2 && (own ? o.w/o.n >= 0.505 : !g.far);
     return {h, pos, o, own, exp, g, fs, fit, multi, score: 2*(exp - 0.5) + 1.5*(fit - 0.5) + 0.04*fs.length + 0.05*grow + (cplx >= 2 ? 0.02 : 0)};
-  }).sort((a,b) => (b.multi - a.multi) || b.score - a.score);
+  }).sort((a,b) => (b.multi - a.multi) || ((b.own && b.o.w/b.o.n >= 0.505) - (a.own && a.o.w/a.o.n >= 0.505)) || b.score - a.score);   // «навсегда» — сначала доказанный твоими играми
   await sleep(1800);
   const x = rows[0];
   if(!x){ box.querySelector('.mh-love').innerHTML = '<p class="muted">Не нашёл — верни убранных героев и попробуй ещё раз.</p>'; return; }
