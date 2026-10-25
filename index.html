@@ -811,7 +811,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261025122911';
+const BUILD = '20261025123109';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2495,11 +2495,14 @@ async function renderPicker(S, box, tabsHtml, bindTabs){
     const restHtml = rest.length ? `<div class="mh-pkrest">${rest.map((x, k) => { const [ic, tx, cl] = verdict(x.far);
       return `<div class="mh-pkrow" style="--c:${COL[k + 3]}"><span class="mh-pkn">${k + 4}</span><img src="${CDN + H(x.h).img}" alt=""><div><b>${hn(x.h)}</b><span class="mh-pkverd ${cl}">${ic} ${tx}</span></div>${bars(x)}</div>`; }).join('')}</div>` : '';
     // график % побед по месяцам: старт → 20 → 50 → 100 матчей (тот же расчёт, что вердикт), дальше пунктир к потолку
-    const W = 680, Hh = 260, PL = 40, PR = 70, PT = 20, PB = 34, mAt = g => g/perM, mx = Math.max(mAt(105), 1) + 1;
+    const W = 680, Hh = Math.max(260, 120 + rows.length*32), PL = 40, PR = 70, PT = 20, PB = 34, mAt = g => g/perM, mx = Math.max(mAt(105), 1) + 1;
     const lo = 0.35, hi = Math.max(0.62, ...rows.map(x => x.far + 0.02)), X = m => PL + (W - PL - PR)*m/mx, Y = v => PT + (Hh - PT - PB)*(1 - (v - lo)/(hi - lo));
     const pts = x => [[0, x.now], [mAt(20), x.d20], [mAt(50), x.d50], [mAt(100), x.d100]];
     const path = p => p.map(([m, v], k) => `${k ? 'L' : 'M'}${X(m).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
     const ticks = Array.from({length: Math.floor(mx) + 1}, (_, m) => m).filter(m => m <= mx);
+    // концы линий: портреты не налезают друг на друга — разводим по высоте минимум на 32 px
+    const endV = x => x.far > x.d100 + 0.005 ? x.far : x.d100, ends = rows.map((x, i) => ({i, y: Y(endV(x))})).sort((a,b) => a.y - b.y);
+    ends.forEach((e, k) => { if(k && e.y - ends[k - 1].y < 32) e.y = ends[k - 1].y + 32; }); const endY = {}; ends.forEach(e => endY[e.i] = e.y);
     const chart = `<svg class="mh-pkchart" viewBox="0 0 ${W} ${Hh}"><defs>${rows.map((x, i) => `<linearGradient id="pkg${i}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${COL[i]}" stop-opacity=".28"/><stop offset="1" stop-color="${COL[i]}" stop-opacity="0"/></linearGradient><clipPath id="pkc${i}"><circle cx="0" cy="0" r="13"/></clipPath>`).join('')}</defs>
       <rect x="${PL}" y="${PT}" width="${W - PL - PR}" height="${Y(0.5) - PT}" fill="rgba(110,231,168,.06)"/>
       <line x1="${PL}" x2="${W - PR}" y1="${Y(0.5)}" y2="${Y(0.5)}" stroke="rgba(110,231,168,.6)" stroke-dasharray="5 5"/><text x="${PL + 4}" y="${Y(0.5) - 6}" fill="#6ee7a8" font-size="11" font-weight="700">50% — выше этой линии ты тащишь</text>
@@ -2509,7 +2512,7 @@ async function renderPicker(S, box, tabsHtml, bindTabs){
         return `<path d="${path(p)} L${X(p[p.length - 1][0])},${Y(lo)} L${X(0)},${Y(lo)} Z" fill="url(#pkg${i})" class="mh-pkarea"/>
           <path d="${path(p)}" fill="none" stroke="${COL[i]}" stroke-width="${i ? 2.5 : 4}" stroke-linecap="round" class="mh-pkline" style="animation-delay:${i*0.15}s"/>
           ${x.far > x.d100 + 0.005 ? `<path d="M${X(mAt(100))},${Y(x.d100)} L${X(end[0])},${Y(end[1])}" stroke="${COL[i]}" stroke-width="2" stroke-dasharray="4 5" fill="none" opacity=".8"/>` : ''}
-          <g transform="translate(${X(end[0])},${Y(x.far > x.d100 + 0.005 ? end[1] : x.d100)})"><circle r="15" fill="${COL[i]}"/><image href="${CDN + H(x.h).img}" x="-24" y="-13" width="48" height="27" clip-path="url(#pkc${i})" preserveAspectRatio="xMidYMid slice"/>
+          <path d="M${X(end[0])},${Y(endV(x))} L${X(end[0])},${endY[i]}" stroke="${COL[i]}" stroke-width="1" opacity=".5"/><g transform="translate(${X(end[0])},${endY[i]})"><circle r="15" fill="${COL[i]}"/><image href="${CDN + H(x.h).img}" x="-24" y="-13" width="48" height="27" clip-path="url(#pkc${i})" preserveAspectRatio="xMidYMid slice"/>
           <text x="20" y="5" fill="${COL[i]}" font-size="13" font-weight="800">${pct0(x.far > x.d100 + 0.005 ? x.far : x.d100)}</text></g>`; }).join('')}</svg>`;
     out.innerHTML = podium + restHtml + `<div class="mh-newhead">📈 Куда дойдёшь по месяцам <small>% побед, если играть только этого героя (~${perM} игр в месяц, как сейчас). Пунктир — потолок, если дорастёшь до своего уровня на похожих героях</small></div>${chart}`;
   };
