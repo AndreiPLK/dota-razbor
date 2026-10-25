@@ -488,6 +488,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-mini:hover{transform:translateY(-2px);border-color:rgba(196,181,253,.6)} .mh-mini img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:9px}
 .mh-mini>b{font-size:15px} .mh-mini em{font-style:normal;font-size:11.5px;color:#c4b5fd;font-weight:700} .mh-mini span{font-size:13px} .mh-mini span b{font-size:14px}
 .mh-ov-all{margin-top:10px}
+.mh-gsub{display:block;font-size:11px;opacity:.7;margin-top:2px}
 .mh-goal{font-size:13px;font-weight:700} .mh-goal b.good{color:#6ee7a8} .mh-goal b.bad{color:#ff6b8a}
 .mh-vs .on b{font-size:clamp(20px,2.4vw,30px) !important}
 .mh-big.mh-duo{background:linear-gradient(135deg,#f97316,#ec4899) !important;color:#fff !important;box-shadow:0 10px 30px rgba(236,72,153,.35) !important}
@@ -836,7 +837,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261025124350';
+const BUILD = '20261025124536';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2126,7 +2127,7 @@ const pathTo = (S, x, T) => { const G = ({1: .04, 2: .06, 3: .09}[H(x.h).complex
   const need = Math.round(s0*100) >= Math.round(T*100) ? 0 : Math.ceil(10*(Math.exp((T - s0)*L/G) - 1)), left = Math.max(0, need - (x.n || 0));
   return {T, need, left: roundG(left), far: need > 300, at300: s0 + G*Math.log(31)/L, months: Math.max(1, Math.round(left/mhPerMonth(S)))}; };
 const goalTxt = g => g.far ? 'больше 300 игр' : !g.left ? 'уже сейчас' : `через ${g.left} ${gamesWord(g.left)}`;
-const goalSub = g => g.far ? `за 300 игр — около ${pct0(g.at300)}` : !g.left ? 'держи уровень' : `~${g.months} ${g.months === 1 ? 'месяц' : g.months < 5 ? 'месяца' : 'месяцев'}, как ты играешь сейчас`;
+const goalSub = g => g.far ? `за 300 игр — около ${pct0(g.at300)}` : !g.left ? 'держи уровень' : `≈ ${g.months} ${g.months === 1 ? 'месяц' : g.months < 5 ? 'месяца' : 'месяцев'}`;
 const heroFaces = h => (H(h).roles || []).filter(r => HERO_FACES[r]);
 const mhSim = (a, b) => { const ra = new Set(H(a).roles || []), rb = H(b).roles || [], inter = rb.filter(r => ra.has(r)).length, uni = new Set([...ra, ...rb]).size || 1;
   return inter/uni + (H(a).attack && H(a).attack === H(b).attack ? 0.2 : 0) + (H(a).complexity === H(b).complexity ? 0.1 : 0); };
@@ -2762,7 +2763,7 @@ async function renderMyHero(S, sel){
     cache.idx[sel] = h;
     const x = [r.best, ...r.alts].find(y => y.h === h) || r.all.find(y => y.h === h) || r.best;
     const m = mhView(x, r, sel, S), role = roleShort(sel || m.pos).toLowerCase(), g51 = pathTo(S, x, 0.51), g52 = pathTo(S, x, 0.52);
-    const vs = sel ? `<div class="mh-vs"><div><span>ты на позиции сейчас (${r.posN} ${gamesWord(r.posN)})</span><b class="${wrClass(r.posWr ?? .5)}">${r.posWr != null ? pct0(r.posWr) : '—'}</b></div>${[g51, g52].map(g => `<i>→</i><div class="on${g.far ? '' : ' ceil'}"><span>${hn(m.h)} ${pct0(g.T)} — ${goalSub(g)}</span><b class="${g.far ? 'bad' : 'good'}">${goalTxt(g)}</b></div>`).join('')}</div>` : '';
+    const vs = sel ? `<div class="mh-vs"><div><span>ты на позиции сейчас (${r.posN} ${gamesWord(r.posN)})</span><b class="${wrClass(r.posWr ?? .5)}">${r.posWr != null ? pct0(r.posWr) : '—'}</b></div>${[g51, g52].map(g => `<i>→</i><div class="on${g.far ? '' : ' ceil'}"><span>${pct0(g.T)} на ${hn(m.h)}</span><b class="${g.far ? 'bad' : 'good'}">${goalTxt(g)}</b><small class="mh-gsub">${goalSub(g)}</small></div>`).join('')}</div>` : '';
     const ahead = sel && r.posWr != null && Math.round(m.month*100) > Math.round(r.posWr*100);
     const heroPos = sel || m.pos;
     const otherPos = `<div class="mh-otherpos"><span>${hn(x.h)} на другой позиции?</span>${[1, 2, 3, 4, 5].filter(q => q !== heroPos).map(q => `<button class="mh-opos" data-q="${q}">${roleShort(q)}</button>`).join('')}<div class="mh-oposres"></div></div>`;
