@@ -814,7 +814,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261025123535';
+const BUILD = '20261025123711';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2510,7 +2510,7 @@ async function renderPicker(S, box, tabsHtml, bindTabs){
     const why = x => x.simWr != null && x.sims.length ? `играется как твои ${x.sims.map(k => hn(k.h)).join(', ')} — на них ${pct0(x.simWr)}` : 'похожих героев у тебя мало — прогноз только по модели';
     // 💡 «Возможность есть»: 300 матчей + что учить. Честно: модель продлевает твоё прошлое обучение — учишься иначе, растёшь выше
     const chance = x => !x.hard ? '' : `<details class="mh-chance"><summary>💡 Возможность есть — что нужно</summary>
-      <p>За 100 матчей — ${pct0(x.d100)}, к 300-му — <b class="${wrClass(x.d300)}">${pct0(x.d300)}</b>. ${x.d300 >= 0.5 ? 'Выйдешь в плюс, если не бросишь: это долгий путь, но он есть.' : `Модель видит плато, потому что продлевает то, как ты учился раньше: ${x.n >= 20 ? `на нём у тебя уже ${x.w}–${x.n - x.w}` : 'на похожих героях ты пока ниже 50%'}. Если учиться иначе — потолок выше. Вот что для этого нужно:`}</p>
+      <p>За 100 матчей — ${pct0(x.d100)}, к 300-му — <b class="${wrClass(x.d300)}">${pct0(x.d300)}</b>. ${Math.round(x.d300*100) >= 51 ? 'Выйдешь в плюс, если не бросишь: это долгий путь, но он есть.' : Math.round(x.d300*100) === 50 ? 'Выйдешь в ноль — дальше всё решает то, как ты учишься. Вот что для этого нужно:' : `Модель видит плато, потому что продлевает то, как ты учился раньше: ${x.n >= 20 ? `на нём у тебя уже ${x.w}–${x.n - x.w}` : 'на похожих героях ты пока ниже 50%'}. Если учиться иначе — потолок выше. Вот что для этого нужно:`}</p>
       <ul>${hardTips(x.h).map(t => `<li>${t}</li>`).join('')}</ul><p class="muted">Сильные игроки на нём набирали сотни игр именно так: механика отдельно, разбор ошибок, короткие сессии.</p></details>`;
     const live = (h, cls) => `<video class="${cls}" autoplay muted loop playsinline poster="${CDN + RENDER + heroShort(h)}.png"><source src="${CDN + RENDER + heroShort(h)}.webm" type="video/webm"><source src="${CDN + RENDER + heroShort(h)}.mov" type="video/quicktime"></video>`;
     const top = rows.slice(0, 3), order = top.length === 3 ? [1, 0, 2] : top.length === 2 ? [1, 0] : [0];
