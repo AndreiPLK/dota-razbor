@@ -488,6 +488,8 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-mini:hover{transform:translateY(-2px);border-color:rgba(196,181,253,.6)} .mh-mini img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:9px}
 .mh-mini>b{font-size:15px} .mh-mini em{font-style:normal;font-size:11.5px;color:#c4b5fd;font-weight:700} .mh-mini span{font-size:13px} .mh-mini span b{font-size:14px}
 .mh-ov-all{margin-top:10px}
+.mh-goal{font-size:13px;font-weight:700} .mh-goal b.good{color:#6ee7a8} .mh-goal b.bad{color:#ff6b8a}
+.mh-vs .on b{font-size:clamp(20px,2.4vw,30px) !important}
 .mh-big.mh-duo{background:linear-gradient(135deg,#f97316,#ec4899) !important;color:#fff !important;box-shadow:0 10px 30px rgba(236,72,153,.35) !important}
 .mh-big.mh-pk{background:linear-gradient(135deg,#7c3aed,#06b6d4) !important;color:#fff !important;box-shadow:0 10px 30px rgba(6,182,212,.35) !important}
 .mh-big{font-size:19px !important;min-height:74px;justify-content:center;transition:transform .15s} .mh-big:hover{transform:translateY(-2px) scale(1.01)} .mh-big small{opacity:.95 !important}
@@ -834,7 +836,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261025124027';
+const BUILD = '20261025124350';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2112,6 +2114,19 @@ const facesWord = n =>n === 1 ? 'лицо' : n < 5 ? 'лица' : 'лиц';
 const RENDER = '/apps/dota2/videos/dota_react/heroes/renders/';
 const MH_TABS = [[0, 'Твой герой'], [1, 'Керри'], [2, 'Мид'], [3, 'Оффлейн'], [4, 'Роумер'], [5, 'Саппорт']];
 const mhPerMonth = S => Math.max(10, Math.round(S.year.filter(g => g.t > Date.now()/1000 - 90*86400).length/3));
+// Цель вместо потолка (основатель, 25.10): не «к 100-й игре 44%», а «51% — через N игр».
+// Кривая обучения на герое: рост ~ log(1 + n/10) — быстро в первых играх, медленнее дальше. Размах за 100 игр зависит от
+// сложности героя (простой +4, средний +6, сложный +9 п.п.) и от того, как быстро учишься ТЫ: на твоих героях с 30+ играми
+// сравниваем первые 10 игр и 11–60-ю. Больше 300 игр не обещаем — так и пишем.
+const learnRate = S => S._lr ?? (S._lr = (() => { const by = {}; S.year.slice().sort((a,b) => a.t - b.t).forEach(g => (by[g.hero] = by[g.hero] || []).push(g.win ? 1 : 0));
+  const d = Object.values(by).filter(a => a.length >= 30).map(a => ({n: a.length, d: mean(a.slice(10, 60)) - mean(a.slice(0, 10))})), tot = d.reduce((t, x) => t + x.n, 0);
+  return clamp(tot ? d.reduce((t, x) => t + x.d*x.n, 0)/tot/0.03 : 1, 0.6, 1.4); })());
+const roundG = n => n <= 20 ? n : n <= 100 ? Math.ceil(n/5)*5 : Math.ceil(n/10)*10;
+const pathTo = (S, x, T) => { const G = ({1: .04, 2: .06, 3: .09}[H(x.h).complexity || 2])*learnRate(S), L = Math.log(11), s0 = x.now;
+  const need = Math.round(s0*100) >= Math.round(T*100) ? 0 : Math.ceil(10*(Math.exp((T - s0)*L/G) - 1)), left = Math.max(0, need - (x.n || 0));
+  return {T, need, left: roundG(left), far: need > 300, at300: s0 + G*Math.log(31)/L, months: Math.max(1, Math.round(left/mhPerMonth(S)))}; };
+const goalTxt = g => g.far ? 'больше 300 игр' : !g.left ? 'уже сейчас' : `через ${g.left} ${gamesWord(g.left)}`;
+const goalSub = g => g.far ? `за 300 игр — около ${pct0(g.at300)}` : !g.left ? 'держи уровень' : `~${g.months} ${g.months === 1 ? 'месяц' : g.months < 5 ? 'месяца' : 'месяцев'}, как ты играешь сейчас`;
 const heroFaces = h => (H(h).roles || []).filter(r => HERO_FACES[r]);
 const mhSim = (a, b) => { const ra = new Set(H(a).roles || []), rb = H(b).roles || [], inter = rb.filter(r => ra.has(r)).length, uni = new Set([...ra, ...rb]).size || 1;
   return inter/uni + (H(a).attack && H(a).attack === H(b).attack ? 0.2 : 0) + (H(a).complexity === H(b).complexity ? 0.1 : 0); };
@@ -2549,7 +2564,7 @@ async function renderPicker(S, box, tabsHtml, bindTabs){
     const podium = `<div class="mh-podium">${order.map(i => { const x = top[i], [ic, tx, cl] = verdict(x.far);
       return `<div class="mh-pod p${i + 1}" style="--c:${COL[i]}"><div class="mh-podhero"><div class="mh-beam"></div><div class="mh-ring2"></div>${Array.from({length: 7}, (_, k) => `<i class="mh-spark" style="left:${12 + k*12}%;animation-delay:${(k*0.47).toFixed(2)}s"></i>`).join('')}${live(x.h, 'mh-podvid')}</div>
         <div class="mh-podstep"><div class="mh-podrank">${['🥇', '🥈', '🥉'][i]}</div><b>${hn(x.h)}</b><div class="mh-pkverd ${cl}">${ic} ${tx}</div>
-        <div class="mh-podbig ${wrClass(x.far)}">${pct0(x.far)}</div><small>${roleShort(x.pos).toLowerCase()} · ${CPLX[x.cplx]} герой</small>${bars(x)}<p>${why(x)}${x.n ? ` · у тебя на нём ${x.w}–${x.n - x.w}` : ''}</p>${chance(x)}</div></div>`; }).join('')}</div>`;
+        <div class="mh-podbig ${wrClass(x.far)}">${pct0(x.far)}</div><small>${roleShort(x.pos).toLowerCase()} · ${CPLX[x.cplx]} герой</small>${(g => `<div class="mh-goal">52% — <b class="${g.far ? 'bad' : 'good'}">${goalTxt(g)}</b></div>`)(pathTo(S, x, 0.52))}${bars(x)}<p>${why(x)}${x.n ? ` · у тебя на нём ${x.w}–${x.n - x.w}` : ''}</p>${chance(x)}</div></div>`; }).join('')}</div>`;
     const rest = rows.slice(3);
     const restHtml = rest.length ? `<div class="mh-pkrest">${rest.map((x, k) => { const [ic, tx, cl] = verdict(x.far);
       return `<div class="mh-pkrow" style="--c:${COL[k + 3]}"><span class="mh-pkn">${k + 4}</span><img src="${CDN + H(x.h).img}" alt=""><div><b>${hn(x.h)}</b><span class="mh-pkverd ${cl}">${ic} ${tx}</span></div>${bars(x)}${chance(x)}</div>`; }).join('')}</div>` : '';
@@ -2702,7 +2717,8 @@ async function renderMyHero(S, sel){
     const hidden = (r.anoms || []).filter(y => !shown.has(y.h) && okH(y.h)); hidden.forEach(y => shown.add(y.h));
     const more = r.all.filter(y => !shown.has(y.h) && okH(y.h)).slice(0, 6);
     const line = t => t ? `Твой ${role} <b class="${wrClass(cur)}">${pct0(cur)}</b> → <b class="${wrClass(t.exp)}">~${pct0(t.exp)}</b>` : '';
-    const sub = t => t.own ? `твой: ${pct0(t.wr)} за ${t.n} ${gamesWord(t.n)}` : `новый: старт ${pct0(t.y.now)}, к 100-й игре ${pct0(t.y.ceil)}`;
+    const g51t = y => { const g = pathTo(S, y, 0.51); return g.far ? 'до 51% — больше 300 игр' : `51% ${goalTxt(g)}`; };
+    const sub = t => t.own ? `твой: ${pct0(t.wr)} за ${t.n} ${gamesWord(t.n)}` : `новый: старт ${pct0(t.y.now)}, ${g51t(t.y)}`;
     const REASONS = ['Сложно играть', 'Не мой стиль', 'Не нравится герой', 'Надоел'];
     const rejBox = h => `<div class="mh-rejbox hidden" data-h="${h}"><span>Почему не он?</span><div>${REASONS.map(t => `<button class="mh-rejr" data-h="${h}" data-t="${t}">${t}</button>`).join('')}</div>
       <div class="mh-rejown"><input placeholder="Своя причина…" data-h="${h}"><button class="mh-rejgo" data-h="${h}">Убрать</button></div></div>`;
@@ -2717,13 +2733,13 @@ async function renderMyHero(S, sel){
       ${Object.keys(rej).length ? `<div class="mh-rejlist">Убрано: ${Object.entries(rej).map(([h, t]) => `${hn(+h)} — ${t.toLowerCase()}`).join(' · ')}${noHard ? ' · <b>сложных героев больше не предлагаю</b>' : ''} <button class="linkbtn mh-rejclear">вернуть всех</button></div>` : ''}
       ${dream ? `<div class="mh-newhead dream">🌟 Мечта</div>
       <button class="mh-dream mh-tell" data-h="${dream.h}" data-own="0"><img src="${CDN + H(dream.h).img}" alt=""><div><b>${hn(dream.h)}</b>
-        <em>Если освоишь — до <b>${pct0(farPot(dream))}</b> когда-нибудь${farPot(dream) >= 0.6 ? ' 🔥' : ''}</em><span>${cap(CPLX[cx(dream.h)])} герой · старт ${pct0(dream.now)} · к 100-й игре ${pct0(dream.ceil)}</span></div></button>` : ''}
+        <em>Если освоишь — до <b>${pct0(farPot(dream))}</b> когда-нибудь${farPot(dream) >= 0.6 ? ' 🔥' : ''}</em><span>${cap(CPLX[cx(dream.h)])} герой · старт ${pct0(dream.now)} · ${g51t(dream)}</span></div></button>` : ''}
       ${hidden.length || more.length ? `<button class="linkbtn mh-morebtn">Ещё варианты ▾</button><div class="mh-morebox hidden">
         ${hidden.length ? `<div class="mh-newhead far">💎 Скрытое</div><div class="mh-anoms">${hidden.map(y => `<button class="mh-anom mh-tell" data-h="${y.h}" data-own="0"><img src="${CDN + H(y.h).img}" alt=""><div><b>${hn(y.h)}</b>
-          <span>${y.farSim ? `Играется как твои ${y.sims.slice(0, 3).map(k => hn(k.h)).join(', ')} — на них ты выигрываешь <b class="good">${pct0(y.simWr)}</b>, а прогноз к 100-й игре — только ${pct0(y.ceil)}.` : ''}${y.farStart ? ` Аномальный старт: <b class="good">${y.w}–${y.n - y.w}</b> за ${y.n} ${gamesWord(y.n)}.` : ''}</span>
+          <span>${y.farSim ? `Играется как твои ${y.sims.slice(0, 3).map(k => hn(k.h)).join(', ')} — на них ты выигрываешь <b class="good">${pct0(y.simWr)}</b>. ${cap(g51t(y))}.` : ''}${y.farStart ? ` Аномальный старт: <b class="good">${y.w}–${y.n - y.w}</b> за ${y.n} ${gamesWord(y.n)}.` : ''}</span>
           <em>Потенциал до ${pct0(y.far)}</em></div></button>`).join('')}</div>` : ''}
         ${more.length ? `<div class="mh-newhead">Ещё новые</div><div class="mh-minis">${more.map(y => `<button class="mh-mini mh-tell" data-h="${y.h}" data-own="0"><img src="${CDN + H(y.h).img}" alt=""><b>${hn(y.h)}</b>
-          <span><b class="${wrClass(y.now)}">${pct0(y.now)}</b> → <b class="${wrClass(y.month)}">${pct0(y.month)}</b> → <b class="${wrClass(y.ceil)}">${pct0(y.ceil)}</b></span></button>`).join('')}</div>` : ''}</div>` : ''}</div>`;
+          <span>старт <b class="${wrClass(y.now)}">${pct0(y.now)}</b> · ${g51t(y)}</span></button>`).join('')}</div>` : ''}</div>` : ''}</div>`;
     bindTabs(); bindRestore();
     const pa = box.querySelector('.mh-pool-auto'); if(pa) pa.style.display = 'none';
     box.querySelectorAll('.mh-pool-h').forEach(b => b.onclick = () => { const tab = +b.dataset.tab, h = +b.dataset.h; if(tab === sel){ cache.open[sel] = true; return show(h); } cache.idx[tab] = h; lsSet('dc_mh_' + S.id, tab); renderMyHero(S, tab); });
@@ -2745,8 +2761,8 @@ async function renderMyHero(S, sel){
   const show = h => {
     cache.idx[sel] = h;
     const x = [r.best, ...r.alts].find(y => y.h === h) || r.all.find(y => y.h === h) || r.best;
-    const m = mhView(x, r, sel, S), role = roleShort(sel || m.pos).toLowerCase();
-    const vs = sel ? `<div class="mh-vs"><div><span>ты на позиции сейчас (${r.posN} ${gamesWord(r.posN)})</span><b class="${wrClass(r.posWr ?? .5)}">${r.posWr != null ? pct0(r.posWr) : '—'}</b></div><i>→</i><div class="on"><span>${hn(m.h)} через месяц</span><b class="${wrClass(m.month)}">${pct0(m.month)}</b></div>${x.ceil != null ? `<i>→</i><div class="on ceil"><span>к 100-й игре</span><b class="${wrClass(x.ceil)}">${pct0(x.ceil)}</b></div>` : ''}</div>` : '';
+    const m = mhView(x, r, sel, S), role = roleShort(sel || m.pos).toLowerCase(), g51 = pathTo(S, x, 0.51), g52 = pathTo(S, x, 0.52);
+    const vs = sel ? `<div class="mh-vs"><div><span>ты на позиции сейчас (${r.posN} ${gamesWord(r.posN)})</span><b class="${wrClass(r.posWr ?? .5)}">${r.posWr != null ? pct0(r.posWr) : '—'}</b></div>${[g51, g52].map(g => `<i>→</i><div class="on${g.far ? '' : ' ceil'}"><span>${hn(m.h)} ${pct0(g.T)} — ${goalSub(g)}</span><b class="${g.far ? 'bad' : 'good'}">${goalTxt(g)}</b></div>`).join('')}</div>` : '';
     const ahead = sel && r.posWr != null && Math.round(m.month*100) > Math.round(r.posWr*100);
     const heroPos = sel || m.pos;
     const otherPos = `<div class="mh-otherpos"><span>${hn(x.h)} на другой позиции?</span>${[1, 2, 3, 4, 5].filter(q => q !== heroPos).map(q => `<button class="mh-opos" data-q="${q}">${roleShort(q)}</button>`).join('')}<div class="mh-oposres"></div></div>`;
@@ -2764,8 +2780,8 @@ async function renderMyHero(S, sel){
     const story = sel ? (() => { const mt = (r.mineTop || []).filter(o => o.h !== x.h), wins = mt.filter(o => Math.round(o.wr*100) >= 51), loss = mt.filter(o => Math.round(o.wr*100) < 50);
       const played = mt.length ? `На позиции «${role}» ты играл: ${wins.length ? `выигрывал на ${wins.map(o => `${hn(o.h)} (${pct0(o.wr)})`).join(', ')}` : ''}${wins.length && loss.length ? ', ' : ''}${loss.length ? `проигрывал на ${loss.map(o => `${hn(o.h)} (${pct0(o.wr)})`).join(', ')}` : ''}${!wins.length && !loss.length ? mt.map(o => `${hn(o.h)} (${pct0(o.wr)})`).join(', ') : ''}. ` : `На позиции «${role}» у тебя пока мало игр. `;
       const why = x.sims && x.sims.length ? `${hn(x.h)} играется как твои ${x.sims.map(k => hn(k.h)).join(', ')}` : `${hn(x.h)} по профилю ближе всего к тому, как ты играешь`;
-      return `<p class="mh-story">${played}Я думаю, тебе подойдёт <b>${hn(x.h)}</b>: ${why}. Начнёшь примерно с <b>${pct0(x.now)}</b>, через месяц — <b>${pct0(m.month)}</b>, к 100-й игре — <b>${pct0(x.ceil)}</b>.</p>`; })() : '';
-    const verdict = sel ? `${story}<div class="mh-verdict ${ahead || aheadC ? '' : 'meh'}">${ahead ? `Через месяц он может поднять твой ${role} с ${pct0(r.posWr)} до ${pct0(m.month)}${Math.round(x.ceil*100) > Math.round(m.month*100) ? `, а к 100-й игре — до ${pct0(x.ceil)}` : ''}.` : aheadC ? `За месяц он ещё не выше твоих ${pct0(r.posWr)} (${pct0(m.month)}), но к 100-й игре — <b>${pct0(x.ceil)}</b>: это его потолок у тебя. Рост медленный — 2–3 месяца на герое, зато выше, чем сейчас.` : (r.noUp ? `Честно: твоих ${pct0(r.posWr)} на позиции он быстро не обгонит — это новый герой «вторым номером», чтобы не зависеть от одного.${r.cur ? ` Сильнейший у тебя здесь — ${hn(r.cur.h)} (${pct0(r.cur.wr)} за ${r.cur.n} ${gamesWord(r.cur.n)}).` : ''}${(() => {
+      return `<p class="mh-story">${played}Я думаю, тебе подойдёт <b>${hn(x.h)}</b>: ${why}. Начнёшь примерно с <b>${pct0(x.now)}</b>. ${g52.far ? `51% — ${g51.far ? '<b class="bad">больше чем за 300 игр</b>' : `<b class="good">${goalTxt(g51)}</b>`}, 52% за 300 игр не выходит: за 300 будет около ${pct0(g52.at300)}. Быстрее — только если учиться иначе (кнопка «Расскажи почему»).` : `Хочешь <b>52%</b> — по твоей статистике нужно сыграть на нём <b class="good">${g52.left} ${gamesWord(g52.left)}</b> (~${g52.months} мес.)${g51.left < g52.left ? `, 51% будет ${goalTxt(g51)}` : ''}.`}</p>`; })() : '';
+    const verdict = sel ? `${story}<div class="mh-verdict ${ahead || aheadC ? '' : 'meh'}">${ahead ? `Через месяц он может поднять твой ${role} с ${pct0(r.posWr)} до ${pct0(m.month)}${!g52.far && g52.left ? `, а 52% — ${goalTxt(g52)}` : ''}.` : aheadC ? `За месяц он ещё не выше твоих ${pct0(r.posWr)}, но рост есть: 51% — ${goalTxt(g51)}.` : (r.noUp ? `Честно: твоих ${pct0(r.posWr)} на позиции он быстро не обгонит — это новый герой «вторым номером», чтобы не зависеть от одного.${r.cur ? ` Сильнейший у тебя здесь — ${hn(r.cur.h)} (${pct0(r.cur.wr)} за ${r.cur.n} ${gamesWord(r.cur.n)}).` : ''}${(() => {
       // Где новый герой всё-таки даёт рост — считаем остальные роли (≈0.1 с на роль, только когда здесь роста нет)
       const gr = [1, 2, 3, 4, 5].filter(q => q !== sel).map(q => [q, cache[q] = cache[q] || pickPerspective(S, q)]).filter(([, rr]) => !rr.noUp && rr.best && rr.posWr != null);
       return gr.length ? `<span class="mh-gorow">Рост новым героем есть на: ${gr.map(([q, rr]) => `<button class="linkbtn mh-gorole" data-p="${q}">${roleShort(q).toLowerCase()} — ${hn(rr.best.h)} ${pct0(rr.posWr)} → ${pct0(Math.round(rr.best.month*100) > Math.round(rr.posWr*100) ? rr.best.month : rr.best.ceil)}</button>`).join(' · ')}</span>` : ''; })()}` : 'Этот не выше твоего уровня — выбери героя из тех, что сверху списка.')}${ace}${(() => {
@@ -2837,7 +2853,8 @@ async function renderMyHero(S, sel){
       const gq = S.year.filter(g => g.pos === q), mine = gq.filter(g => g.hero === x.h), wq = a => a.length ? a.filter(g => g.win).length/a.length : null;
       const posNow = wq(gq), best = Math.max(sim.p50, sim.p100);
       out.innerHTML = `<b>${hn(x.h)} на позиции «${roleShort(q).toLowerCase()}»</b>${mine.length ? ` · у тебя там ${mine.length} ${gamesWord(mine.length)}, ${pct0(wq(mine))}` : ' · ты на ней его ещё не играл'}<br>
-        Прогноз: старт <b class="${wrClass(sim.p5)}">${pct0(sim.p5)}</b> → через месяц <b class="${wrClass(sim.p50)}">${pct0(sim.p50)}</b> → к 100-й игре <b class="${wrClass(sim.p100)}">${pct0(sim.p100)}</b>${posNow != null ? `. Твой ${roleShort(q).toLowerCase()} сейчас — ${pct0(posNow)}: ${Math.round(best*100) > Math.round(posNow*100) ? `<b class="good">он может поднять до ${pct0(best)}</b>` : 'выше он тебя не поднимет'}.` : '.'}`; });
+        ${(() => { const y = {h: x.h, n: mine.length, now: sim.p5}, a = pathTo(S, y, 0.51), b2 = pathTo(S, y, 0.52);
+          return `Старт <b class="${wrClass(sim.p5)}">${pct0(sim.p5)}</b> → 51% <b class="${a.far ? 'bad' : 'good'}">${goalTxt(a)}</b> → 52% <b class="${b2.far ? 'bad' : 'good'}">${goalTxt(b2)}</b>${posNow != null ? `. Твой ${roleShort(q).toLowerCase()} сейчас — ${pct0(posNow)}` : ''}.`; })()}`; });
     bindOwn(); const bk = box.querySelector('.mh-back'); if(bk) bk.onclick = () => { cache.open[sel] = false; overview(); box.scrollIntoView({behavior: 'smooth', block: 'start'}); };
     const pr = box.querySelector('.mh-pool-role'); if(pr) pr.onclick = () => { lsSet('dc_mh_' + S.id, +pr.dataset.p); renderMyHero(S, +pr.dataset.p); };
     // Пул в один клик: тройка этой вкладки (главный + 2 запасных) — каждый на своей позиции
