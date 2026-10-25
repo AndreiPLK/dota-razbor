@@ -488,6 +488,38 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-mini:hover{transform:translateY(-2px);border-color:rgba(196,181,253,.6)} .mh-mini img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:9px}
 .mh-mini>b{font-size:15px} .mh-mini em{font-style:normal;font-size:11.5px;color:#c4b5fd;font-weight:700} .mh-mini span{font-size:13px} .mh-mini span b{font-size:14px}
 .mh-ov-all{margin-top:10px}
+.mh-big.mh-draft{background:linear-gradient(135deg,#22c55e,#eab308) !important;color:#0b1a0f !important;box-shadow:0 10px 30px rgba(234,179,8,.35) !important}
+.mh-big.mh-feel{background:linear-gradient(135deg,#ef4444,#f59e0b) !important;color:#fff !important;box-shadow:0 10px 30px rgba(239,68,68,.35) !important}
+.mh-drroles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:12px}
+.mh-drrole{display:flex;flex-direction:column;align-items:center;padding:12px 6px !important;font-size:16px;font-weight:800;border-radius:14px} .mh-drrole small{font-size:12px;opacity:.8}
+.mh-drrole.on{background:linear-gradient(135deg,#22c55e,#eab308) !important;color:#0b1a0f !important}
+.mh-drmain{display:grid;grid-template-columns:minmax(0,300px) 1fr;gap:18px;align-items:center;margin-top:14px;padding:12px 18px;border-radius:20px;border:1px solid rgba(110,231,168,.45);background:linear-gradient(160deg,rgba(110,231,168,.12),var(--panel2) 70%)}
+.mh-drvid{width:100%;aspect-ratio:1;object-fit:contain;filter:drop-shadow(0 16px 26px rgba(0,0,0,.7));animation:podFloat 4s ease-in-out infinite}
+.mh-drinfo em{font-style:normal;font-size:14px;font-weight:900;letter-spacing:.2em;color:#6ee7a8} .mh-drinfo p{font-size:16px;margin:6px 0 12px}
+.mh-drtaken{font-weight:800;padding:10px 16px !important}
+.mh-drnext{display:flex;flex-direction:column;gap:6px;margin-top:12px} .mh-drnext>span{font-size:12px;color:var(--muted);font-weight:700}
+.mh-drnx{display:grid !important;grid-template-columns:22px 64px 1fr;gap:10px;align-items:center;text-align:left;padding:6px 10px !important;border-radius:12px}
+.mh-drnx>b{color:#ffd88a} .mh-drnx img{width:64px;height:36px;object-fit:cover;border-radius:6px} .mh-drnx div{display:flex;flex-direction:column} .mh-drnx small{font-size:12px;color:var(--muted)}
+.mh-drhint{font-size:13px;color:#ffd88a;margin-top:10px} .mh-drreset{margin-top:10px}
+.mh-flfeels{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
+.mh-flf{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;padding:16px 10px !important;border-radius:18px;border:2px solid transparent !important}
+.mh-flf i{font-style:normal;font-size:38px;line-height:1.1} .mh-flf b{font-size:16px} .mh-flf small{font-size:12px;opacity:.75} .mh-flf span{font-size:12.5px;margin-top:4px}
+.mh-flf em{position:absolute;top:-10px;left:50%;transform:translateX(-50%);white-space:nowrap;font-style:normal;font-size:11px;font-weight:800;padding:2px 8px;border-radius:10px;background:#ffd88a;color:#1a1300}
+.mh-flf.on{border-color:#f59e0b !important;background:linear-gradient(160deg,rgba(239,68,68,.25),rgba(245,158,11,.12)) !important;box-shadow:0 0 22px rgba(245,158,11,.4) !important}
+.mh-flopts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px} .mh-flopts button{padding:6px 12px !important;font-size:13px;border-radius:20px}
+.mh-fleasy.on,.mh-flpos.on{background:#f59e0b !important;color:#1a1300 !important}
+.mh-flhead{margin-top:16px;font-size:13px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#f59e0b}
+.mh-fltop{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:8px;align-items:end}
+.mh-flcard{display:flex;flex-direction:column;align-items:center;text-align:center;gap:3px;padding:8px 10px 14px;border-radius:18px;border:1px solid var(--line);background:var(--panel2)}
+.mh-flcard.first{border-color:rgba(245,158,11,.6);background:linear-gradient(180deg,rgba(245,158,11,.18),var(--panel2) 75%);box-shadow:0 0 30px rgba(245,158,11,.25)}
+.mh-flvid{width:100%;max-width:220px;aspect-ratio:1;object-fit:contain;filter:drop-shadow(0 14px 22px rgba(0,0,0,.7));animation:podFloat 4s ease-in-out infinite} .mh-flcard.first .mh-flvid{max-width:260px}
+.mh-flcard em{font-style:normal;font-size:12px;font-weight:800;color:#f59e0b} .mh-flcard>b{font-size:20px} .mh-flcard span{font-size:13px} .mh-flcard small{font-size:11px;color:var(--muted)}
+.mh-flrest{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px;margin-top:10px}
+.mh-flmini{display:grid;grid-template-columns:64px 1fr;gap:8px;align-items:center;padding:6px 8px;border-radius:12px;background:var(--panel2);border:1px solid var(--line)}
+.mh-flmini img{width:64px;height:36px;object-fit:cover;border-radius:6px} .mh-flmini div{display:flex;flex-direction:column} .mh-flmini small{font-size:12px;color:var(--muted)}
+.mh-flpick{font-size:18px;font-weight:800;text-align:center;margin:20px 0;color:#f59e0b}
+@media(max-width:700px){.mh-drroles{grid-template-columns:repeat(3,minmax(0,1fr))} .mh-drmain{grid-template-columns:1fr} .mh-drvid{max-width:220px;margin:0 auto;display:block}
+  .mh-flfeels{grid-template-columns:repeat(2,minmax(0,1fr))} .mh-fltop{grid-template-columns:1fr}}
 .mh-gsub{display:block;font-size:11px;opacity:.7;margin-top:2px}
 .mh-goal{font-size:13px;font-weight:700} .mh-goal b.good{color:#6ee7a8} .mh-goal b.bad{color:#ff6b8a}
 .mh-vs .on b{font-size:clamp(20px,2.4vw,30px) !important}
@@ -837,7 +869,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261025124536';
+const BUILD = '20261025220827';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2597,6 +2629,87 @@ async function renderPicker(S, box, tabsHtml, bindTabs){
 
 // 👥 Дуо (основатель, 25.10): «я играю в дуо с одним и тем же человеком — какие герои подойдут нам вместе на наших позициях».
 // Берём ваши настоящие общие матчи из Stratz (withFriendSteamAccountIds) и считаем пары героев, твоих и его героев в дуо
+// Живой 3D-герой для драфта и «кайфа» (тот же рендер Valve, что на пьедестале)
+const liveHero = (h, cls) => `<video class="${cls}" autoplay muted loop playsinline poster="${CDN + RENDER + heroShort(h)}.png"><source src="${CDN + RENDER + heroShort(h)}.webm" type="video/webm"><source src="${CDN + RENDER + heroShort(h)}.mov" type="video/quicktime"></video>`;
+
+// ⚡ Драфт сейчас (основатель, 25.10): зашёл в игру — нажал роль — сразу «бери X». Забрали — следующий. Тот же расчёт, что пул роли.
+async function renderDraft(S, box, tabsHtml, bindTabs, best){
+  const cache = S.mhCache = S.mhCache || {idx: {}}, rej = lsGet('dc_rej_' + S.id) || {}, taken = new Set(), ps = S.posStats || {};
+  let q = best || 2, first = null;
+  const list = p => { const r = cache[p] = cache[p] || pickPerspective(S, p);
+    const own = (r.mineAll || []).filter(o => !rej[o.h]).map(o => ({h: o.h, own: true, n: o.n, wr: o.wr, exp: o.sc}));
+    const fresh = (r.all || []).filter(y => !rej[y.h]).map(y => ({h: y.h, own: false, y, exp: y.ceil}));
+    return [...own, ...fresh].sort((a,b) => b.exp - a.exp).filter((v, k, a) => a.findIndex(z => z.h === v.h) === k); };
+  const why = t => t.own ? `у тебя <b class="${wrClass(t.wr)}">${pct0(t.wr)}</b> за ${t.n} ${gamesWord(t.n)}` : `новый: старт ${pct0(t.y.now)} · ${(g => g.far ? 'до 51% далеко' : '51% ' + goalTxt(g))(pathTo(S, t.y, 0.51))}`;
+  const draw = () => {
+    let L = list(q).filter(t => !taken.has(t.h)); const fi = L.findIndex(t => t.h === first); if(fi > 0) L = [L[fi], ...L.filter((_, k) => k !== fi)];
+    const m = L[0], alt = L.slice(1, 5);
+    box.innerHTML = `${tabsHtml}<div class="mh-pk-panel mh-dr"><div class="mh-ovhead">⚡ Драфт сейчас <small>Нажми свою роль — скажу, кого брать. Забрали или забанили — жми «Забрали», дам следующего.</small></div>
+      <div class="mh-drroles">${[1, 2, 3, 4, 5].map(p => `<button class="mh-drrole ${p === q ? 'on' : ''}" data-p="${p}">${p === best ? '★ ' : ''}${roleShort(p)}<small>${ps[p] && ps[p].n ? pct0(ps[p].wr) : ''}</small></button>`).join('')}</div>
+      ${m ? `<div class="mh-drmain"><div class="mh-drstage">${liveHero(m.h, 'mh-drvid')}</div><div class="mh-drinfo"><em>БЕРИ</em><div class="mh-name">${hn(m.h)}</div><p>${why(m)}</p>
+        <button class="mh-drtaken" data-h="${m.h}">🚫 Забрали / забанили</button></div></div>
+      ${alt.length ? `<div class="mh-drnext"><span>Если его нет — по порядку:</span>${alt.map((t, k) => `<button class="mh-drnx" data-h="${t.h}"><b>${k + 2}</b><img src="${CDN + H(t.h).img}" alt=""><div><b>${hn(t.h)}</b><small>${why(t)}</small></div></button>`).join('')}</div>` : ''}`
+        : '<p class="muted">На этой роли всех забрали — выбери другую роль.</p>'}
+      ${taken.size ? '<button class="linkbtn mh-drreset">↺ Новая игра — вернуть всех</button>' : ''}
+      ${best && q !== best ? `<p class="mh-drhint">Если роль можно выбрать — иди ${roleShort(best).toLowerCase()}: там у тебя лучше всего (${pct0(ps[best].wr)}).</p>` : ''}</div>`;
+    bindTabs();
+    box.querySelectorAll('.mh-drrole').forEach(b => b.onclick = () => { q = +b.dataset.p; first = null; draw(); });
+    const tk = box.querySelector('.mh-drtaken'); if(tk) tk.onclick = () => { taken.add(+tk.dataset.h); first = null; draw(); };
+    box.querySelectorAll('.mh-drnx').forEach(b => b.onclick = () => { first = +b.dataset.h; draw(); });
+    const rs = box.querySelector('.mh-drreset'); if(rs) rs.onclick = () => { taken.clear(); first = null; draw(); };
+  };
+  draw();
+}
+
+// 💥 Что тебе в кайф? (основатель, 25.10): «нормальный герой, но не прёт». Четыре ощущения от игры — и по каждому
+// твой реальный результат на таких героях; нажал — герои ЭТОГО вкуса, где ты уже тащишь или быстрее всех выйдешь в 51%.
+// «Без управления юнитами» включено сразу: «Мипо кайфовый, но управлять миллионами этих — тяжело» (основатель)
+const FEELS = [
+  ['boom', '💥', 'Магический взрыв', 'нажал кнопки — враг исчез', ['Lina', 'Lion', 'Zeus', 'Skywrath Mage', 'Leshrac', 'Queen of Pain', 'Tinker', 'Pugna', 'Nyx Assassin', 'Earthshaker', 'Sand King', 'Tiny', 'Lich', 'Jakiro', 'Death Prophet', 'Necrophos', 'Shadow Fiend', 'Outworld Destroyer', 'Invoker', 'Puck', 'Storm Spirit', 'Zeus', 'Dark Willow', 'Witch Doctor', 'Disruptor', 'Batrider']],
+  ['hit', '🗡', 'Удар руками', 'крит, рубишь, чувствуешь силу', ['Phantom Assassin', 'Troll Warlord', 'Sven', 'Juggernaut', 'Wraith King', 'Chaos Knight', 'Slardar', 'Ursa', 'Lifestealer', 'Faceless Void', 'Monkey King', 'Kunkka', 'Slark', 'Bloodseeker', 'Riki', 'Clinkz', 'Templar Assassin', 'Spirit Breaker', 'Mars', 'Huskar', 'Lycan', 'Sniper', 'Drow Ranger', 'Legion Commander', 'Dragon Knight', 'Marci', 'Muerta', 'Gyrocopter', 'Luna']],
+  ['fly', '⚡', 'Полёт как Шторм', 'влетел, убил, вылетел', ['Storm Spirit', 'Ember Spirit', 'Puck', 'Queen of Pain', 'Void Spirit', 'Anti-Mage', 'Faceless Void', 'Slark', 'Weaver', 'Mirana', 'Pangolier', 'Phoenix', 'Earth Spirit', 'Spirit Breaker', 'Tusk', 'Morphling', 'Batrider', 'Clockwerk', 'Phantom Assassin', 'Riki', 'Hoodwink', 'Snapfire', 'Marci', 'Bounty Hunter']],
+  ['combo', '🧠', 'Комбо как Инвокер', 'сам сделал красиво — и это видно', ['Invoker', 'Meepo', 'Earth Spirit', 'Tinker', 'Arc Warden', 'Visage', 'Rubick', 'Morphling', 'Ember Spirit', 'Lone Druid', 'Chen', 'Io', 'Kunkka', 'Puck', 'Shadow Fiend', 'Monkey King', 'Templar Assassin', 'Pangolier', 'Void Spirit', 'Tusk', 'Elder Titan', 'Dark Willow', 'Hoodwink']],
+];
+const MICRO = new Set(['Meepo', 'Visage', 'Lone Druid', 'Arc Warden', 'Chen', 'Broodmother', 'Enchantress', 'Beastmaster', "Nature's Prophet", 'Naga Siren', 'Phantom Lancer', 'Terrorblade', 'Undying', 'Warlock', 'Io']);
+async function renderFeel(S, box, tabsHtml, bindTabs, sel){
+  const key = 'dc_feel_' + S.id, st = Object.assign({f: null, easy: true, p: sel || 0}, lsGet(key) || {});
+  const id = n => +(Object.keys(heroes).find(k => heroes[k].localized_name === n) || 0), rej = lsGet('dc_rej_' + S.id) || {};
+  const rec = {}; S.year.forEach(g => { const o = rec[g.hero] = rec[g.hero] || {n: 0, w: 0, pos: {}}; o.n++; o.w += g.win ? 1 : 0; if(g.pos) o.pos[g.pos] = (o.pos[g.pos] || 0) + 1; });
+  const avg = S.year.filter(g => g.win).length/S.year.length;
+  const heroesOf = f => [...new Set(f[4])].map(id).filter(h => h && heroes[h] && !rej[h] && !(st.easy && MICRO.has(hn(h))));
+  // твой результат на героях этого вкуса — по цифрам, а не по ощущению
+  const feelStat = f => { const hs = heroesOf(f), n = hs.reduce((a, h) => a + (rec[h] ? rec[h].n : 0), 0), w = hs.reduce((a, h) => a + (rec[h] ? rec[h].w : 0), 0); return {n, w, wr: n ? w/n : null, sm: (w + 20*avg)/(n + 20)}; };
+  const stats = Object.fromEntries(FEELS.map(f => [f[0], feelStat(f)])), bestF = FEELS.filter(f => stats[f[0]].n >= 20).sort((a,b) => stats[b[0]].sm - stats[a[0]].sm)[0];
+  const ML = S.ML = S.ML || mlBuild(S), perM = mhPerMonth(S), T = S.posTable || {};
+  const rows = f => heroesOf(f).map(h => { const o = rec[h] || {n: 0, w: 0, pos: {}};
+    const myPos = Object.entries(o.pos).sort((a,b) => b[1] - a[1])[0], pos = myPos && myPos[1] >= 3 ? +myPos[0] : +(Object.entries(T[h] || {}).sort((a,b) => (b[1].n || 0) - (a[1].n || 0))[0] || [2])[0] || 2;
+    if(st.p && pos !== st.p && !(o.pos[st.p] >= 3) && !(T[h] && T[h][st.p] && T[h][st.p].n >= (T[h][pos] || {n: 1}).n*0.3)) return null;
+    const p = st.p || pos, sm = (o.w + 5*0.5)/(o.n + 10);
+    if(o.n >= 15) return {h, pos: p, own: true, n: o.n, w: o.w, wr: o.w/o.n, score: 1 + sm};
+    const y = {h, n: o.n, now: mlSimulate(ML, h, p, 6, perM, 15).p5}, g = pathTo(S, y, 0.51);
+    return {h, pos: p, own: false, n: o.n, w: o.w, now: y.now, g, score: g.far ? 0 : 1 - g.need/1000};
+  }).filter(Boolean).sort((a,b) => b.score - a.score);
+  const line = x => x.own ? (x.wr >= 0.505 ? `уже тащишь: <b class="good">${pct0(x.wr)}</b> за ${x.n} ${gamesWord(x.n)}` : `у тебя ${pct0(x.wr)} за ${x.n} ${gamesWord(x.n)} — пока в минусе`)
+    : `старт ${pct0(x.now)} → ${x.g.far ? '<b class="bad">51% больше 300 игр</b>' : `<b class="good">51% ${goalTxt(x.g)}</b>`}`;
+  const draw = () => {
+    const f = FEELS.find(z => z[0] === st.f), R = f ? rows(f) : [], top = R.slice(0, 3), rest = R.slice(3, 11);
+    box.innerHTML = `${tabsHtml}<div class="mh-pk-panel mh-fl"><div class="mh-ovhead">💥 Что тебе в кайф? <small>Выбери ощущение — подберу героев этого вкуса, на которых ты потащишь. Под каждым — твой реальный результат на таких героях.</small></div>
+      <div class="mh-flfeels">${FEELS.map(z => { const s = stats[z[0]]; return `<button class="mh-flf ${z[0] === st.f ? 'on' : ''} ${bestF && bestF[0] === z[0] ? 'best' : ''}" data-f="${z[0]}"><i>${z[1]}</i><b>${z[2]}</b><small>${z[3]}</small>
+        <span>${s.n >= 10 ? `у тебя <b class="${wrClass(s.wr)}">${pct0(s.wr)}</b> за ${s.n} ${gamesWord(s.n)}` : 'ты почти не играл'}</span>${bestF && bestF[0] === z[0] ? '<em>★ по цифрам это твоё</em>' : ''}</button>`; }).join('')}</div>
+      <div class="mh-flopts"><button class="mh-fleasy ${st.easy ? 'on' : ''}">${st.easy ? '✓' : '○'} Без управления юнитами</button>${[0, 1, 2, 3, 4, 5].map(p => `<button class="mh-flpos ${st.p === p ? 'on' : ''}" data-p="${p}">${p ? roleShort(p) : 'Любая роль'}</button>`).join('')}</div>
+      ${f ? (top.length ? `<div class="mh-flhead">${f[1]} ${f[2]} — твои герои</div><div class="mh-fltop">${top.map((x, k) => `<div class="mh-flcard ${k ? '' : 'first'}"><div class="mh-flstage">${liveHero(x.h, 'mh-flvid')}</div>
+          <em>${['🥇 Бери первым', '🥈 Второй', '🥉 Третий'][k]} · ${roleShort(x.pos).toLowerCase()}</em><b>${hn(x.h)}</b><span>${line(x)}</span>${MICRO.has(hn(x.h)) ? '<small>управление юнитами</small>' : ''}</div>`).join('')}</div>
+        ${rest.length ? `<div class="mh-flrest">${rest.map(x => `<div class="mh-flmini"><img src="${CDN + H(x.h).img}" alt=""><div><b>${hn(x.h)}</b><small>${line(x)}</small></div></div>`).join('')}</div>` : ''}`
+        : '<p class="muted">На этой роли героев такого вкуса не нашёл — выбери «Любая роль».</p>') : '<p class="mh-flpick">👆 Нажми, что тебе в кайф</p>'}</div>`;
+    bindTabs();
+    const save = () => { lsSet(key, st); draw(); };
+    box.querySelectorAll('.mh-flf').forEach(b => b.onclick = () => { st.f = b.dataset.f; save(); });
+    box.querySelector('.mh-fleasy').onclick = () => { st.easy = !st.easy; save(); };
+    box.querySelectorAll('.mh-flpos').forEach(b => b.onclick = () => { st.p = +b.dataset.p; save(); });
+  };
+  draw();
+}
+
 async function renderDuo(S, box, tabsHtml, bindTabs){
   const key = 'dc_duo_' + S.id, saved = lsGet(key) || {}, best = (S.posStats && S.posStats.best) || 2;
   const sel = (name, v) => `<select class="mh-duosel" data-k="${name}">${[1, 2, 3, 4, 5].map(q => `<option value="${q}" ${q === v ? 'selected' : ''}>${roleShort(q)}</option>`).join('')}</select>`;
@@ -2650,10 +2763,12 @@ async function renderMyHero(S, sel){
     o.best = +Object.keys(o).filter(p => o[p].n >= 30).sort((a,b) => o[b].sm - o[a].sm)[0] || null; return o; })();
   const tabs = `<div class="mh-who">${acc.name || ''}${mmr != null ? ' · ' + mmrToRank(mmr) : ''} · ${S.year.length} игр разобрано <button class="mh-link" title="Скопировать ссылку — другу откроется этот же разбор">🔗 Ссылка на разбор</button></div>${sinceLast(S)}
     <div class="mh-tabs">${MH_TABS.map(([p, l]) => `<button class="mh-tab ${p === sel ? 'on' : ''} ${p && p === ps.best ? 'best' : ''}" data-p="${p}">${p === ps.best ? '★ ' : ''}${l}${p ? `<small>${ps[p].n ? `${pct0(ps[p].wr)} · ${ps[p].n}` : 'нет игр'}</small>` : '<small>из твоих</small>'}</button>`).join('')}</div>
-    <div class="mh-bigbtns"><button class="mh-big mh-duo">👥 Дуо с другом<small>лучшие пары героев по вашим общим играм</small></button><button class="mh-big mh-pk">🔮 Подобрать героев<small>выбери героев — скажу, на ком потащишь</small></button></div>`;
+    <div class="mh-bigbtns"><button class="mh-big mh-draft">⚡ Драфт сейчас<small>зашёл в игру — нажми роль, скажу кого брать</small></button><button class="mh-big mh-feel">💥 Что тебе в кайф?<small>герои, которые прут именно тебе</small></button><button class="mh-big mh-duo">👥 Дуо с другом<small>лучшие пары героев по вашим общим играм</small></button><button class="mh-big mh-pk">🔮 Подобрать героев<small>выбери героев — скажу, на ком потащишь</small></button></div>`;
   const bindTabs = () => { box.querySelectorAll('.mh-tab').forEach(b => b.onclick = () => { lsSet('dc_mh_' + S.id, +b.dataset.p); renderMyHero(S, +b.dataset.p); });
     const db = box.querySelector('.mh-duo'); if(db) db.onclick = () => renderDuo(S, box, tabs, bindTabs);
     const pk = box.querySelector('.mh-pk'); if(pk) pk.onclick = () => renderPicker(S, box, tabs, bindTabs);
+    const dr = box.querySelector('.mh-draft'); if(dr) dr.onclick = () => renderDraft(S, box, tabs, bindTabs, ps.best);
+    const fl = box.querySelector('.mh-feel'); if(fl) fl.onclick = () => renderFeel(S, box, tabs, bindTabs, sel);
     const lb = box.querySelector('.mh-link:not(.mh-duo)'); if(lb) lb.onclick = async () => { const url = location.origin + location.pathname + '#' + S.id;
       try{ await navigator.clipboard.writeText(url); lb.textContent = '✓ Скопировано'; }catch{ prompt('Ссылка на разбор:', url); } setTimeout(() => lb.textContent = '🔗 Ссылка на разбор', 2000); }; };
   const T = S.posTable || {};
