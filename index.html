@@ -834,7 +834,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261025123828';
+const BUILD = '20261025124027';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2634,7 +2634,7 @@ async function renderMyHero(S, sel){
     o.best = +Object.keys(o).filter(p => o[p].n >= 30).sort((a,b) => o[b].sm - o[a].sm)[0] || null; return o; })();
   const tabs = `<div class="mh-who">${acc.name || ''}${mmr != null ? ' · ' + mmrToRank(mmr) : ''} · ${S.year.length} игр разобрано <button class="mh-link" title="Скопировать ссылку — другу откроется этот же разбор">🔗 Ссылка на разбор</button></div>${sinceLast(S)}
     <div class="mh-tabs">${MH_TABS.map(([p, l]) => `<button class="mh-tab ${p === sel ? 'on' : ''} ${p && p === ps.best ? 'best' : ''}" data-p="${p}">${p === ps.best ? '★ ' : ''}${l}${p ? `<small>${ps[p].n ? `${pct0(ps[p].wr)} · ${ps[p].n}` : 'нет игр'}</small>` : '<small>из твоих</small>'}</button>`).join('')}</div>
-    <div class="mh-bigbtns"><button class="mh-big mh-duo">👥 Дуо с другом<small>герои под вас двоих</small></button><button class="mh-big mh-pk">🔮 Подобрать героев<small>впиши — скажу, потащишь ли</small></button></div>`;
+    <div class="mh-bigbtns"><button class="mh-big mh-duo">👥 Дуо с другом<small>лучшие пары героев по вашим общим играм</small></button><button class="mh-big mh-pk">🔮 Подобрать героев<small>выбери героев — скажу, на ком потащишь</small></button></div>`;
   const bindTabs = () => { box.querySelectorAll('.mh-tab').forEach(b => b.onclick = () => { lsSet('dc_mh_' + S.id, +b.dataset.p); renderMyHero(S, +b.dataset.p); });
     const db = box.querySelector('.mh-duo'); if(db) db.onclick = () => renderDuo(S, box, tabs, bindTabs);
     const pk = box.querySelector('.mh-pk'); if(pk) pk.onclick = () => renderPicker(S, box, tabs, bindTabs);
