@@ -488,6 +488,17 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-mini:hover{transform:translateY(-2px);border-color:rgba(196,181,253,.6)} .mh-mini img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:9px}
 .mh-mini>b{font-size:15px} .mh-mini em{font-style:normal;font-size:11.5px;color:#c4b5fd;font-weight:700} .mh-mini span{font-size:13px} .mh-mini span b{font-size:14px}
 .mh-ov-all{margin-top:10px}
+.mh-duo-panel{margin:14px 28px 10px} .mh-duoform{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.mh-duoform input{flex:1;min-width:180px} .mh-duoform label{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)} .mh-duogo{font-weight:700}
+.mh-duores{margin-top:12px} .mh-duores p{line-height:1.5}
+.mh-duogrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:8px}
+.mh-duocard{display:flex;flex-direction:column;gap:4px;padding:10px;border-radius:14px;border:1px solid var(--line);background:var(--panel2)}
+.mh-duoimgs{display:flex;gap:4px} .mh-duoimgs img{width:50%;flex:1;aspect-ratio:16/9;object-fit:cover;border-radius:8px} .mh-duocard>b{font-size:14px} .mh-duocard span{font-size:13px}
+@media(max-width:700px){.mh-duo-panel{margin:12px 14px 8px}}
+.mh-why{margin-top:8px} .mh-whybox{margin-top:6px}
+.mh-otherpos{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px;font-size:13px} .mh-otherpos>span{color:var(--muted);margin-right:4px}
+.mh-opos{padding:4px 10px;font-size:12px;border-radius:10px} .mh-opos.on{border-color:rgba(103,232,249,.7);color:#67e8f9}
+.mh-oposres{flex-basis:100%;font-size:13.5px;line-height:1.5;margin-top:4px} .mh-oposres:empty{display:none}
 .mh-ovhead{font-size:20px;font-weight:800} .mh-ovhead small{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-top:4px}
 .mh-trios{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
 .mh-trio{display:flex !important;flex-direction:column;gap:6px;padding:12px;border-radius:16px;border:1px solid var(--line);background:var(--panel2);text-align:left}
@@ -499,6 +510,26 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-dream img{width:180px;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:12px} .mh-dream>div{display:flex;flex-direction:column;gap:6px} .mh-dream b{font-size:20px} .mh-dream span{font-size:13.5px;line-height:1.45}
 .mh-dream em{font-style:normal;font-size:15px;color:#f0abfc;font-weight:800} .mh-dream em b{font-size:20px}
 @media(max-width:700px){.mh-trios{grid-template-columns:1fr} .mh-trio{flex-direction:row !important;align-items:center} .mh-trio img{width:110px;flex:none} .mh-dream{grid-template-columns:1fr} .mh-dream img{width:100%}}
+.mh-ovgrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px;margin-top:12px}
+.mh-ovmain{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:10px;align-items:center;padding:14px;border-radius:20px;border:1px solid rgba(255,198,90,.6);background:linear-gradient(160deg,rgba(255,198,90,.12),var(--panel2) 70%)}
+.mh-ovstage .mh-stage{max-height:320px} .mh-ovinfo{display:flex;flex-direction:column;gap:6px} .mh-ovinfo em{font-style:normal;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#ffd88a;font-weight:800}
+.mh-ovinfo .mh-name{font-size:clamp(30px,4vw,52px);line-height:1} .mh-ovline{font-size:17px} .mh-ovline b{font-size:20px} .mh-ovinfo small{color:var(--muted);font-size:13px}
+.mh-ovbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px} .mh-ovbtns button{padding:8px 16px;border-radius:12px;font-weight:700} .mh-ovbtns .mh-tell{border-color:rgba(103,232,249,.55);color:#67e8f9} .mh-ovbtns .mh-no2{color:var(--muted)}
+.mh-ovbtns.sm button{padding:5px 10px;font-size:12px}
+.mh-ovside{display:flex;flex-direction:column;gap:10px}
+.mh-fig{display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:center;padding:10px;border-radius:16px;border:1px solid var(--line);background:var(--panel2)}
+.mh-fig img{width:96px;height:120px;object-fit:contain;filter:drop-shadow(0 8px 14px rgba(0,0,0,.6))} .mh-fig>div{display:flex;flex-direction:column;gap:3px}
+.mh-fig em{font-style:normal;font-size:11px;font-weight:800;color:#c4b5fd} .mh-fig b{font-size:17px} .mh-fig span{font-size:13px} .mh-fig small{font-size:12px;color:var(--muted)}
+.mh-rejbox{margin-top:6px;padding:10px;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.25);display:flex;flex-direction:column;gap:6px} .mh-rejbox>span{font-size:13px;font-weight:700}
+.mh-rejbox>div{display:flex;flex-wrap:wrap;gap:6px} .mh-rejr{padding:5px 10px;font-size:12px;border-radius:10px}
+.mh-rejown{display:flex;gap:6px} .mh-rejown input{flex:1;min-width:0;padding:6px 10px;font-size:13px} .mh-rejgo{padding:5px 12px;font-size:12px}
+.mh-rejlist{margin-top:10px;font-size:13px;color:var(--muted)} .mh-rejlist b{color:#ffd88a}
+.mh-morebtn{margin-top:12px} .mh-morebox{margin-top:6px}
+.mh-newhead.dream{color:#f0abfc} .mh-dream{display:grid !important;grid-template-columns:160px 1fr;gap:14px;align-items:center;width:100%;margin-top:8px;padding:12px;border-radius:18px;border:1px solid rgba(240,171,252,.6);background:linear-gradient(160deg,rgba(240,171,252,.16),var(--panel2) 70%);text-align:left}
+.mh-dream img{width:160px;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:12px} .mh-dream>div{display:flex;flex-direction:column;gap:4px} .mh-dream b{font-size:19px} .mh-dream span{font-size:13px;color:var(--muted)}
+.mh-dream em{font-style:normal;font-size:15px;color:#f0abfc;font-weight:800} .mh-dream em b{font-size:20px}
+@media(max-width:860px){.mh-ovgrid{grid-template-columns:1fr} .mh-ovmain{grid-template-columns:1fr} .mh-ovstage .mh-stage{max-height:260px}}
+@media(max-width:520px){.mh-dream{grid-template-columns:1fr} .mh-dream img{width:100%}}
 .mh-newhead.far{color:#67e8f9} .mh-anoms{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-top:10px}
 .mh-anom{display:grid !important;grid-template-columns:120px 1fr;gap:12px;align-items:center;border-color:rgba(103,232,249,.55) !important;background:linear-gradient(160deg,rgba(103,232,249,.12),var(--panel2) 70%) !important}
 .mh-anom>div{display:flex;flex-direction:column;gap:4px} .mh-anom span{font-size:13px;line-height:1.45} .mh-anom em{font-style:normal;font-size:12px;color:#67e8f9;font-weight:700}
@@ -739,7 +770,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261025115211';
+const BUILD = '20261025120534';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2377,6 +2408,51 @@ async function heroShareCard(S, m, x){
   return c;
 }
 
+// 👥 Дуо (основатель, 25.10): «я играю в дуо с одним и тем же человеком — какие герои подойдут нам вместе на наших позициях».
+// Берём ваши настоящие общие матчи из Stratz (withFriendSteamAccountIds) и считаем пары героев, твоих и его героев в дуо
+async function renderDuo(S, box, tabsHtml, bindTabs){
+  const key = 'dc_duo_' + S.id, saved = lsGet(key) || {}, best = (S.posStats && S.posStats.best) || 2;
+  const sel = (name, v) => `<select class="mh-duosel" data-k="${name}">${[1, 2, 3, 4, 5].map(q => `<option value="${q}" ${q === v ? 'selected' : ''}>${roleShort(q)}</option>`).join('')}</select>`;
+  box.innerHTML = `${tabsHtml}<div class="mh-duo-panel"><div class="mh-ovhead">👥 Дуо с другом <small>Вставь ID друга (как свой выше) и выбери позиции — посчитаю по вашим общим играм, какие герои у вас вместе заходят.</small></div>
+    <div class="mh-duoform"><input class="mh-duoid" placeholder="ID друга или ссылка" value="${saved.f || ''}"><label>я ${sel('me', saved.me || best)}</label><label>он ${sel('fr', saved.fr || 5)}</label><button class="mh-duogo">Подобрать</button></div>
+    <div class="mh-duores"></div></div>`;
+  bindTabs();
+  const go = async () => {
+    const f = parseId(box.querySelector('.mh-duoid').value || ''), me = +box.querySelector('[data-k="me"]').value, fr = +box.querySelector('[data-k="fr"]').value, out = box.querySelector('.mh-duores');
+    if(!f){ out.innerHTML = '<p class="muted">Не вижу ID друга.</p>'; return; }
+    if(String(f) === String(S.id)){ out.innerHTML = '<p class="muted">Это твой ID — нужен ID друга.</p>'; return; }
+    lsSet(key, {f, me, fr});
+    out.innerHTML = '<p class="muted">Ищу ваши общие игры…</p>';
+    let all = [];
+    try{
+      for(let skip = 0; skip < 300; skip += 100){
+        const d = await gql(`{ player(steamAccountId: ${S.id}) { matches(request: {withFriendSteamAccountIds: [${f}], take: 100, skip: ${skip}}) { id didRadiantWin players { steamAccountId heroId isRadiant position } } } }`);
+        const page = (d.player && d.player.matches) || []; all = all.concat(page); if(page.length < 100) break;
+      }
+    }catch(e){ out.innerHTML = `<p class="muted">Не получилось загрузить общие игры: ${e.message === 'NET' ? 'нет связи со Stratz' : e.message}</p>`; return; }
+    const G = all.map(m => { const a = m.players.find(p => String(p.steamAccountId) === String(S.id)), b = m.players.find(p => String(p.steamAccountId) === String(f));
+      return a && b && a.isRadiant === b.isRadiant ? {win: a.isRadiant === m.didRadiantWin, mh: a.heroId, fh: b.heroId, mp: posNum(a.position), fp: posNum(b.position)} : null; }).filter(Boolean);
+    if(!G.length){ out.innerHTML = '<p class="muted">Общих игр в одной команде не нашёл. Проверь ID и что у друга открыта статистика матчей.</p>'; return; }
+    const wr = a => a.filter(g => g.win).length/a.length, base = wr(G);
+    const combos = {}; G.forEach(g => { const k = g.mp + '_' + g.fp; (combos[k] = combos[k] || []).push(g); });
+    const topCombo = Object.entries(combos).sort((a,b) => b[1].length - a[1].length)[0];
+    let set = G.filter(g => g.mp === me && g.fp === fr), note = '';
+    if(set.length < 10){ note = `На позициях «${roleShort(me).toLowerCase()} + ${roleShort(fr).toLowerCase()}» у вас всего ${set.length} ${gamesWord(set.length)} — добавил все ваши общие игры, чтобы было на что опереться.`; set = G; }
+    const rank = (keyOf, minN) => { const o = {}; set.forEach(g => { const k = keyOf(g); if(k == null) return; const z = o[k] = o[k] || {n: 0, w: 0}; z.n++; z.w += g.win ? 1 : 0; });
+      return Object.entries(o).filter(([, z]) => z.n >= minN).map(([k, z]) => ({k, ...z, sc: (z.w + 3*base)/(z.n + 6)})).sort((a,b) => b.sc - a.sc).slice(0, 3); };
+    const pairs = rank(g => g.mh + '_' + g.fh, 2), mine = rank(g => g.mp === me || note ? g.mh : null, 3), his = rank(g => g.fp === fr || note ? g.fh : null, 3);
+    const card = (hs, z) => `<div class="mh-duocard"><div class="mh-duoimgs">${hs.map(h => `<img src="${CDN + H(+h).img}" alt="">`).join('')}</div><b>${hs.map(h => hn(+h)).join(' + ')}</b><span><b class="${wrClass(z.w/z.n)}">${z.w}–${z.n - z.w}</b> вместе · ${pct0(z.w/z.n)}</span></div>`;
+    out.innerHTML = `<p>Вы сыграли вместе <b>${G.length}</b> ${gamesWord(G.length)} — <b class="${wrClass(base)}">${pct0(base)}</b> побед.${topCombo ? ` Чаще всего: ты — ${roleShort(+topCombo[0].split('_')[0]).toLowerCase()}, он — ${roleShort(+topCombo[0].split('_')[1]).toLowerCase()} (${topCombo[1].length} ${gamesWord(topCombo[1].length)}, ${pct0(wr(topCombo[1]))}).` : ''}</p>
+      ${note ? `<p class="muted">${note}</p>` : `<p>На «${roleShort(me).toLowerCase()} + ${roleShort(fr).toLowerCase()}» у вас ${set.length} ${gamesWord(set.length)}, ${pct0(wr(set))} побед.</p>`}
+      ${pairs.length ? `<div class="mh-newhead">🔥 Лучшие пары героев</div><div class="mh-duogrid">${pairs.map(z => card(z.k.split('_'), z)).join('')}</div>` : '<p class="muted">Пар, сыгранных 2+ раза, пока нет.</p>'}
+      ${mine.length ? `<div class="mh-newhead">Тебе с ним${note ? '' : ` на ${roleShort(me).toLowerCase()}`}</div><div class="mh-duogrid">${mine.map(z => card([z.k], z)).join('')}</div>` : ''}
+      ${his.length ? `<div class="mh-newhead">Ему с тобой${note ? '' : ` на ${roleShort(fr).toLowerCase()}`}</div><div class="mh-duogrid">${his.map(z => card([z.k], z)).join('')}</div>` : ''}
+      <p class="hint">Только ваши общие игры в одной команде (до 300 последних). Пары с малым числом игр подтянуты к вашему среднему, чтобы 2–0 не перевешивало 15–7.</p>`;
+  };
+  box.querySelector('.mh-duogo').onclick = go;
+  if(saved.f) go();
+}
+
 async function renderMyHero(S, sel){
   const box = $('myHero'), token = {}; S.heroToken = token;
   if(sel == null){ const s = lsGet('dc_mh_' + S.id); sel = typeof s === 'number' ? s : 0; }
@@ -2385,12 +2461,13 @@ async function renderMyHero(S, sel){
   const ps = S.posStats = S.posStats || (() => { const all = S.year.filter(g => g.win).length/S.year.length, o = {};
     [1,2,3,4,5].forEach(p => { const g = S.year.filter(x => x.pos === p), w = g.filter(x => x.win).length; o[p] = {n: g.length, wr: g.length ? w/g.length : null, sm: (w + 20*all)/(g.length + 20)}; });
     o.best = +Object.keys(o).filter(p => o[p].n >= 30).sort((a,b) => o[b].sm - o[a].sm)[0] || null; return o; })();
-  const tabs = `<div class="mh-who">${acc.name || ''}${mmr != null ? ' · ' + mmrToRank(mmr) : ''} · ${S.year.length} игр разобрано <button class="mh-link" title="Скопировать ссылку — другу откроется этот же разбор">🔗 Ссылка на разбор</button></div>${sinceLast(S)}
+  const tabs = `<div class="mh-who">${acc.name || ''}${mmr != null ? ' · ' + mmrToRank(mmr) : ''} · ${S.year.length} игр разобрано <button class="mh-link" title="Скопировать ссылку — другу откроется этот же разбор">🔗 Ссылка на разбор</button> <button class="mh-link mh-duo">👥 Дуо с другом</button></div>${sinceLast(S)}
     <div class="mh-tabs">${MH_TABS.map(([p, l]) => `<button class="mh-tab ${p === sel ? 'on' : ''} ${p && p === ps.best ? 'best' : ''}" data-p="${p}">${p === ps.best ? '★ ' : ''}${l}${p ? `<small>${ps[p].n ? `${pct0(ps[p].wr)} · ${ps[p].n}` : 'нет игр'}</small>` : '<small>из твоих</small>'}</button>`).join('')}</div>
     ${ps.best ? `<div class="mh-rolehint">★ Твоя роль по играм — <b>${roleShort(ps.best).toLowerCase()}</b>: ${pct0(ps[ps.best].wr)} за ${ps[ps.best].n} ${gamesWord(ps[ps.best].n)}</div>` : ''}
     <div class="mh-rolehint">${sel ? `Вкладка роли — <b>новые герои на вырост</b>: на них у тебя меньше 15 игр, подобраны под твой стиль и характер` : `«Твой герой» — <b>из тех, на ком ты уже играешь</b>. Вкладки ролей — новые герои на вырост`}</div>`;
   const bindTabs = () => { box.querySelectorAll('.mh-tab').forEach(b => b.onclick = () => { lsSet('dc_mh_' + S.id, +b.dataset.p); renderMyHero(S, +b.dataset.p); });
-    const lb = box.querySelector('.mh-link'); if(lb) lb.onclick = async () => { const url = location.origin + location.pathname + '#' + S.id;
+    const db = box.querySelector('.mh-duo'); if(db) db.onclick = () => renderDuo(S, box, tabs, bindTabs);
+    const lb = box.querySelector('.mh-link:not(.mh-duo)'); if(lb) lb.onclick = async () => { const url = location.origin + location.pathname + '#' + S.id;
       try{ await navigator.clipboard.writeText(url); lb.textContent = '✓ Скопировано'; }catch{ prompt('Ссылка на разбор:', url); } setTimeout(() => lb.textContent = '🔗 Ссылка на разбор', 2000); }; };
   const T = S.posTable || {};
   const pool = sel ? Object.keys(T).map(Number).filter(h => heroes[h] && T[h][sel]).sort((a,b) => T[b][sel].n - T[a][sel].n).slice(0, 12)
@@ -2440,45 +2517,55 @@ async function renderMyHero(S, sel){
   const posWrOf = rr => rr.posWr ?? 0.5;
   const overview = () => {
     const role = roleShort(sel).toLowerCase(), cur = r.posWr ?? 0.5;
-    // 1) Пул роли из трёх по местам: твои герои (ожидание — твой результат, сглаженный к 50%) и новые (ожидание — к 100-й игре)
+    // «Не хочу» с причиной (основатель, 25.10): убранные герои + выводы из причин. «Сложно» — дальше без сложных героев
+    const rejKey = 'dc_rej_' + S.id, rej = lsGet(rejKey) || {}, noHard = Object.values(rej).some(t => /сложн|трудн|hard/i.test(t));
+    const cx = h => H(h).complexity || 2, okH = h => !rej[h] && !(noHard && cx(h) >= 3);
+    // Пул роли по местам: твои герои (твой результат, сглаженный к 50%) и новые (прогноз к 100-й игре)
     const own = (r.mineAll || []).map(o => ({h: o.h, own: true, n: o.n, wr: o.wr, exp: o.sc}));
     const fresh = r.all.map(y => ({h: y.h, own: false, y, exp: y.ceil}));
-    const trio = [...own, ...fresh].sort((a,b) => b.exp - a.exp).filter((v, k, a) => a.findIndex(z => z.h === v.h) === k).slice(0, 3);
-    const PLACE = ['🥇 1-е место — бери его', '🥈 2-е место — если первого забанили', '🥉 3-е место — третий в пул'];
-    const trioCard = (t, k) => `<button class="mh-trio ${k ? '' : 'first'} ${t.own ? 'mh-own' : 'mh-mini'}" data-h="${t.h}"><img src="${CDN + H(t.h).img}" alt=""><div><em>${PLACE[k]}</em><b>${hn(t.h)}</b>
-      <span>${t.own ? `Твой: <b class="${wrClass(t.wr)}">${pct0(t.wr)}</b> за ${t.n} ${gamesWord(t.n)}` : `Новый: старт ${pct0(t.y.now)}, к 100-й игре <b class="${wrClass(t.y.ceil)}">${pct0(t.y.ceil)}</b>`}</span>
-      <span class="mh-trio-up">Твой ${role} <b class="${wrClass(cur)}">${pct0(cur)}</b> → <b class="${wrClass(t.exp)}">~${pct0(t.exp)}</b>${k === 0 ? ', если играть его основным' : k === 1 ? ` — замена, если ${hn(trio[0].h)} забанят` : ''}</span></div></button>`;
-    // 2) 🌟 Мечта: сложный герой с самым высоким дальним потолком (твой уровень на похожих героях или прогноз к 100-й игре)
+    const trio = [...own, ...fresh].filter(t => okH(t.h)).sort((a,b) => b.exp - a.exp).filter((v, k, a) => a.findIndex(z => z.h === v.h) === k).slice(0, 3);
     const farPot = y => Math.max(y.ceil, y.simN >= 30 && y.simWr != null ? y.simWr : 0);
     const shown = new Set(trio.map(t => t.h));
-    // самый высокий дальний потолок; при равном потолке (±2 п.п.) — сложнее герой
-    const dream = r.all.filter(y => !shown.has(y.h)).sort((a,b) => (Math.round(farPot(b)*50) - Math.round(farPot(a)*50)) || ((b.cplx || 2) - (a.cplx || 2)))[0];
+    const dream = r.all.filter(y => !shown.has(y.h) && !rej[y.h]).sort((a,b) => (Math.round(farPot(b)*50) - Math.round(farPot(a)*50)) || (cx(b.h) - cx(a.h)))[0];
     if(dream) shown.add(dream.h);
-    // 3) 💎 скрытое — аномалии, которых ещё не показали; 4) ещё варианты
-    const hidden = (r.anoms || []).filter(y => !shown.has(y.h)); hidden.forEach(y => shown.add(y.h));
-    const more = r.all.filter(y => !shown.has(y.h)).slice(0, 6);
-    const dreamSim = dream && dream.simN >= 30 && dream.simWr != null && farPot(dream) > dream.ceil;
+    const hidden = (r.anoms || []).filter(y => !shown.has(y.h) && okH(y.h)); hidden.forEach(y => shown.add(y.h));
+    const more = r.all.filter(y => !shown.has(y.h) && okH(y.h)).slice(0, 6);
+    const line = t => t ? `Твой ${role} <b class="${wrClass(cur)}">${pct0(cur)}</b> → <b class="${wrClass(t.exp)}">~${pct0(t.exp)}</b>` : '';
+    const sub = t => t.own ? `твой: ${pct0(t.wr)} за ${t.n} ${gamesWord(t.n)}` : `новый: старт ${pct0(t.y.now)}, к 100-й игре ${pct0(t.y.ceil)}`;
+    const REASONS = ['Сложно играть', 'Не мой стиль', 'Не нравится герой', 'Надоел'];
+    const rejBox = h => `<div class="mh-rejbox hidden" data-h="${h}"><span>Почему не он?</span><div>${REASONS.map(t => `<button class="mh-rejr" data-h="${h}" data-t="${t}">${t}</button>`).join('')}</div>
+      <div class="mh-rejown"><input placeholder="Своя причина…" data-h="${h}"><button class="mh-rejgo" data-h="${h}">Убрать</button></div></div>`;
+    const m1 = trio[0], PL = ['🥇 Главный', '🥈 Если забанят', '🥉 Третий в пул'];
     box.innerHTML = `<div class="mh-flash"></div>${tabs}${poolBar()}<div class="mh-ov">
-      <div class="mh-ovhead">Хочешь играть ${role}? <small>Сейчас у тебя здесь ${r.posN ? `${pct0(cur)} за ${r.posN} ${gamesWord(r.posN)}` : 'мало игр'}. Вот твой пул на позицию — три героя по местам.</small></div>
-      <div class="mh-trios">${trio.map(trioCard).join('')}</div>
-      ${dream ? `<div class="mh-newhead dream">🌟 Мечта · самый высокий потолок <small>герой, на котором ты когда-нибудь можешь выигрывать больше всего — если вложишься</small></div>
-      <button class="mh-dream mh-mini" data-h="${dream.h}"><img src="${CDN + H(dream.h).img}" alt=""><div><b>${hn(dream.h)}</b>
-        <span>${cap(CPLX[dream.cplx || 2])} герой. Начнёшь с ${pct0(dream.now)}${dream.now < 0.5 ? ' — первые десятки игр будет тяжело' : ''}, к 100-й игре — ${pct0(dream.ceil)}.${dreamSim ? ` Но он играется как твои ${dream.sims.slice(0, 3).map(k => hn(k.h)).join(', ')}, а на них ты выигрываешь ${pct0(dream.simWr)}.` : ''}</span>
-        <em>Если освоишь — до <b>${pct0(farPot(dream))}</b> когда-нибудь в будущем${farPot(dream) >= 0.6 ? ' 🔥' : ''}</em></div></button>` : ''}
-      ${hidden.length ? `<div class="mh-newhead far">💎 Скрытое · то, чего не видно сразу <small>сигналы в твоих играх, которые не ловит обычный прогноз</small></div>
-      <div class="mh-anoms">${hidden.map(y => `<button class="mh-anom mh-mini" data-h="${y.h}"><img src="${CDN + H(y.h).img}" alt=""><div><b>${hn(y.h)}</b>
-        <span>${y.farSim ? `Играется как твои ${y.sims.slice(0, 3).map(k => hn(k.h)).join(', ')} — на них ты выигрываешь <b class="good">${pct0(y.simWr)}</b> (${y.simN} игр), а прогноз к 100-й игре — только ${pct0(y.ceil)}.` : ''}
-        ${y.farStart ? `Аномальный старт: <b class="good">${y.w}–${y.n - y.w}</b> за ${y.n} ${gamesWord(y.n)} при твоих ${pct0(cur)} на позиции — случайно так бывает реже чем в 1 из ${Math.max(10, Math.round(1/Math.max(y.startP, 0.001)))}.` : ''}</span>
-        <em>Потенциал до ${pct0(y.far)}</em></div></button>`).join('')}</div>` : ''}
-      ${more.length ? `<div class="mh-newhead">Ещё новые варианты · ${roleShort(sel)} <small>старт → через месяц → к 100-й игре; нажми — подробно</small></div>
-      <div class="mh-minis">${more.map(y => `<button class="mh-mini" data-h="${y.h}"><img src="${CDN + H(y.h).img}" alt=""><b>${hn(y.h)}</b>
-        <span><b class="${wrClass(y.now)}">${pct0(y.now)}</b> → <b class="${wrClass(y.month)}">${pct0(y.month)}</b> → <b class="${wrClass(y.ceil)}">${pct0(y.ceil)}</b></span></button>`).join('')}</div>` : ''}
-      <button class="linkbtn mh-ov-all">Все новые герои на позиции (${r.all.length}) →</button></div>`;
-    bindTabs(); bindRestore(); bindOwn();
+      <div class="mh-ovhead">Хочешь играть ${role}? <small>Сейчас у тебя здесь ${r.posN ? `${pct0(cur)} за ${r.posN} ${gamesWord(r.posN)}` : 'мало игр'}. Твой пул на позицию — три героя.</small></div>
+      ${m1 ? `<div class="mh-ovgrid"><div class="mh-ovmain"><div class="mh-ovstage">${mhStage(m1.h)}</div><div class="mh-ovinfo"><em>${PL[0]} на ${role}</em><div class="mh-name">${hn(m1.h)}</div>
+        <div class="mh-ovline">${line(m1)}</div><small>${sub(m1)}</small>
+        <div class="mh-ovbtns"><button class="mh-tell" data-h="${m1.h}" data-own="${m1.own ? 1 : 0}">Расскажи</button><button class="mh-no2" data-h="${m1.h}">Не хочу</button></div>${rejBox(m1.h)}</div></div>
+        <div class="mh-ovside">${trio.slice(1).map((t, k) => `<div class="mh-fig"><img src="${CDN + RENDER + heroShort(t.h)}.png" alt="" loading="lazy"><div><em>${PL[k + 1]}</em><b>${hn(t.h)}</b><span>${line(t)}</span><small>${sub(t)}</small>
+          <div class="mh-ovbtns sm"><button class="mh-tell" data-h="${t.h}" data-own="${t.own ? 1 : 0}">Расскажи</button><button class="mh-no2" data-h="${t.h}">Не хочу</button></div>${rejBox(t.h)}</div></div>`).join('')}</div></div>` : ''}
+      ${Object.keys(rej).length ? `<div class="mh-rejlist">Убрано: ${Object.entries(rej).map(([h, t]) => `${hn(+h)} — ${t.toLowerCase()}`).join(' · ')}${noHard ? ' · <b>сложных героев больше не предлагаю</b>' : ''} <button class="linkbtn mh-rejclear">вернуть всех</button></div>` : ''}
+      ${dream ? `<div class="mh-newhead dream">🌟 Мечта</div>
+      <button class="mh-dream mh-tell" data-h="${dream.h}" data-own="0"><img src="${CDN + H(dream.h).img}" alt=""><div><b>${hn(dream.h)}</b>
+        <em>Если освоишь — до <b>${pct0(farPot(dream))}</b> когда-нибудь${farPot(dream) >= 0.6 ? ' 🔥' : ''}</em><span>${cap(CPLX[cx(dream.h)])} герой · старт ${pct0(dream.now)} · к 100-й игре ${pct0(dream.ceil)}</span></div></button>` : ''}
+      ${hidden.length || more.length ? `<button class="linkbtn mh-morebtn">Ещё варианты ▾</button><div class="mh-morebox hidden">
+        ${hidden.length ? `<div class="mh-newhead far">💎 Скрытое</div><div class="mh-anoms">${hidden.map(y => `<button class="mh-anom mh-tell" data-h="${y.h}" data-own="0"><img src="${CDN + H(y.h).img}" alt=""><div><b>${hn(y.h)}</b>
+          <span>${y.farSim ? `Играется как твои ${y.sims.slice(0, 3).map(k => hn(k.h)).join(', ')} — на них ты выигрываешь <b class="good">${pct0(y.simWr)}</b>, а прогноз к 100-й игре — только ${pct0(y.ceil)}.` : ''}${y.farStart ? ` Аномальный старт: <b class="good">${y.w}–${y.n - y.w}</b> за ${y.n} ${gamesWord(y.n)}.` : ''}</span>
+          <em>Потенциал до ${pct0(y.far)}</em></div></button>`).join('')}</div>` : ''}
+        ${more.length ? `<div class="mh-newhead">Ещё новые</div><div class="mh-minis">${more.map(y => `<button class="mh-mini mh-tell" data-h="${y.h}" data-own="0"><img src="${CDN + H(y.h).img}" alt=""><b>${hn(y.h)}</b>
+          <span><b class="${wrClass(y.now)}">${pct0(y.now)}</b> → <b class="${wrClass(y.month)}">${pct0(y.month)}</b> → <b class="${wrClass(y.ceil)}">${pct0(y.ceil)}</b></span></button>`).join('')}</div>` : ''}</div>` : ''}</div>`;
+    bindTabs(); bindRestore();
     const pa = box.querySelector('.mh-pool-auto'); if(pa) pa.style.display = 'none';
     box.querySelectorAll('.mh-pool-h').forEach(b => b.onclick = () => { const tab = +b.dataset.tab, h = +b.dataset.h; if(tab === sel){ cache.open[sel] = true; return show(h); } cache.idx[tab] = h; lsSet('dc_mh_' + S.id, tab); renderMyHero(S, tab); });
-    box.querySelectorAll('.mh-mini').forEach(b => b.onclick = () => { cache.open[sel] = true; show(+b.dataset.h); box.scrollIntoView({behavior: 'smooth', block: 'start'}); });
-    const al = box.querySelector('.mh-ov-all'); if(al) al.onclick = () => { cache.open[sel] = true; show(r.best.h); const pk = box.querySelector('.mh-pick'); if(pk){ pk.classList.remove('hidden'); pk.scrollIntoView({behavior: 'smooth', block: 'start'}); } };
+    // «Расскажи»: свой герой — открыть в «Твой герой» с планом роста; новый — подробная карточка
+    box.querySelectorAll('.mh-tell').forEach(b => b.onclick = () => { const h = +b.dataset.h;
+      if(b.dataset.own === '1'){ cache.idx[0] = h; lsSet('dc_mh_' + S.id, 0); return renderMyHero(S, 0); }
+      cache.open[sel] = true; show(h); box.scrollIntoView({behavior: 'smooth', block: 'start'}); });
+    box.querySelectorAll('.mh-no2').forEach(b => b.onclick = () => box.querySelector(`.mh-rejbox[data-h="${b.dataset.h}"]`).classList.toggle('hidden'));
+    const reject = (h, t) => { if(!t) return; const rr = lsGet(rejKey) || {}; rr[h] = t; lsSet(rejKey, rr); overview(); };
+    box.querySelectorAll('.mh-rejr').forEach(b => b.onclick = () => reject(+b.dataset.h, b.dataset.t));
+    box.querySelectorAll('.mh-rejgo').forEach(b => b.onclick = () => reject(+b.dataset.h, box.querySelector(`.mh-rejown input[data-h="${b.dataset.h}"]`).value.trim() || 'не хочу'));
+    const rc = box.querySelector('.mh-rejclear'); if(rc) rc.onclick = () => { lsSet(rejKey, {}); overview(); };
+    const mb = box.querySelector('.mh-morebtn'); if(mb) mb.onclick = () => { const x = box.querySelector('.mh-morebox'); x.classList.toggle('hidden'); mb.textContent = x.classList.contains('hidden') ? 'Ещё варианты ▾' : 'Скрыть ▴'; };
   };
 
   // Показ: главный крупно, два запасных карточками, ниже — весь список модели, чтобы выбрать самому
@@ -2488,6 +2575,8 @@ async function renderMyHero(S, sel){
     const m = mhView(x, r, sel, S), role = roleShort(sel || m.pos).toLowerCase();
     const vs = sel ? `<div class="mh-vs"><div><span>ты на позиции сейчас (${r.posN} ${gamesWord(r.posN)})</span><b class="${wrClass(r.posWr ?? .5)}">${r.posWr != null ? pct0(r.posWr) : '—'}</b></div><i>→</i><div class="on"><span>${hn(m.h)} через месяц</span><b class="${wrClass(m.month)}">${pct0(m.month)}</b></div>${x.ceil != null ? `<i>→</i><div class="on ceil"><span>к 100-й игре</span><b class="${wrClass(x.ceil)}">${pct0(x.ceil)}</b></div>` : ''}</div>` : '';
     const ahead = sel && r.posWr != null && Math.round(m.month*100) > Math.round(r.posWr*100);
+    const heroPos = sel || m.pos;
+    const otherPos = `<div class="mh-otherpos"><span>${hn(x.h)} на другой позиции?</span>${[1, 2, 3, 4, 5].filter(q => q !== heroPos).map(q => `<button class="mh-opos" data-q="${q}">${roleShort(q)}</button>`).join('')}<div class="mh-oposres"></div></div>`;
     // «Твой герой»: сколько сейчас и куда расти — следующая ступень мастерства от твоего же среднего
     const vsMine = !sel ? (() => { const ms = mastery(S, x.h), avg = S.year.filter(g => g.win).length/S.year.length, nx = ms.next;
       // Не хватает игр — цель в играх; не хватает винрейта — цель в процентах (а не «64%», когда у тебя уже 63% и мало игр)
@@ -2515,7 +2604,7 @@ async function renderMyHero(S, sel){
     const list = r.all.slice().sort((a,b) => ord(b) - ord(a)).map(y => `<button class="mh-opt ${y.h === m.h ? 'on' : ''}" data-h="${y.h}" data-n="${hn(y.h).toLowerCase()}"><img src="${CDN + H(y.h).img}" alt="">
       <b>${mastBadge(S, y.h, true)}${hn(y.h)}</b><span><b class="${wrClass(fc(y))}">${pct0(fc(y))}</b> через месяц${sel ? ` · стиль ${y.fitPct}%` : ''}${y.n ? ` · у тебя ${y.w}–${y.n - y.w}` : ''}</span></button>`).join('');
     box.innerHTML = `<div class="mh-flash"></div>${tabs}${poolBar()}${ownRow()}<div class="mh-grid"><div class="mh-left">${mhStage(m.h)}${psyRadar(S, m.h, m.pos)}</div><div class="mh-info"><div class="mh-kick">${m.kick}</div><div class="mh-name">${hn(m.h)}</div>
-      <div class="mh-line">${m.line}</div>${(() => { const ms = mastery(S, m.h); return `<div class="mh-mast">${ms.cur ? mastBadge(S, m.h) : '<span class="mast none">ещё без ступени</span>'}<span>${ms.hint}</span></div>`; })()}${vs}${vsMine}${sel ? '' : `<p class="mh-say">Модель перебрала ${r.n} твоих героев. Почему он:</p>`}${mhList(m.reasons)}${verdict}${mhFaces(m.faces)}
+      <div class="mh-line">${m.line}</div>${(() => { const ms = mastery(S, m.h); return `<div class="mh-mast">${ms.cur ? mastBadge(S, m.h) : '<span class="mast none">ещё без ступени</span>'}<span>${ms.hint}</span></div>`; })()}${vs}${vsMine}${otherPos}<button class="linkbtn mh-why">Расскажи почему ▾</button><div class="mh-whybox hidden">${sel ? '' : `<p class="mh-say">Модель перебрала ${r.n} твоих героев. Почему он:</p>`}${mhList(m.reasons)}${verdict}${mhFaces(m.faces)}</div>
       <div class="mh-pickbar">${(() => { const pool = poolGet(), inP = pool.some(e => e.h === m.h && e.p === m.pos), full = pool.filter(e => e.p === m.pos).length >= 3;
         return `<button class="mh-pool-add ${inP ? 'on' : ''}" ${!inP && full ? 'disabled title="На роли уже 3 героя — убери одного"' : ''}>${inP ? '✓ В моём пуле' : `⭐ В мой пул (${role})`}</button>`; })()}<button class="mh-share" title="Скачать картинку, чтобы поделиться">📸 Картинка «мой герой»</button><button class="mh-no" title="Убрать героя из подбора на всех вкладках">👎 Не мой герой — убрать</button><button class="mh-open">Выбрать самому из ${r.all.length} ▾</button></div></div></div>
       ${sides ? `<div class="mh-sides"><div class="mh-sides-t">Ещё два варианта — нажми, чтобы сделать главным</div>${sides}
@@ -2568,6 +2657,14 @@ async function renderMyHero(S, sel){
       pool = pool.some(e => e.h === m.h && e.p === m.pos) ? pool.filter(e => !(e.h === m.h && e.p === m.pos)) : [...pool, {h: m.h, p: m.pos, tab: sel}];
       lsSet(poolKey, pool); show(m.h); };
     box.querySelectorAll('.mh-gorole').forEach(b => b.onclick = () => { lsSet('dc_mh_' + S.id, +b.dataset.p); renderMyHero(S, +b.dataset.p); });
+    const wb = box.querySelector('.mh-why'); if(wb) wb.onclick = () => { const w = box.querySelector('.mh-whybox'); w.classList.toggle('hidden'); wb.textContent = w.classList.contains('hidden') ? 'Расскажи почему ▾' : 'Скрыть ▴'; };
+    box.querySelectorAll('.mh-opos').forEach(b => b.onclick = () => { const q = +b.dataset.q, out = box.querySelector('.mh-oposres');
+      box.querySelectorAll('.mh-opos').forEach(z => z.classList.toggle('on', z === b));
+      const ML = S.ML = S.ML || mlBuild(S), sim = mlSimulate(ML, x.h, q, 105, r.perMonth || mhPerMonth(S), 30);
+      const gq = S.year.filter(g => g.pos === q), mine = gq.filter(g => g.hero === x.h), wq = a => a.length ? a.filter(g => g.win).length/a.length : null;
+      const posNow = wq(gq), best = Math.max(sim.p50, sim.p100);
+      out.innerHTML = `<b>${hn(x.h)} на позиции «${roleShort(q).toLowerCase()}»</b>${mine.length ? ` · у тебя там ${mine.length} ${gamesWord(mine.length)}, ${pct0(wq(mine))}` : ' · ты на ней его ещё не играл'}<br>
+        Прогноз: старт <b class="${wrClass(sim.p5)}">${pct0(sim.p5)}</b> → через месяц <b class="${wrClass(sim.p50)}">${pct0(sim.p50)}</b> → к 100-й игре <b class="${wrClass(sim.p100)}">${pct0(sim.p100)}</b>${posNow != null ? `. Твой ${roleShort(q).toLowerCase()} сейчас — ${pct0(posNow)}: ${Math.round(best*100) > Math.round(posNow*100) ? `<b class="good">он может поднять до ${pct0(best)}</b>` : 'выше он тебя не поднимет'}.` : '.'}`; });
     bindOwn(); const bk = box.querySelector('.mh-back'); if(bk) bk.onclick = () => { cache.open[sel] = false; overview(); box.scrollIntoView({behavior: 'smooth', block: 'start'}); };
     const pr = box.querySelector('.mh-pool-role'); if(pr) pr.onclick = () => { lsSet('dc_mh_' + S.id, +pr.dataset.p); renderMyHero(S, +pr.dataset.p); };
     // Пул в один клик: тройка этой вкладки (главный + 2 запасных) — каждый на своей позиции
