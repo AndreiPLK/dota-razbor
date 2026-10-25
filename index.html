@@ -488,6 +488,9 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-mini:hover{transform:translateY(-2px);border-color:rgba(196,181,253,.6)} .mh-mini img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:9px}
 .mh-mini>b{font-size:15px} .mh-mini em{font-style:normal;font-size:11.5px;color:#c4b5fd;font-weight:700} .mh-mini span{font-size:13px} .mh-mini span b{font-size:14px}
 .mh-ov-all{margin-top:10px}
+.mh-chance{width:100%;margin-top:6px;text-align:left;font-size:12.5px;border:1px solid rgba(255,216,138,.35);border-radius:12px;padding:6px 10px;background:rgba(255,216,138,.06)}
+.mh-chance summary{cursor:pointer;font-weight:800;color:#ffd88a} .mh-chance p{margin:6px 0;line-height:1.45;color:inherit !important} .mh-chance ul{margin:4px 0 4px 18px;padding:0;line-height:1.45} .mh-chance li{margin:3px 0}
+.mh-pkrow .mh-chance{grid-column:1/-1}
 .mh-pkcount{font-size:12px;color:var(--muted);align-self:center}
 .mh-podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:end;margin-top:18px}
 .mh-pod{display:flex;flex-direction:column;align-items:center}
@@ -811,7 +814,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261025123109';
+const BUILD = '20261025123535';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -1886,7 +1889,7 @@ function mlSimulate(ML, hero, pos, games, perMonth, runs = 250, rules = [], bias
   const ok = c => !(has('night') && c.hour < 6) && !(has('sess4') && c.sessIdx >= 4) && !(party && (party.bad ? c.party > 1 : c.party === 1));
   let recentCtx = ML.ctxs.slice(-200); if(recentCtx.filter(ok).length >= 30) recentCtx = recentCtx.filter(ok);
   const cp = st => ({...st, hero: Object.fromEntries(Object.entries(st.hero).map(([k, v]) => [k, {...v, seq: v.seq.slice()}])), last: st.last.slice()});
-  const out = {wins: [], p5: 0, p20: 0, p50: 0, p100: 0, cross: {1000: [], 2000: []}, traj: []};   // traj[m] — рейтинг после m-го месяца во всех прогонах
+  const out = {wins: [], p5: 0, p20: 0, p50: 0, p100: 0, p300: 0, cross: {1000: [], 2000: []}, traj: []};   // traj[m] — рейтинг после m-го месяца во всех прогонах
   for(let r = 0; r < runs; r++){
     const st = cp(ML.st); let wins = 0, mmr = 0, t = Date.now()/1000; const reached = {};
     for(let g = 0; g < games; g++){
@@ -1896,7 +1899,7 @@ function mlSimulate(ML, hero, pos, games, perMonth, runs = 250, rules = [], bias
       const ctx = hero == null ? {...base, t} : {...base, pos, t, hero};
       const p = clamp(mlPredict(ML.model, ML.z(mlFeatures(st, ctx, ML.total))) + bias, 0.05, 0.95);
       const R = Math.min(runs, 60);
-      if(r < R){ if(g < 5) out.p5 += p/(5*R); else if(g >= 15 && g < 25) out.p20 += p/(10*R); else if(g >= 45 && g < 55) out.p50 += p/(10*R); else if(g >= 95 && g < 105) out.p100 += p/(10*R); }
+      if(r < R){ if(g < 5) out.p5 += p/(5*R); else if(g >= 15 && g < 25) out.p20 += p/(10*R); else if(g >= 45 && g < 55) out.p50 += p/(10*R); else if(g >= 95 && g < 105) out.p100 += p/(10*R); else if(g >= 295 && g < 305) out.p300 += p/(10*R); }
       const win = rnd() < p ? 1 : 0; wins += win; mmr += win ? 25 : -25; mlUpdate(st, ctx, win);
       [1000, 2000].forEach(k => { if(!reached[k] && mmr >= k) reached[k] = g + 1; });
       if((g + 1) % perMonth === 0) (out.traj[(g + 1)/perMonth] = out.traj[(g + 1)/perMonth] || []).push(mmr);
@@ -2452,6 +2455,25 @@ async function heroShareCard(S, m, x){
 // 🔮 Подобрать героев (основатель, 25.10): впиши героев (до 10) — какой лучше на вырост, потащишь ли за 100 матчей.
 // Пьедестал: тройка — живые 3D-герои на ступенях; у каждого полоски «старт → 100 матчей → потолок» против линии 50%;
 // график — % побед по месяцам (тот же расчёт, что и вердикт), потолок пунктиром, портреты на концах линий
+// «Возможность есть, но вот что нужно» (основатель, 25.10) — механика, которую модель по твоим играм увидеть не может
+const HARD_TIPS = {
+  Invoker: ['выучи комбо Tornado → EMP → Meteor → Deafening Blast в демо-режиме, пока не будешь делать его за 2 секунды', 'держи сферы под ситуацию: Quas-Wex для драки, Exort для фарма — переключение без раздумий', 'каждую игру смотри 1 свою смерть в реплее: где ты стоял, когда тебя поймали'],
+  'Storm Spirit': ['считай ману до входа в Ball Lightning: входи, только если хватит маны на выход', 'Bloodstone/Kaya раньше — без маны Шторм не герой', 'входи вторым, после инициации команды, а не первым'],
+  Meepo: ['микроконтроль: 20 игр в лобби на Poof и держание клонов отдельно', 'фарм двумя-тремя клонами одновременно — без этого Мипо не догоняет', 'никогда не дерись клонами под вражеской AoE: один умер — умерли все'],
+  Visage: ['контроль фамильяров: стан ими в нужный момент — половина героя', 'учись держать фамильяров живыми — они твоё золото и твоя сила', 'Soul Assumption копи перед дракой'],
+  'Arc Warden': ['управление клоном: фарм двух линий и пуш одновременно', 'Magnetic Field и Flux — за себя и союзников, не только в атаку', 'играй через пуш башен, а не через драки 5 на 5'],
+  'Lone Druid': ['управление медведем отдельно от героя', 'медведь — главный носитель предметов, герой — поддержка', 'ранний пуш линий медведем'],
+  Chen: ['подбор крипов под игру: лечение, стан, аура', 'микроконтроль 3–4 юнитов в драке', 'ранние ганки крипами'],
+  'Io': ['играй через связку с одним керри — вы один герой', 'Relocate — для спасения и для вражеского ганка, а не просто прыжок', 'Tether для лечения и маны в драке'],
+  'Earth Spirit': ['камни: Boulder → Rolling Boulder → Geomagnetic Grip, отработай в демо', 'камни держи в запасе на драку', 'Magnetize с камнями — главный урон'],
+  'Tinker': ['маршрут фарма с Boots of Travel и Rearm', 'сначала предметы для выживания — Blink, Defense Matrix', 'ставь варды сам — Тинкер живёт обзором'],
+  'Puck': ['Phase Shift для уворота от снарядов и стана — учи на реальных ульт-противниках', 'Illusory Orb + Ethereal Jaunt — вход и выход', 'не входи в драку первым без выхода'],
+  Morphling: ['перелив силы ↔ ловкости в бою без задержки', 'Morph на сильного героя врага — учи, кого брать', 'Waveform для входа и выхода'],
+  'Ember Spirit': ['Sleight of Fist и Fire Remnant — вход и выход на одной клавише', 'держи 1 Remnant как выход', 'Flame Guard против магического урона'],
+  'Templar Assassin': ['Refraction — следи за зарядами, не трать их на крипов', 'Psionic Trap как варды и замедление', 'рано выходи на Desolator и бери Roshan'],
+  'Timbersaw': ['тайминг Timber Chain по деревьям — отработай в демо', 'держи Reactive Armor в драке', 'играй через постоянное давление, а не через фарм'],
+};
+const hardTips = h => HARD_TIPS[hn(h)] || ['первые 20 игр — в турбо или обычном режиме: выучи способности и тайминги предметов без давления рейтинга', 'после каждого поражения — 1 момент в реплее: одна ошибка, которую уберёшь в следующей игре', 'не больше 2–3 игр на нём за сессию: усталость съедает обучение'];
 async function renderPicker(S, box, tabsHtml, bindTabs){
   const MAXN = 10, key = 'dc_pick_' + S.id, picked = (lsGet(key) || []).filter(h => heroes[h]).slice(0, MAXN);
   const byName = v => +(Object.keys(heroes).find(k => heroes[k].localized_name.toLowerCase() === v.trim().toLowerCase()) || 0);
@@ -2476,8 +2498,9 @@ async function renderPicker(S, box, tabsHtml, bindTabs){
       const sim = mlSimulate(ML, h, pos, 105, perM, 40), V = styleVecs(S, pos);
       const sims = V[h] ? Object.entries(rec).filter(([k, o]) => +k !== h && o.n >= 10 && V[k]).map(([k, o]) => ({h: +k, n: o.n, wr: o.w/o.n, s: cosine(V[h], V[k])})).filter(k => k.s >= 0.5).sort((a,b) => b.s - a.s).slice(0, 3) : [];
       const sn = sims.reduce((a, k) => a + k.n, 0), sd = sims.reduce((a, k) => a + k.s*k.s*k.n, 0), simWr = sd ? sims.reduce((a, k) => a + k.s*k.s*k.wr*k.n, 0)/sd : null;
-      const far = Math.max(sim.p100, sn >= 40 && simWr != null ? simWr : 0);
-      return {h, pos, n: (rec[h] || {}).n || 0, w: (rec[h] || {}).w || 0, now: sim.p5, d20: sim.p20, d50: sim.p50, d100: sim.p100, far, sims, simWr, cplx: H(h).complexity || 2};
+      const far = Math.max(sim.p100, sn >= 40 && simWr != null ? simWr : 0), hard = (H(h).complexity || 2) >= 3 || far < 0.5;
+      const d300 = hard ? mlSimulate(ML, h, pos, 305, perM, 20).p300 : null;
+      return {hard, d300, h, pos, n: (rec[h] || {}).n || 0, w: (rec[h] || {}).w || 0, now: sim.p5, d20: sim.p20, d50: sim.p50, d100: sim.p100, far, sims, simWr, cplx: H(h).complexity || 2};
     }).sort((a,b) => b.far - a.far || b.d100 - a.d100);
     const verdict = v => v >= 0.53 ? ['💪', 'Потащишь', 'good'] : v >= 0.5 ? ['🙂', 'В плюсе', 'good'] : v >= 0.47 ? ['😐', 'Около нуля', 'mid'] : ['❌', 'Тяжело', 'bad'];
     const COL = ['#ffd88a', '#c4b5fd', '#f9a77b', '#67e8f9', '#f472b6', '#6ee7a8', '#a5b4fc', '#fcd34d', '#fb7185', '#5eead4'];
@@ -2485,15 +2508,19 @@ async function renderPicker(S, box, tabsHtml, bindTabs){
     const bx = v => clamp((v - 0.3)/0.4, 0, 1)*100;
     const bars = x => `<div class="mh-pkbars">${[['старт', x.now], ['100 матчей', x.d100], ['потолок', x.far]].map(([l, v]) => `<div class="mh-pkbar"><span>${l}</span><i><b style="width:${bx(v).toFixed(1)}%" class="${wrClass(v)}"></b><u></u></i><em class="${wrClass(v)}">${pct0(v)}</em></div>`).join('')}</div>`;
     const why = x => x.simWr != null && x.sims.length ? `играется как твои ${x.sims.map(k => hn(k.h)).join(', ')} — на них ${pct0(x.simWr)}` : 'похожих героев у тебя мало — прогноз только по модели';
+    // 💡 «Возможность есть»: 300 матчей + что учить. Честно: модель продлевает твоё прошлое обучение — учишься иначе, растёшь выше
+    const chance = x => !x.hard ? '' : `<details class="mh-chance"><summary>💡 Возможность есть — что нужно</summary>
+      <p>За 100 матчей — ${pct0(x.d100)}, к 300-му — <b class="${wrClass(x.d300)}">${pct0(x.d300)}</b>. ${x.d300 >= 0.5 ? 'Выйдешь в плюс, если не бросишь: это долгий путь, но он есть.' : `Модель видит плато, потому что продлевает то, как ты учился раньше: ${x.n >= 20 ? `на нём у тебя уже ${x.w}–${x.n - x.w}` : 'на похожих героях ты пока ниже 50%'}. Если учиться иначе — потолок выше. Вот что для этого нужно:`}</p>
+      <ul>${hardTips(x.h).map(t => `<li>${t}</li>`).join('')}</ul><p class="muted">Сильные игроки на нём набирали сотни игр именно так: механика отдельно, разбор ошибок, короткие сессии.</p></details>`;
     const live = (h, cls) => `<video class="${cls}" autoplay muted loop playsinline poster="${CDN + RENDER + heroShort(h)}.png"><source src="${CDN + RENDER + heroShort(h)}.webm" type="video/webm"><source src="${CDN + RENDER + heroShort(h)}.mov" type="video/quicktime"></video>`;
     const top = rows.slice(0, 3), order = top.length === 3 ? [1, 0, 2] : top.length === 2 ? [1, 0] : [0];
     const podium = `<div class="mh-podium">${order.map(i => { const x = top[i], [ic, tx, cl] = verdict(x.far);
       return `<div class="mh-pod p${i + 1}" style="--c:${COL[i]}"><div class="mh-podhero">${live(x.h, 'mh-podvid')}</div>
         <div class="mh-podstep"><div class="mh-podrank">${['🥇', '🥈', '🥉'][i]}</div><b>${hn(x.h)}</b><div class="mh-pkverd ${cl}">${ic} ${tx}</div>
-        <div class="mh-podbig ${wrClass(x.far)}">${pct0(x.far)}</div><small>${roleShort(x.pos).toLowerCase()} · ${CPLX[x.cplx]} герой</small>${bars(x)}<p>${why(x)}${x.n ? ` · у тебя на нём ${x.w}–${x.n - x.w}` : ''}</p></div></div>`; }).join('')}</div>`;
+        <div class="mh-podbig ${wrClass(x.far)}">${pct0(x.far)}</div><small>${roleShort(x.pos).toLowerCase()} · ${CPLX[x.cplx]} герой</small>${bars(x)}<p>${why(x)}${x.n ? ` · у тебя на нём ${x.w}–${x.n - x.w}` : ''}</p>${chance(x)}</div></div>`; }).join('')}</div>`;
     const rest = rows.slice(3);
     const restHtml = rest.length ? `<div class="mh-pkrest">${rest.map((x, k) => { const [ic, tx, cl] = verdict(x.far);
-      return `<div class="mh-pkrow" style="--c:${COL[k + 3]}"><span class="mh-pkn">${k + 4}</span><img src="${CDN + H(x.h).img}" alt=""><div><b>${hn(x.h)}</b><span class="mh-pkverd ${cl}">${ic} ${tx}</span></div>${bars(x)}</div>`; }).join('')}</div>` : '';
+      return `<div class="mh-pkrow" style="--c:${COL[k + 3]}"><span class="mh-pkn">${k + 4}</span><img src="${CDN + H(x.h).img}" alt=""><div><b>${hn(x.h)}</b><span class="mh-pkverd ${cl}">${ic} ${tx}</span></div>${bars(x)}${chance(x)}</div>`; }).join('')}</div>` : '';
     // график % побед по месяцам: старт → 20 → 50 → 100 матчей (тот же расчёт, что вердикт), дальше пунктир к потолку
     const W = 680, Hh = Math.max(260, 120 + rows.length*32), PL = 40, PR = 70, PT = 20, PB = 34, mAt = g => g/perM, mx = Math.max(mAt(105), 1) + 1;
     const lo = 0.35, hi = Math.max(0.62, ...rows.map(x => x.far + 0.02)), X = m => PL + (W - PL - PR)*m/mx, Y = v => PT + (Hh - PT - PB)*(1 - (v - lo)/(hi - lo));
