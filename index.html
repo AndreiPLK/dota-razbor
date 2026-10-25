@@ -770,7 +770,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261025120534';
+const BUILD = '20261025120746';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2439,7 +2439,7 @@ async function renderDuo(S, box, tabsHtml, bindTabs){
     let set = G.filter(g => g.mp === me && g.fp === fr), note = '';
     if(set.length < 10){ note = `На позициях «${roleShort(me).toLowerCase()} + ${roleShort(fr).toLowerCase()}» у вас всего ${set.length} ${gamesWord(set.length)} — добавил все ваши общие игры, чтобы было на что опереться.`; set = G; }
     const rank = (keyOf, minN) => { const o = {}; set.forEach(g => { const k = keyOf(g); if(k == null) return; const z = o[k] = o[k] || {n: 0, w: 0}; z.n++; z.w += g.win ? 1 : 0; });
-      return Object.entries(o).filter(([, z]) => z.n >= minN).map(([k, z]) => ({k, ...z, sc: (z.w + 3*base)/(z.n + 6)})).sort((a,b) => b.sc - a.sc).slice(0, 3); };
+      return Object.entries(o).filter(([, z]) => z.n >= minN && z.w/z.n >= 0.5).map(([k, z]) => ({k, ...z, sc: (z.w + 3*base)/(z.n + 6)})).sort((a,b) => b.sc - a.sc).slice(0, 3); };
     const pairs = rank(g => g.mh + '_' + g.fh, 2), mine = rank(g => g.mp === me || note ? g.mh : null, 3), his = rank(g => g.fp === fr || note ? g.fh : null, 3);
     const card = (hs, z) => `<div class="mh-duocard"><div class="mh-duoimgs">${hs.map(h => `<img src="${CDN + H(+h).img}" alt="">`).join('')}</div><b>${hs.map(h => hn(+h)).join(' + ')}</b><span><b class="${wrClass(z.w/z.n)}">${z.w}–${z.n - z.w}</b> вместе · ${pct0(z.w/z.n)}</span></div>`;
     out.innerHTML = `<p>Вы сыграли вместе <b>${G.length}</b> ${gamesWord(G.length)} — <b class="${wrClass(base)}">${pct0(base)}</b> побед.${topCombo ? ` Чаще всего: ты — ${roleShort(+topCombo[0].split('_')[0]).toLowerCase()}, он — ${roleShort(+topCombo[0].split('_')[1]).toLowerCase()} (${topCombo[1].length} ${gamesWord(topCombo[1].length)}, ${pct0(wr(topCombo[1]))}).` : ''}</p>
