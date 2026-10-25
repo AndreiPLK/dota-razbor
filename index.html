@@ -889,7 +889,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261025223858';
+const BUILD = '20261025224035';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2752,15 +2752,17 @@ async function renderLove(S, box, tabsHtml, bindTabs){
     const own = o.n >= 15, exp = own ? (o.w + 5*0.5)/(o.n + 10) : mlSimulate(ML, h, pos, 6, perM, 15).p5;
     const g = pathTo(S, own ? {h, n: 0, now: o.w/o.n} : {h, n: o.n, now: exp}, 0.52), fit = fs.length ? Math.max(...fs.map(f => FS[f[0]].sm)) : avg;
     const grow = g.far ? 0 : 1 - Math.min(g.left, 300)/300, cplx = H(h).complexity || 2;
-    return {h, pos, o, own, exp, g, fs, fit, score: 2*(exp - 0.5) + 1.5*(fit - 0.5) + 0.04*fs.length + 0.05*grow + (cplx >= 2 ? 0.02 : 0)};
-  }).sort((a,b) => b.score - a.score);
+    // «Супер-многослойный» (основатель): сначала герои с 2–3 стилями в одном, на которых ты не проигрываешь
+    const multi = fs.length >= 2 && (own ? o.w/o.n >= 0.505 : !g.far);
+    return {h, pos, o, own, exp, g, fs, fit, multi, score: 2*(exp - 0.5) + 1.5*(fit - 0.5) + 0.04*fs.length + 0.05*grow + (cplx >= 2 ? 0.02 : 0)};
+  }).sort((a,b) => (b.multi - a.multi) || b.score - a.score);
   await sleep(1800);
   const x = rows[0];
   if(!x){ box.querySelector('.mh-love').innerHTML = '<p class="muted">Не нашёл — верни убранных героев и попробуй ещё раз.</p>'; return; }
   const bestF = FEELS.slice().sort((a,b) => FS[b[0]].sm - FS[a[0]].sm)[0];
   const layers = [
     ['🎮', 'Кайф', x.fs.length ? `${x.fs.map(f => f[1] + ' ' + f[2].toLowerCase()).join(' + ')}. ${x.fs.some(f => f[0] === bestF[0]) ? `Это твой вкус: на таких героях ты выигрываешь <b class="good">${pct0(FS[bestF[0]].wr)}</b>.` : ''}` : `твой стиль игры: на нём ты в потоке`],
-    ['🧩', 'Многослойный', x.fs.length >= 2 ? `${x.fs.length} стиля в одном герое — каждый раз можно играть по-разному, не надоест` : `один чистый стиль — доводишь его до совершенства`],
+    ['🧩', 'Многослойный', x.fs.length >= 2 ? `${x.fs.length} стиля в одном: ${x.fs.map(f => f[2].toLowerCase()).join(', ')} — каждую игру можно играть по-разному, не надоест` : `один чистый стиль — доводишь его до совершенства`],
     ['📊', 'Твои цифры', x.own ? `у тебя <b class="${wrClass(x.o.w/x.o.n)}">${pct0(x.o.w/x.o.n)}</b> за ${x.o.n} ${gamesWord(x.o.n)} — это уже доказано твоими играми` : `старт около <b>${pct0(x.exp)}</b>${x.o.n ? ` (ты уже сыграл ${x.o.n})` : ''}`],
     ['🛹', 'Легко катится', 'без управления юнитами — один герой, одна рука, играешь в потоке, а не работаешь'],
     ['🚀', 'Путь', x.g.far ? `52% — дальше 300 игр: это герой ради кайфа, растить его долго` : !x.g.left ? `держи уровень — ты уже выше 52%` : `52% через <b class="good">${x.g.left} ${gamesWord(x.g.left)}</b> (≈ ${x.g.months} мес.)`],
