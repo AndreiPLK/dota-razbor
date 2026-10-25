@@ -488,6 +488,12 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-mini:hover{transform:translateY(-2px);border-color:rgba(196,181,253,.6)} .mh-mini img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:9px}
 .mh-mini>b{font-size:15px} .mh-mini em{font-style:normal;font-size:11.5px;color:#c4b5fd;font-weight:700} .mh-mini span{font-size:13px} .mh-mini span b{font-size:14px}
 .mh-ov-all{margin-top:10px}
+.mh-drduo{margin-top:12px;padding:10px 14px;border-radius:16px;border:1px solid rgba(249,115,22,.45);background:linear-gradient(135deg,rgba(249,115,22,.14),rgba(236,72,153,.1))}
+.mh-drduo>div:first-child{font-size:14px} .mh-drduo>span{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px;font-weight:700}
+.mh-drfr{display:flex;flex-wrap:wrap;gap:6px} .mh-drfh{display:flex !important;flex-direction:column;align-items:center;gap:2px;padding:3px !important;border-radius:10px;background:var(--panel2) !important;border:2px solid transparent !important;box-shadow:none !important;color:#e9e4ff !important}
+.mh-drfh img{width:60px;height:34px;object-fit:cover;border-radius:6px} .mh-drfh small{font-size:10px;max-width:62px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mh-drfh.on{border-color:#f97316 !important;box-shadow:0 0 14px rgba(249,115,22,.6) !important}
+.mh-lvduo{text-align:center;font-size:13px;color:#ffd1e1;margin-bottom:8px}
 .mh-big.mh-love{grid-column:1/-1;align-items:center !important;text-align:center !important;font-size:24px !important;min-height:92px;background:linear-gradient(120deg,#ff2d7a,#a855f7,#ff2d7a) !important;background-size:200% 100% !important;color:#fff !important;box-shadow:0 12px 40px rgba(255,45,122,.45) !important;animation:loveShine 4s linear infinite}
 @keyframes loveShine{to{background-position:200% 0}}
 .mh-lvspin{text-align:center;padding:30px 0} .mh-lvspin p{font-size:18px;font-weight:800;color:#ff7aa8;margin-top:14px}
@@ -889,7 +895,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261025224527';
+const BUILD = '20261025225308';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2649,23 +2655,68 @@ async function renderPicker(S, box, tabsHtml, bindTabs){
 
 // 👥 Дуо (основатель, 25.10): «я играю в дуо с одним и тем же человеком — какие герои подойдут нам вместе на наших позициях».
 // Берём ваши настоящие общие матчи из Stratz (withFriendSteamAccountIds) и считаем пары героев, твоих и его героев в дуо
+// Дуо — социальный подбор (основатель, 25.10: «я играю всё время с другом в дуо: он керри, я мид»).
+// Друг: сохранённый в «Дуо с другом» или найденный сам — чаще всех в одной пати за последние 100 игр (10+ раз).
+async function duoFriend(S){
+  const sv = lsGet('dc_duo_' + S.id) || {}; if(sv.f) return {f: +sv.f};
+  if(S._duoF !== undefined) return S._duoF;
+  try{ const d = await gql(`{ player(steamAccountId: ${S.id}) { matches(request: {take: 100}) { players { steamAccountId isRadiant partyId } } } }`), c = {};
+    ((d.player && d.player.matches) || []).forEach(m => { const me = m.players.find(p => String(p.steamAccountId) === String(S.id)); if(!me || me.partyId == null) return;
+      m.players.filter(p => p !== me && p.isRadiant === me.isRadiant && p.partyId === me.partyId && p.steamAccountId).forEach(p => c[p.steamAccountId] = (c[p.steamAccountId] || 0) + 1); });
+    const top = Object.entries(c).sort((a,b) => b[1] - a[1])[0];
+    S._duoF = top && top[1] >= 10 ? {f: +top[0], n: top[1]} : null;
+  }catch{ S._duoF = null; }
+  return S._duoF;
+}
+// Общие игры в одной команде (до 300): кто кем играл, позиции, победа. Плюс ваша обычная связка позиций.
+async function duoGames(S, f){
+  S._duoG = S._duoG || {}; if(S._duoG[f]) return S._duoG[f];
+  let all = [];
+  for(let skip = 0; skip < 300; skip += 100){
+    const d = await gql(`{ player(steamAccountId: ${S.id}) { matches(request: {withFriendSteamAccountIds: [${f}], take: 100, skip: ${skip}}) { id didRadiantWin players { steamAccountId heroId isRadiant position steamAccount { name } } } } }`);
+    const page = (d.player && d.player.matches) || []; all = all.concat(page); if(page.length < 100) break;
+  }
+  let name = '';
+  const G = all.map(m => { const a = m.players.find(p => String(p.steamAccountId) === String(S.id)), b = m.players.find(p => String(p.steamAccountId) === String(f));
+    if(b && b.steamAccount && b.steamAccount.name) name = name || b.steamAccount.name;
+    return a && b && a.isRadiant === b.isRadiant ? {win: a.isRadiant === m.didRadiantWin, mh: a.heroId, fh: b.heroId, mp: posNum(a.position), fp: posNum(b.position)} : null; }).filter(Boolean);
+  const combos = {}; G.forEach(g => { if(g.mp && g.fp){ const k = g.mp + '_' + g.fp; combos[k] = (combos[k] || 0) + 1; } });
+  const top = Object.entries(combos).sort((a,b) => b[1] - a[1])[0];
+  const base = G.length ? G.filter(g => g.win).length/G.length : 0.5;
+  return S._duoG[f] = {G, name: name || 'друг', me: top ? +top[0].split('_')[0] : null, fr: top ? +top[0].split('_')[1] : null, base};
+}
+// Пара «мой герой + его герой» по общим играм, подтянутая к вашему среднему (2–0 не перевешивает 15–7)
+const duoPair = (D, mh, fh) => { const a = D.G.filter(g => g.mh === mh && (fh == null || g.fh === fh)), w = a.filter(g => g.win).length; return {n: a.length, w, sc: (w + 3*D.base)/(a.length + 6)}; };
+// Лучший его герой рядом с моим (2+ общих игры, не в минусе)
+const duoBestWith = (D, mh) => { const o = {}; D.G.filter(g => g.mh === mh).forEach(g => { const z = o[g.fh] = o[g.fh] || {n: 0, w: 0}; z.n++; z.w += g.win ? 1 : 0; });
+  return Object.entries(o).filter(([, z]) => z.n >= 2 && z.w/z.n >= 0.5).map(([h, z]) => ({h: +h, ...z})).sort((a,b) => (b.w + 3*D.base)/(b.n + 6) - (a.w + 3*D.base)/(a.n + 6))[0] || null; };
+
 // Живой 3D-герой для драфта и «кайфа» (тот же рендер Valve, что на пьедестале)
 const liveHero = (h, cls) => `<video class="${cls}" autoplay muted loop playsinline poster="${CDN + RENDER + heroShort(h)}.png"><source src="${CDN + RENDER + heroShort(h)}.webm" type="video/webm"><source src="${CDN + RENDER + heroShort(h)}.mov" type="video/quicktime"></video>`;
 
 // ⚡ Драфт сейчас (основатель, 25.10): зашёл в игру — нажал роль — сразу «бери X». Забрали — следующий. Тот же расчёт, что пул роли.
 async function renderDraft(S, box, tabsHtml, bindTabs, best){
   const cache = S.mhCache = S.mhCache || {idx: {}}, rej = lsGet('dc_rej_' + S.id) || {}, taken = new Set(), ps = S.posStats || {};
-  let q = best || 2, first = null;
+  let q = best || 2, first = null, D = null, fh = null, touched = false;
   const list = p => { const r = cache[p] = cache[p] || pickPerspective(S, p);
     const own = (r.mineAll || []).filter(o => !rej[o.h]).map(o => ({h: o.h, own: true, n: o.n, wr: o.wr, exp: o.sc}));
     const fresh = (r.all || []).filter(y => !rej[y.h]).map(y => ({h: y.h, own: false, y, exp: y.ceil}));
     return [...own, ...fresh].sort((a,b) => b.exp - a.exp).filter((v, k, a) => a.findIndex(z => z.h === v.h) === k); };
-  const why = t => t.own ? `у тебя <b class="${wrClass(t.wr)}">${pct0(t.wr)}</b> за ${t.n} ${gamesWord(t.n)}` : `новый: старт ${pct0(t.y.now)} · ${(g => g.far ? 'до 51% далеко' : !g.left ? 'сразу в плюсе' : '51% ' + goalTxt(g))(pathTo(S, t.y, 0.51))}`;
+  const why0 = t => t.own ? `у тебя <b class="${wrClass(t.wr)}">${pct0(t.wr)}</b> за ${t.n} ${gamesWord(t.n)}` : `новый: старт ${pct0(t.y.now)} · ${(g => g.far ? 'до 51% далеко' : !g.left ? 'сразу в плюсе' : '51% ' + goalTxt(g))(pathTo(S, t.y, 0.51))}`;
+  const why = t => { if(!D) return why0(t);
+    if(fh){ const pr = duoPair(D, t.h, fh); return why0(t) + (pr.n ? ` · с его ${hn(fh)} <b class="${wrClass(pr.w/pr.n)}">${pr.w}–${pr.n - pr.w}</b>` : ''); }
+    const bw = duoBestWith(D, t.h); return why0(t) + (bw ? ` · лучше всего с его ${hn(bw.h)} (${bw.w}–${bw.n - bw.w})` : ''); };
+  const goodPair = t => { const pr = duoPair(D, t.h, fh); return pr.n >= 2 && pr.w/pr.n >= 0.5 ? pr.sc : 0; };
   const draw = () => {
-    let L = list(q).filter(t => !taken.has(t.h)); const fi = L.findIndex(t => t.h === first); if(fi > 0) L = [L[fi], ...L.filter((_, k) => k !== fi)];
+    let L = list(q).filter(t => !taken.has(t.h));
+    if(D && fh){ const gp = L.filter(goodPair).sort((a,b) => goodPair(b) - goodPair(a)); L = [...gp, ...L.filter(t => !goodPair(t))]; }   // под героя друга — сначала ваши проверенные пары
+    const fi = L.findIndex(t => t.h === first); if(fi > 0) L = [L[fi], ...L.filter((_, k) => k !== fi)];
+    const frH = D && D.fr ? Object.entries(D.G.filter(g => g.fp === D.fr).reduce((o, g) => (o[g.fh] = (o[g.fh] || 0) + 1, o), {})).sort((a,b) => b[1] - a[1]).slice(0, 10).map(([h]) => +h) : [];
+    const duoBar = D ? `<div class="mh-drduo"><div>👥 Дуо с <b>${D.name}</b>: ты — ${roleShort(D.me).toLowerCase()}, он — ${roleShort(D.fr).toLowerCase()} · вместе <b class="${wrClass(D.base)}">${pct0(D.base)}</b> за ${D.G.length} ${gamesWord(D.G.length)}</div>
+      ${frH.length ? `<span>Что взял ${D.name}? Нажми — подберу тебе героя под него:</span><div class="mh-drfr">${frH.map(h => `<button class="mh-drfh ${h === fh ? 'on' : ''}" data-h="${h}" title="${hn(h)}"><img src="${CDN + H(h).img}" alt=""><small>${hn(h)}</small></button>`).join('')}</div>` : ''}</div>` : '';
     const m = L[0], alt = L.slice(1, 5);
     box.innerHTML = `${tabsHtml}<div class="mh-pk-panel mh-dr"><div class="mh-ovhead">⚡ Драфт сейчас <small>Нажми свою роль — скажу, кого брать. Забрали или забанили — жми «Забрали», дам следующего.</small></div>
-      <div class="mh-drroles">${[1, 2, 3, 4, 5].map(p => `<button class="mh-drrole ${p === q ? 'on' : ''}" data-p="${p}">${p === best ? '★ ' : ''}${roleShort(p)}<small>${ps[p] && ps[p].n ? pct0(ps[p].wr) : ''}</small></button>`).join('')}</div>
+      ${duoBar}<div class="mh-drroles">${[1, 2, 3, 4, 5].map(p => `<button class="mh-drrole ${p === q ? 'on' : ''}" data-p="${p}">${p === best ? '★ ' : ''}${roleShort(p)}<small>${ps[p] && ps[p].n ? pct0(ps[p].wr) : ''}</small></button>`).join('')}</div>
       ${m ? `<div class="mh-drmain"><div class="mh-drstage">${liveHero(m.h, 'mh-drvid')}</div><div class="mh-drinfo"><em>БЕРИ</em><div class="mh-name">${hn(m.h)}</div><p>${why(m)}</p>
         <button class="mh-drtaken" data-h="${m.h}">🚫 Забрали / забанили</button></div></div>
       ${alt.length ? `<div class="mh-drnext"><span>Если его нет — по порядку:</span>${alt.map((t, k) => `<button class="mh-drnx" data-h="${t.h}"><b>${k + 2}</b><img src="${CDN + H(t.h).img}" alt=""><div><b>${hn(t.h)}</b><small>${why(t)}</small></div></button>`).join('')}</div>` : ''}`
@@ -2673,12 +2724,15 @@ async function renderDraft(S, box, tabsHtml, bindTabs, best){
       ${taken.size ? '<button class="linkbtn mh-drreset">↺ Новая игра — вернуть всех</button>' : ''}
       ${best && q !== best ? `<p class="mh-drhint">Если роль можно выбрать — иди ${roleShort(best).toLowerCase()}: там у тебя лучше всего (${pct0(ps[best].wr)}).</p>` : ''}</div>`;
     bindTabs();
-    box.querySelectorAll('.mh-drrole').forEach(b => b.onclick = () => { q = +b.dataset.p; first = null; draw(); });
+    box.querySelectorAll('.mh-drrole').forEach(b => b.onclick = () => { q = +b.dataset.p; first = null; touched = true; draw(); });
+    box.querySelectorAll('.mh-drfh').forEach(b => b.onclick = () => { fh = fh === +b.dataset.h ? null : +b.dataset.h; first = null; draw(); });
     const tk = box.querySelector('.mh-drtaken'); if(tk) tk.onclick = () => { taken.add(+tk.dataset.h); first = null; draw(); };
     box.querySelectorAll('.mh-drnx').forEach(b => b.onclick = () => { first = +b.dataset.h; draw(); });
-    const rs = box.querySelector('.mh-drreset'); if(rs) rs.onclick = () => { taken.clear(); first = null; draw(); };
+    const rs = box.querySelector('.mh-drreset'); if(rs) rs.onclick = () => { taken.clear(); first = null; fh = null; draw(); };
   };
   draw();
+  // дуо подгружается в фоне — драфт виден сразу, дуо дорисовывается через секунду
+  duoFriend(S).then(x => x ? duoGames(S, x.f) : null).then(d => { if(d && d.G.length >= 10 && box.querySelector('.mh-dr')){ D = d; if(!touched && d.me) q = d.me; draw(); } }).catch(() => {});
 }
 
 // 💥 Что тебе в кайф? (основатель, 25.10): «нормальный герой, но не прёт». Четыре ощущения от игры — и по каждому
@@ -2739,6 +2793,7 @@ async function renderLove(S, box, tabsHtml, bindTabs){
     <p>Ищу героя, в которого ты влюбишься…</p></div></div>`;
   bindTabs();
   await sleep(60);
+  const fx = S.loveSolo ? null : await duoFriend(S).catch(() => null), D = fx ? await duoGames(S, fx.f).catch(() => null) : null, duoOn = !!(D && D.G.length >= 10 && D.me);
   const id = n => +(Object.keys(heroes).find(k => heroes[k].localized_name === n) || 0);
   const rec = {}; S.year.forEach(g => { const o = rec[g.hero] = rec[g.hero] || {n: 0, w: 0, pos: {}}; o.n++; o.w += g.win ? 1 : 0; if(g.pos) o.pos[g.pos] = (o.pos[g.pos] || 0) + 1; });
   const avg = S.year.filter(g => g.win).length/S.year.length, ML = S.ML = S.ML || mlBuild(S), perM = mhPerMonth(S), T = S.posTable || {};
@@ -2748,14 +2803,16 @@ async function renderLove(S, box, tabsHtml, bindTabs){
   const pool = new Set([...FEELS.flatMap(f => f[4]).map(id), ...Object.keys(rec).filter(h => rec[h].n >= 15).map(Number)]);
   const rows = [...pool].filter(h => h && heroes[h] && !rej[h] && !skip.has(h) && !MICRO.has(hn(h))).map(h => {
     const o = rec[h] || {n: 0, w: 0, pos: {}}, fs = feelsOf(h), mp = Object.entries(o.pos).sort((a,b) => b[1] - a[1])[0];
-    const pos = mp && mp[1] >= 3 ? +mp[0] : +(Object.entries(T[h] || {}).sort((a,b) => (b[1].n || 0) - (a[1].n || 0))[0] || [2])[0] || 2;
+    let pos = mp && mp[1] >= 3 ? +mp[0] : +(Object.entries(T[h] || {}).sort((a,b) => (b[1].n || 0) - (a[1].n || 0))[0] || [2])[0] || 2;
+    // в дуо — только герои твоей роли в связке (друг на керри — ты на миде)
+    if(duoOn){ const fits = pos === D.me || (o.pos[D.me] || 0) >= 3 || (T[h] && T[h][D.me] && T[h][D.me].n >= ((T[h][pos] || {n: 1}).n)*0.3); if(!fits) return null; pos = D.me; }
     const own = o.n >= 15, exp = own ? (o.w + 5*0.5)/(o.n + 10) : mlSimulate(ML, h, pos, 6, perM, 15).p5;
     const g = pathTo(S, own ? {h, n: 0, now: o.w/o.n} : {h, n: o.n, now: exp}, 0.52), fit = fs.length ? Math.max(...fs.map(f => FS[f[0]].sm)) : avg;
     const grow = g.far ? 0 : 1 - Math.min(g.left, 300)/300, cplx = H(h).complexity || 2;
     // «Супер-многослойный» (основатель): сначала герои с 2–3 стилями в одном, на которых ты не проигрываешь
-    const multi = fs.length >= 2 && (own ? o.w/o.n >= 0.505 : !g.far);
-    return {h, pos, o, own, exp, g, fs, fit, multi, score: 2*(exp - 0.5) + 1.5*(fit - 0.5) + 0.04*fs.length + 0.05*grow + (cplx >= 2 ? 0.02 : 0)};
-  }).sort((a,b) => (b.multi - a.multi) || ((b.own && b.o.w/b.o.n >= 0.505) - (a.own && a.o.w/a.o.n >= 0.505)) || b.score - a.score);   // «навсегда» — сначала доказанный твоими играми
+    const multi = fs.length >= 2 && (own ? o.w/o.n >= 0.505 : !g.far), pr = duoOn ? duoPair(D, h) : {n: 0};
+    return {h, pos, o, own, exp, g, fs, fit, multi, pr, score: 2*(exp - 0.5) + 1.5*(fit - 0.5) + 0.04*fs.length + 0.05*grow + (cplx >= 2 ? 0.02 : 0) + (pr.n >= 3 ? 0.5*(pr.sc - D.base) : 0)};
+  }).filter(Boolean).sort((a,b) => (b.multi - a.multi) || ((b.own && b.o.w/b.o.n >= 0.505) - (a.own && a.o.w/a.o.n >= 0.505)) || b.score - a.score);   // «навсегда» — сначала доказанный твоими играми
   await sleep(1800);
   const x = rows[0];
   if(!x){ box.querySelector('.mh-lvpanel').innerHTML = '<p class="muted">Не нашёл — верни убранных героев и попробуй ещё раз.</p>'; return; }
@@ -2765,17 +2822,19 @@ async function renderLove(S, box, tabsHtml, bindTabs){
     ['🧩', 'Многослойный', x.fs.length >= 2 ? `${x.fs.length} стиля в одном: ${x.fs.map(f => f[2].toLowerCase()).join(', ')} — каждую игру можно играть по-разному, не надоест` : `один чистый стиль — доводишь его до совершенства`],
     ['📊', 'Твои цифры', x.own ? `у тебя <b class="${wrClass(x.o.w/x.o.n)}">${pct0(x.o.w/x.o.n)}</b> за ${x.o.n} ${gamesWord(x.o.n)} — это уже доказано твоими играми` : `старт около <b>${pct0(x.exp)}</b>${x.o.n ? ` (ты уже сыграл ${x.o.n})` : ''}`],
     ['🛹', 'Легко катится', 'без управления юнитами — один герой, одна рука, играешь в потоке, а не работаешь'],
+    ...(duoOn ? [['👥', `С ${D.name}`, x.pr.n ? `вместе на нём <b class="${wrClass(x.pr.w/x.pr.n)}">${x.pr.w}–${x.pr.n - x.pr.w}</b>${(bw => bw ? `, лучше всего — когда он берёт ${hn(bw.h)} (${bw.w}–${bw.n - bw.w})` : '')(duoBestWith(D, x.h))}` : `вы с ним на этом герое ещё не играли — ты ${roleShort(D.me).toLowerCase()}, он ${roleShort(D.fr).toLowerCase()}, ваша обычная связка`]] : []),
     ['🚀', 'Путь', x.g.far ? `52% — дальше 300 игр: это герой ради кайфа, растить его долго` : !x.g.left ? `держи уровень — ты уже выше 52%` : `52% через <b class="good">${x.g.left} ${gamesWord(x.g.left)}</b> (≈ ${x.g.months} мес.)`],
   ];
   const alts = rows.slice(1, 4);
   const inPool = () => (lsGet('dc_pool_' + S.id) || []).some(e => e.h === x.h);
-  box.querySelector('.mh-lvpanel').innerHTML = `<div class="mh-lvflash"></div><div class="mh-lvhead">❤️ Твой герой на всю жизнь</div>
+  box.querySelector('.mh-lvpanel').innerHTML = `<div class="mh-lvflash"></div><div class="mh-lvhead">❤️ Твой герой на всю жизнь</div><div class="mh-lvduo">${duoOn ? `👥 Под ваше дуо: ты — ${roleShort(D.me).toLowerCase()}, ${D.name} — ${roleShort(D.fr).toLowerCase()} · <button class="linkbtn mh-lvsolo">играю соло</button>` : fx || S.loveSolo ? `🎮 Соло · <button class="linkbtn mh-lvsolo">вернуть дуо</button>` : ''}</div>
     <div class="mh-lvgrid"><div class="mh-lvstage" style="--c:#ff4d8d"><div class="mh-podhero"><div class="mh-beam"></div><div class="mh-ring2"></div>${Array.from({length: 9}, (_, k) => `<i class="mh-spark" style="left:${8 + k*10}%;animation-delay:${(k*0.37).toFixed(2)}s"></i>`).join('')}${liveHero(x.h, 'mh-lvvid')}</div></div>
       <div class="mh-lvinfo"><em>${roleShort(x.pos).toLowerCase()} · ${CPLX[H(x.h).complexity || 2]} герой</em><div class="mh-name mh-lvname">${hn(x.h)}</div>
         <div class="mh-lvlayers">${layers.map(([i, t, d], k) => `<div class="mh-lvl" style="animation-delay:${0.6 + k*0.25}s"><i>${i}</i><div><b>${t}</b><span>${d}</span></div></div>`).join('')}</div>
         <div class="mh-lvbtns"><button class="mh-lvyes">${inPool() ? '✓ Уже в твоём пуле' : '❤️ Беру навсегда'}</button><button class="mh-lvno">🔄 Не он — другого</button></div></div></div>
     ${alts.length ? `<div class="mh-lvalts"><span>Рядом с ним:</span>${alts.map(a => `<span class="mh-lvalt"><img src="${CDN + H(a.h).img}" alt="">${hn(a.h)}</span>`).join('')}</div>` : ''}`;
   box.querySelector('.mh-lvyes').onclick = e => { const k = 'dc_pool_' + S.id, pl = lsGet(k) || []; if(!pl.some(z => z.h === x.h)) pl.push({h: x.h, p: x.pos, tab: x.pos}); lsSet(k, pl); e.target.textContent = '✓ В твоём пуле навсегда'; };
+  const so = box.querySelector('.mh-lvsolo'); if(so) so.onclick = () => { S.loveSolo = !S.loveSolo; S.loveSkip = []; renderLove(S, box, tabsHtml, bindTabs); };
   box.querySelector('.mh-lvno').onclick = () => { S.loveSkip = [...skip, x.h]; renderLove(S, box, tabsHtml, bindTabs); };
 }
 
@@ -2820,6 +2879,8 @@ async function renderDuo(S, box, tabsHtml, bindTabs){
   };
   box.querySelector('.mh-duogo').onclick = go;
   if(saved.f) go();
+  else duoFriend(S).then(async x => { if(!x || !box.querySelector('.mh-duoid')) return; box.querySelector('.mh-duoid').value = x.f;
+    const d = await duoGames(S, x.f).catch(() => null); if(d && d.me){ box.querySelector('[data-k="me"]').value = d.me; box.querySelector('[data-k="fr"]').value = d.fr; } go(); }).catch(() => {});
 }
 
 async function renderMyHero(S, sel){
