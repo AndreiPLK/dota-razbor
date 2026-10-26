@@ -488,6 +488,30 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-mini:hover{transform:translateY(-2px);border-color:rgba(196,181,253,.6)} .mh-mini img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:9px}
 .mh-mini>b{font-size:15px} .mh-mini em{font-style:normal;font-size:11.5px;color:#c4b5fd;font-weight:700} .mh-mini span{font-size:13px} .mh-mini span b{font-size:14px}
 .mh-ov-all{margin-top:10px}
+.mh-big.mh-dream{background:linear-gradient(135deg,#f59e0b,#fde047) !important;color:#1a1300 !important;box-shadow:0 10px 30px rgba(245,158,11,.4) !important}
+.mh-bigbtns>.mh-big:last-child:nth-child(even){grid-column:1/-1}
+.mh-dmpick{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center} .mh-dmq{flex:1;min-width:150px}
+.mh-dmh{display:flex !important;flex-direction:column;align-items:center;gap:2px;padding:3px !important;border-radius:10px;background:var(--panel2) !important;border:2px solid transparent !important;box-shadow:none !important;color:#e9e4ff !important}
+.mh-dmh img{width:60px;height:34px;object-fit:cover;border-radius:6px} .mh-dmh small{font-size:10px;max-width:62px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .mh-dmh.on{border-color:#fbbf24 !important;box-shadow:0 0 14px rgba(251,191,36,.6) !important}
+.mh-dmgrid{display:grid;grid-template-columns:minmax(0,320px) 1fr;gap:18px;align-items:center;margin-top:14px;padding:12px 18px;border-radius:22px;border:1px solid rgba(251,191,36,.45);background:radial-gradient(ellipse at 25% 60%,rgba(251,191,36,.18),transparent 60%),var(--panel2)}
+.mh-dmvid{width:100%;max-width:320px;aspect-ratio:1;object-fit:contain;filter:drop-shadow(0 16px 26px rgba(0,0,0,.7));animation:podFloat 4s ease-in-out infinite}
+.mh-dminfo em{font-style:normal;font-size:13px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#fbbf24}
+.mh-dmnow{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:10px 0}
+.mh-dmnow>div{display:flex;flex-direction:column;padding:10px 12px;border-radius:14px;border:1px solid var(--line);background:rgba(0,0,0,.18)} .mh-dmnow>div.real{border-color:rgba(110,231,168,.6);background:rgba(110,231,168,.08)}
+.mh-dmnow span{font-size:11.5px;color:var(--muted)} .mh-dmnow b{font-family:Unbounded,Manrope,sans-serif;font-size:28px;line-height:1.15} .mh-dmnow small{font-size:11.5px;color:var(--muted)}
+.mh-dmnow b.good,.mh-dmpath b.good,.mh-dmf b.good{color:#6ee7a8} .mh-dmnow b.bad,.mh-dmpath b.bad,.mh-dmf b.bad{color:#ff6b8a}
+.mh-dmpath{font-size:15px;font-weight:700} .mh-dmpath p{font-size:13.5px;font-weight:500;margin:6px 0 0;line-height:1.45}
+.mh-dmstats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:8px}
+.mh-dmstat{display:flex;flex-direction:column;align-items:center;padding:8px;border-radius:12px;background:var(--panel2);border:1px solid var(--line)} .mh-dmstat span{font-size:11px;color:var(--muted)} .mh-dmstat b{font-size:20px}
+.mh-dmstat small{font-size:11px} .mh-dmstat small.good{color:#6ee7a8} .mh-dmstat small.bad{color:#ff6b8a}
+.mh-dmfix{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.mh-dmf{display:grid;grid-template-columns:36px 1fr;gap:10px;padding:10px 14px;border-radius:14px;border:1px solid rgba(251,191,36,.35);background:rgba(251,191,36,.06)} .mh-dmf i{font-style:normal;font-size:26px}
+.mh-dmf div{display:flex;flex-direction:column;gap:3px} .mh-dmf>div>b{font-size:15.5px} .mh-dmf span{font-size:13.5px;line-height:1.45} .mh-dmf small{font-size:12.5px;color:#ffd88a;line-height:1.4}
+.mh-dmtips{margin:6px 0 0 18px;padding:0;line-height:1.5;font-size:13.5px}
+.mh-dmplan p{font-size:13.5px;line-height:1.5;margin:8px 0}
+.mh-dmbar{position:relative;height:28px;border-radius:14px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:8px} .mh-dmbar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#f59e0b,#fde047);border-radius:14px}
+.mh-dmbar span{position:relative;display:block;text-align:center;line-height:28px;font-size:13px;font-weight:800}
+@media(max-width:700px){.mh-dmgrid{grid-template-columns:1fr;padding:10px} .mh-dmvid{max-width:230px;margin:0 auto;display:block} .mh-dmstats{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .mh-drduo{margin-top:12px;padding:10px 14px;border-radius:16px;border:1px solid rgba(249,115,22,.45);background:linear-gradient(135deg,rgba(249,115,22,.14),rgba(236,72,153,.1))}
 .mh-drduo>div:first-child{font-size:14px} .mh-drduo>span{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px;font-weight:700}
 .mh-drfr{display:flex;flex-wrap:wrap;gap:6px} .mh-drfh{display:flex !important;flex-direction:column;align-items:center;gap:2px;padding:3px !important;border-radius:10px;background:var(--panel2) !important;border:2px solid transparent !important;box-shadow:none !important;color:#e9e4ff !important}
@@ -895,7 +919,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261025230156';
+const BUILD = '20261026081446';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2841,6 +2865,74 @@ async function renderLove(S, box, tabsHtml, bindTabs){
   box.querySelector('.mh-lvno').onclick = () => { S.loveSkip = [...skip, x.h]; renderLove(S, box, tabsHtml, bindTabs); };
 }
 
+// 🌟 Моя мечта (основатель, 26.10: «мечта катать каждую катку на Инвокере — только реально со статой: сколько играть и что улучшать»).
+// Всё из твоих игр на этом герое: где ты выигрываешь и где проигрываешь (линия, смерти, фарм, длина игры, с другом/соло, ночь),
+// против среднего игрока на этом герое в твоём ранге. Главное — «в играх, где ты делал X, у тебя Y%»: это и есть твой настоящий уровень.
+async function renderDream(S, box, tabsHtml, bindTabs){
+  const key = 'dc_dream_' + S.id, T = S.posTable || {};
+  const cnt = {}; S.year.forEach(g => cnt[g.hero] = (cnt[g.hero] || 0) + 1);
+  const inv = +(Object.keys(heroes).find(k => heroes[k].localized_name === 'Invoker') || 0);
+  let st = lsGet(key) || {h: cnt[inv] ? inv : +Object.keys(cnt).sort((a,b) => cnt[b] - cnt[a])[0], t0: Math.floor(Date.now()/1000)};
+  const chipsH = Object.keys(cnt).map(Number).filter(h => heroes[h] && cnt[h] >= 5).sort((a,b) => ((H(b).complexity || 2) - (H(a).complexity || 2)) || cnt[b] - cnt[a]).slice(0, 14);
+  const draw = () => {
+    const h = st.h, G = S.year.filter(g => g.hero === h).sort((a,b) => a.t - b.t), N = G.length;
+    const mp = Object.entries(G.reduce((o, g) => (o[g.pos] = (o[g.pos] || 0) + 1, o), {})).sort((a,b) => b[1] - a[1])[0];
+    const pos = mp ? +mp[0] : +(Object.entries(T[h] || {}).sort((a,b) => (b[1].n || 0) - (a[1].n || 0))[0] || [2])[0] || 2;
+    const nm = (T[h] || {})[pos] || null, wr = a => a.length ? a.filter(g => g.win).length/a.length : null, W = G.filter(g => g.win).length;
+    const avg = (a, f) => a.length ? a.reduce((t, g) => t + (f(g) || 0), 0)/a.length : null, med = (a, f) => { const v = a.map(f).filter(x => x != null).sort((x, y) => x - y); return v.length ? v[Math.floor(v.length/2)] : null; };
+    // 1) Сейчас и тренд: первая половина игр против второй
+    const half = Math.floor(N/2), early = wr(G.slice(0, half)), late = wr(G.slice(half)), last20 = G.slice(-20);
+    // 2) Факторы: «хорошая» и «плохая» игра по одному признаку → разница в победах. Выигрыш = насколько поднимется %, если плохие станут хорошими
+    const dThr = nm ? Math.max(3, Math.round(nm.d)) : Math.max(3, Math.round(med(G, g => g.d) || 6));
+    const gpmT = Math.round(avg(G.filter(g => g.win), g => g.gpm) || 0);
+    const lenWin = wr(G.filter(g => g.dur < 35*60)), lenLoss = wr(G.filter(g => g.dur >= 35*60)), shortBetter = (lenWin ?? 0) >= (lenLoss ?? 0);
+    const F = [
+      {k: 'lane', ic: '🛣', t: 'Линия', ok: g => g.lane >= 0, use: g => g.lane != null, good: 'не проиграл линию', bad: 'проиграл линию', tip: 'первые 10 минут: бутылка, руны на 2-й и 4-й минуте, не размениваться хп — линию достаточно не проиграть'},
+      {k: 'death', ic: '💀', t: 'Смерти', ok: g => g.d <= dThr, use: () => true, good: `умер ≤ ${dThr} раз`, bad: `умер больше ${dThr} раз`, tip: `цель — не больше ${dThr} смертей за игру${nm ? ` (средний игрок на нём в твоём ранге: ${nm.d.toFixed(1)})` : ''}: перед дракой проверь кнопку выхода (Ghost Walk / Blink), не ходи первым в туман`},
+      ...(gpmT ? [{k: 'farm', ic: '💰', t: 'Фарм', ok: g => g.gpm >= gpmT, use: g => g.gpm != null, good: `GPM ≥ ${gpmT}`, bad: `GPM ниже ${gpmT}`, tip: `GPM ${gpmT}+ (как в твоих победах на нём): между драками — лесные лагеря и линия, не стоять без дела`}] : []),
+      {k: 'len', ic: '⏱', t: 'Длина игры', ok: g => shortBetter ? g.dur < 35*60 : g.dur >= 35*60, use: () => true, good: shortBetter ? 'игра короче 35 минут' : 'игра дольше 35 минут', bad: shortBetter ? 'игра 35+ минут' : 'игра короче 35 минут',
+        tip: shortBetter ? 'ты сильнее в начале: после 20-й минуты зови друга и команду ломать башни, не дай игре затянуться' : 'ты сильнее к концу: не лезь в ранние драки без нужды, фарми к своим предметам'},
+      {k: 'duo', ic: '👥', t: 'С другом', ok: g => g.party > 1, use: () => true, good: 'в пати', bad: 'соло', tip: 'на нём ты лучше играешь в пати — бери его, когда играешь с другом'},
+      {k: 'night', ic: '🌙', t: 'Время', ok: g => { const hh = new Date(g.t*1000).getHours(); return hh >= 8; }, use: () => true, good: 'днём и вечером', bad: 'с полуночи до 8 утра', tip: 'ночью на нём ты проигрываешь заметно чаще — сложного героя играй, пока свежая голова'},
+    ].map(f => { const A = G.filter(f.use), g1 = A.filter(f.ok), g0 = A.filter(g => !f.ok(g)), w1 = wr(g1), w0 = wr(g0);
+      return {...f, n1: g1.length, n0: g0.length, w1, w0, share: A.length ? g0.length/A.length : 0, gain: g1.length >= 4 && g0.length >= 4 && w1 > w0 ? (w1 - w0)*g0.length/N : 0}; })
+      .filter(f => f.gain > 0.01).sort((a,b) => b.gain - a.gain);
+    const top = F.slice(0, 3);
+    // 3) Сколько играть: от твоего текущего уровня по кривой обучения; и «твой настоящий уровень» — в играх, где делал главное правильно
+    const now = N ? (W + 5*0.5)/(N + 10) : null, g51 = now != null ? pathTo(S, {h, n: 0, now}, 0.51) : null, g52 = now != null ? pathTo(S, {h, n: 0, now}, 0.52) : null;
+    const real = top[0] ? top[0].w1 : null;
+    // 4) Прогресс с начала плана
+    const since = G.filter(g => g.t >= st.t0), sw = wr(since);
+    const cmp = (mine, norm, lowGood) => norm == null || mine == null ? '' : `<small class="${(lowGood ? mine <= norm : mine >= norm) ? 'good' : 'bad'}">норма ${norm.toFixed(norm < 20 ? 1 : 0)}</small>`;
+    const stat = (l, v, n, lowGood) => `<div class="mh-dmstat"><span>${l}</span><b>${v == null ? '—' : v.toFixed(v < 20 ? 1 : 0)}</b>${cmp(v, n, lowGood)}</div>`;
+    box.innerHTML = `${tabsHtml}<div class="mh-pk-panel mh-dm"><div class="mh-ovhead">🌟 Моя мечта <small>Герой, на котором хочешь играть каждую игру. Только твои игры на нём — сколько играть и что именно исправить.</small></div>
+      <div class="mh-dmpick">${chipsH.map(x => `<button class="mh-dmh ${x === h ? 'on' : ''}" data-h="${x}" title="${hn(x)}"><img src="${CDN + H(x).img}" alt=""><small>${hn(x)}</small></button>`).join('')}<input class="mh-dmq" list="mhDmList" placeholder="🔍 другой герой…"><datalist id="mhDmList">${Object.values(heroes).map(x => `<option value="${x.localized_name}">`).join('')}</datalist></div>
+      <div class="mh-dmgrid"><div class="mh-dmstage">${liveHero(h, 'mh-dmvid')}</div><div class="mh-dminfo"><em>мечта · ${roleShort(pos).toLowerCase()}</em><div class="mh-name">${hn(h)}</div>
+        ${N ? `<div class="mh-dmnow"><div><span>сейчас</span><b class="${wrClass(W/N)}">${pct0(W/N)}</b><small>${W}–${N - W} за ${N} ${gamesWord(N)}</small></div>
+          ${N >= 10 ? `<div><span>тренд</span><b class="${late > early ? 'good' : late < early ? 'bad' : ''}">${late > early ? '↗' : late < early ? '↘' : '→'} ${pct0(late)}</b><small>первые ${half}: ${pct0(early)} → последние ${N - half}: ${pct0(late)}</small></div>` : ''}
+          ${real != null && top[0].w1 > W/N ? `<div class="real"><span>твой настоящий ${hn(h)}</span><b class="${wrClass(real)}">${pct0(real)}</b><small>в играх, где ты ${top[0].good} (${top[0].n1} ${gamesWord(top[0].n1)})</small></div>` : ''}</div>` : '<p>На нём у тебя пока нет игр — начни с обучения ниже.</p>'}
+        ${g51 ? `<div class="mh-dmpath">🎯 51% — <b class="${g51.far ? 'bad' : 'good'}">${goalTxt(g51)}</b>${g51.far ? '' : ` (≈ ${g51.months} мес.)`} · 52% — <b class="${g52.far ? 'bad' : 'good'}">${goalTxt(g52)}</b>
+          ${g51.far ? `<p>Если играть так же, как сейчас, — дольше 300 игр. Поэтому не «больше играть», а исправить главное ниже: ${real != null && real >= 0.5 ? `в играх, где ты это делаешь, ты <b class="good">уже в плюсе (${pct0(real)})</b>.` : 'каждый пункт поднимает процент.'}</p>` : ''}</div>` : ''}</div></div>
+      ${N >= 8 && nm ? `<div class="mh-newhead">📊 Ты на нём против среднего игрока твоего ранга (за игру)</div><div class="mh-dmstats">
+        ${stat('убийства', avg(G, g => g.k), nm.k)}${stat('смерти', avg(G, g => g.d), nm.d, true)}${stat('помощь', avg(G, g => g.a), nm.a)}${stat('добивания', avg(G, g => g.raw && g.raw.numLastHits), nm.cs)}${stat('урон героям', avg(G, g => g.raw && g.raw.heroDamage), nm.hd)}${stat('урон башням', avg(G, g => g.raw && g.raw.towerDamage), nm.td)}</div>` : ''}
+      ${top.length ? `<div class="mh-newhead">🔧 Что улучшать — по твоим играм, самое важное первым</div><div class="mh-dmfix">${top.map((f, k) => `<div class="mh-dmf"><i>${f.ic}</i><div><b>${k + 1}. ${f.t}: ${f.good}</b>
+          <span>когда ${f.good} — <b class="${wrClass(f.w1)}">${pct0(f.w1)}</b> (${f.n1} ${gamesWord(f.n1)}), когда ${f.bad} — <b class="${wrClass(f.w0)}">${pct0(f.w0)}</b> (${f.n0} ${gamesWord(f.n0)}). Так плохо сейчас в ${Math.round(f.share*100)}% игр — это до <b class="good">+${Math.round(f.gain*100)}%</b> к победам.</span>
+          <small>Как: ${f.tip}</small></div></div>`).join('')}</div>` : N >= 8 ? '<p class="muted">Заметной разницы по линии, смертям и фарму пока нет — нужна механика (ниже) и больше игр.</p>' : ''}
+      <div class="mh-newhead">🧠 Механика — то, что цифры не видят</div><ul class="mh-dmtips">${hardTips(h).map(t => `<li>${t}</li>`).join('')}</ul>
+      <div class="mh-newhead">📅 План на 20 игр</div><div class="mh-dmplan">
+        <div class="mh-dmbar"><i style="width:${Math.min(100, since.length/20*100)}%"></i><span>${Math.min(since.length, 20)}/20 игр с начала плана${since.length ? ` · ${pct0(sw)} побед (было ${N - since.length ? pct0(wr(G.filter(g => g.t < st.t0))) : '—'})` : ''}</span></div>
+        <p>Каждую игру — один пункт: ${top.length ? top.map(f => f.good).join(', ') : 'механика из списка выше'}. После 20 игр зайди сюда — увидишь, сдвинулся ли процент.${since.length ? ` Из твоих ${since.length} игр по плану: ${top.map(f => `${f.t.toLowerCase()} — ${since.filter(f.use).filter(f.ok).length}/${since.filter(f.use).length}`).join(', ')}.` : ''}</p>
+        <button class="linkbtn mh-dmreset">↺ Начать план заново с сегодняшнего дня</button></div></div>`;
+    bindTabs();
+    const set = x => { if(!x || !heroes[x]) return; st = {h: x, t0: Math.floor(Date.now()/1000)}; lsSet(key, st); draw(); };
+    box.querySelectorAll('.mh-dmh').forEach(b => b.onclick = () => set(+b.dataset.h));
+    const q = box.querySelector('.mh-dmq'); q.onchange = () => set(+(Object.keys(heroes).find(k => heroes[k].localized_name.toLowerCase() === q.value.trim().toLowerCase()) || 0));
+    box.querySelector('.mh-dmreset').onclick = () => { st.t0 = Math.floor(Date.now()/1000); lsSet(key, st); draw(); };
+  };
+  if(!lsGet(key)) lsSet(key, st);
+  draw();
+}
+
 async function renderDuo(S, box, tabsHtml, bindTabs){
   const key = 'dc_duo_' + S.id, saved = lsGet(key) || {}, best = (S.posStats && S.posStats.best) || 2;
   const sel = (name, v) => `<select class="mh-duosel" data-k="${name}">${[1, 2, 3, 4, 5].map(q => `<option value="${q}" ${q === v ? 'selected' : ''}>${roleShort(q)}</option>`).join('')}</select>`;
@@ -2896,11 +2988,12 @@ async function renderMyHero(S, sel){
     o.best = +Object.keys(o).filter(p => o[p].n >= 30).sort((a,b) => o[b].sm - o[a].sm)[0] || null; return o; })();
   const tabs = `<div class="mh-who">${acc.name || ''}${mmr != null ? ' · ' + mmrToRank(mmr) : ''} · ${S.year.length} игр разобрано <button class="mh-link" title="Скопировать ссылку — другу откроется этот же разбор">🔗 Ссылка на разбор</button></div>${sinceLast(S)}
     <div class="mh-tabs">${MH_TABS.map(([p, l]) => `<button class="mh-tab ${p === sel ? 'on' : ''} ${p && p === ps.best ? 'best' : ''}" data-p="${p}">${p === ps.best ? '★ ' : ''}${l}${p ? `<small>${ps[p].n ? `${pct0(ps[p].wr)} · ${ps[p].n}` : 'нет игр'}</small>` : '<small>из твоих</small>'}</button>`).join('')}</div>
-    <div class="mh-bigbtns"><button class="mh-big mh-love">❤️ Твой герой на всю жизнь<small>открой — и найдём того, в кого ты влюбишься</small></button><button class="mh-big mh-draft">⚡ Драфт сейчас<small>зашёл в игру — нажми роль, скажу кого брать</small></button><button class="mh-big mh-feel">💥 Что тебе в кайф?<small>герои, которые прут именно тебе</small></button><button class="mh-big mh-duo">👥 Дуо с другом<small>лучшие пары героев по вашим общим играм</small></button><button class="mh-big mh-pk">🔮 Подобрать героев<small>выбери героев — скажу, на ком потащишь</small></button></div>`;
+    <div class="mh-bigbtns"><button class="mh-big mh-love">❤️ Твой герой на всю жизнь<small>открой — и найдём того, в кого ты влюбишься</small></button><button class="mh-big mh-draft">⚡ Драфт сейчас<small>зашёл в игру — нажми роль, скажу кого брать</small></button><button class="mh-big mh-feel">💥 Что тебе в кайф?<small>герои, которые прут именно тебе</small></button><button class="mh-big mh-dream">🌟 Моя мечта<small>герой мечты: сколько играть и что исправить — по твоим играм</small></button><button class="mh-big mh-duo">👥 Дуо с другом<small>лучшие пары героев по вашим общим играм</small></button><button class="mh-big mh-pk">🔮 Подобрать героев<small>выбери героев — скажу, на ком потащишь</small></button></div>`;
   const bindTabs = () => { box.querySelectorAll('.mh-tab').forEach(b => b.onclick = () => { lsSet('dc_mh_' + S.id, +b.dataset.p); renderMyHero(S, +b.dataset.p); });
     const db = box.querySelector('.mh-duo'); if(db) db.onclick = () => renderDuo(S, box, tabs, bindTabs);
     const pk = box.querySelector('.mh-pk'); if(pk) pk.onclick = () => renderPicker(S, box, tabs, bindTabs);
     const lv = box.querySelector('.mh-big.mh-love'); if(lv) lv.onclick = () => renderLove(S, box, tabs, bindTabs);
+    const dm = box.querySelector('.mh-big.mh-dream'); if(dm) dm.onclick = () => renderDream(S, box, tabs, bindTabs);
     const dr = box.querySelector('.mh-draft'); if(dr) dr.onclick = () => renderDraft(S, box, tabs, bindTabs, ps.best);
     const fl = box.querySelector('.mh-feel'); if(fl) fl.onclick = () => renderFeel(S, box, tabs, bindTabs, sel);
     const lb = box.querySelector('.mh-link:not(.mh-duo)'); if(lb) lb.onclick = async () => { const url = location.origin + location.pathname + '#' + S.id;
