@@ -501,7 +501,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-dmnow span{font-size:11.5px;color:var(--muted)} .mh-dmnow b{font-family:Unbounded,Manrope,sans-serif;font-size:28px;line-height:1.15} .mh-dmnow small{font-size:11.5px;color:var(--muted)}
 .mh-dmnow b.good,.mh-dmpath b.good,.mh-dmf b.good{color:#6ee7a8} .mh-dmnow b.bad,.mh-dmpath b.bad,.mh-dmf b.bad{color:#ff6b8a}
 .mh-dmpath{font-size:15px;font-weight:700} .mh-dmpath p{font-size:13.5px;font-weight:500;margin:6px 0 0;line-height:1.45}
-.mh-dmstats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:8px}
+.mh-dmstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-top:8px}
 .mh-dmstat{display:flex;flex-direction:column;align-items:center;padding:8px;border-radius:12px;background:var(--panel2);border:1px solid var(--line)} .mh-dmstat span{font-size:11px;color:var(--muted)} .mh-dmstat b{font-size:20px}
 .mh-dmstat small{font-size:11px} .mh-dmstat small.good{color:#6ee7a8} .mh-dmstat small.bad{color:#ff6b8a}
 .mh-dmfix{display:flex;flex-direction:column;gap:8px;margin-top:8px}
@@ -919,7 +919,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261026081446';
+const BUILD = '20261026081626';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2897,14 +2897,15 @@ async function renderDream(S, box, tabsHtml, bindTabs){
     ].map(f => { const A = G.filter(f.use), g1 = A.filter(f.ok), g0 = A.filter(g => !f.ok(g)), w1 = wr(g1), w0 = wr(g0);
       return {...f, n1: g1.length, n0: g0.length, w1, w0, share: A.length ? g0.length/A.length : 0, gain: g1.length >= 4 && g0.length >= 4 && w1 > w0 ? (w1 - w0)*g0.length/N : 0}; })
       .filter(f => f.gain > 0.01).sort((a,b) => b.gain - a.gain);
-    const top = F.slice(0, 3);
+    const top = F.slice(0, 3), act = top.filter(f => f.k !== 'len');
     // 3) Сколько играть: от твоего текущего уровня по кривой обучения; и «твой настоящий уровень» — в играх, где делал главное правильно
     const now = N ? (W + 5*0.5)/(N + 10) : null, g51 = now != null ? pathTo(S, {h, n: 0, now}, 0.51) : null, g52 = now != null ? pathTo(S, {h, n: 0, now}, 0.52) : null;
     const real = top[0] ? top[0].w1 : null;
     // 4) Прогресс с начала плана
     const since = G.filter(g => g.t >= st.t0), sw = wr(since);
     const cmp = (mine, norm, lowGood) => norm == null || mine == null ? '' : `<small class="${(lowGood ? mine <= norm : mine >= norm) ? 'good' : 'bad'}">норма ${norm.toFixed(norm < 20 ? 1 : 0)}</small>`;
-    const stat = (l, v, n, lowGood) => `<div class="mh-dmstat"><span>${l}</span><b>${v == null ? '—' : v.toFixed(v < 20 ? 1 : 0)}</b>${cmp(v, n, lowGood)}</div>`;
+    const avgN = (a, f) => { const v = a.map(f).filter(x => x != null && !isNaN(x)); return v.length >= Math.min(8, a.length) && v.some(x => x > 0) ? v.reduce((t, x) => t + x, 0)/v.length : null; };
+    const stat = (l, v, n, lowGood) => v == null ? '' : `<div class="mh-dmstat"><span>${l}</span><b>${v == null ? '—' : v.toFixed(v < 20 ? 1 : 0)}</b>${cmp(v, n, lowGood)}</div>`;
     box.innerHTML = `${tabsHtml}<div class="mh-pk-panel mh-dm"><div class="mh-ovhead">🌟 Моя мечта <small>Герой, на котором хочешь играть каждую игру. Только твои игры на нём — сколько играть и что именно исправить.</small></div>
       <div class="mh-dmpick">${chipsH.map(x => `<button class="mh-dmh ${x === h ? 'on' : ''}" data-h="${x}" title="${hn(x)}"><img src="${CDN + H(x).img}" alt=""><small>${hn(x)}</small></button>`).join('')}<input class="mh-dmq" list="mhDmList" placeholder="🔍 другой герой…"><datalist id="mhDmList">${Object.values(heroes).map(x => `<option value="${x.localized_name}">`).join('')}</datalist></div>
       <div class="mh-dmgrid"><div class="mh-dmstage">${liveHero(h, 'mh-dmvid')}</div><div class="mh-dminfo"><em>мечта · ${roleShort(pos).toLowerCase()}</em><div class="mh-name">${hn(h)}</div>
@@ -2914,14 +2915,14 @@ async function renderDream(S, box, tabsHtml, bindTabs){
         ${g51 ? `<div class="mh-dmpath">🎯 51% — <b class="${g51.far ? 'bad' : 'good'}">${goalTxt(g51)}</b>${g51.far ? '' : ` (≈ ${g51.months} мес.)`} · 52% — <b class="${g52.far ? 'bad' : 'good'}">${goalTxt(g52)}</b>
           ${g51.far ? `<p>Если играть так же, как сейчас, — дольше 300 игр. Поэтому не «больше играть», а исправить главное ниже: ${real != null && real >= 0.5 ? `в играх, где ты это делаешь, ты <b class="good">уже в плюсе (${pct0(real)})</b>.` : 'каждый пункт поднимает процент.'}</p>` : ''}</div>` : ''}</div></div>
       ${N >= 8 && nm ? `<div class="mh-newhead">📊 Ты на нём против среднего игрока твоего ранга (за игру)</div><div class="mh-dmstats">
-        ${stat('убийства', avg(G, g => g.k), nm.k)}${stat('смерти', avg(G, g => g.d), nm.d, true)}${stat('помощь', avg(G, g => g.a), nm.a)}${stat('добивания', avg(G, g => g.raw && g.raw.numLastHits), nm.cs)}${stat('урон героям', avg(G, g => g.raw && g.raw.heroDamage), nm.hd)}${stat('урон башням', avg(G, g => g.raw && g.raw.towerDamage), nm.td)}</div>` : ''}
+        ${stat('убийства', avgN(G, g => g.k), nm.k)}${stat('смерти', avgN(G, g => g.d), nm.d, true)}${stat('помощь', avgN(G, g => g.a), nm.a)}${stat('добивания', avgN(G, g => g.raw && g.raw.numLastHits), nm.cs)}${stat('урон героям', avgN(G, g => g.raw && g.raw.heroDamage), nm.hd)}${stat('урон башням', avgN(G, g => g.raw && g.raw.towerDamage), nm.td)}</div>` : ''}
       ${top.length ? `<div class="mh-newhead">🔧 Что улучшать — по твоим играм, самое важное первым</div><div class="mh-dmfix">${top.map((f, k) => `<div class="mh-dmf"><i>${f.ic}</i><div><b>${k + 1}. ${f.t}: ${f.good}</b>
           <span>когда ${f.good} — <b class="${wrClass(f.w1)}">${pct0(f.w1)}</b> (${f.n1} ${gamesWord(f.n1)}), когда ${f.bad} — <b class="${wrClass(f.w0)}">${pct0(f.w0)}</b> (${f.n0} ${gamesWord(f.n0)}). Так плохо сейчас в ${Math.round(f.share*100)}% игр — это до <b class="good">+${Math.round(f.gain*100)}%</b> к победам.</span>
-          <small>Как: ${f.tip}</small></div></div>`).join('')}</div>` : N >= 8 ? '<p class="muted">Заметной разницы по линии, смертям и фарму пока нет — нужна механика (ниже) и больше игр.</p>' : ''}
+          <small>Как: ${f.tip}</small></div></div>`).join('')}</div><p class="hint">Честно: смерти и фарм — отчасти следствие (в проигранной игре умираешь чаще). Но это то, что ты контролируешь сам, — и разница здесь самая большая.</p>` : N >= 8 ? '<p class="muted">Заметной разницы по линии, смертям и фарму пока нет — нужна механика (ниже) и больше игр.</p>' : ''}
       <div class="mh-newhead">🧠 Механика — то, что цифры не видят</div><ul class="mh-dmtips">${hardTips(h).map(t => `<li>${t}</li>`).join('')}</ul>
       <div class="mh-newhead">📅 План на 20 игр</div><div class="mh-dmplan">
         <div class="mh-dmbar"><i style="width:${Math.min(100, since.length/20*100)}%"></i><span>${Math.min(since.length, 20)}/20 игр с начала плана${since.length ? ` · ${pct0(sw)} побед (было ${N - since.length ? pct0(wr(G.filter(g => g.t < st.t0))) : '—'})` : ''}</span></div>
-        <p>Каждую игру — один пункт: ${top.length ? top.map(f => f.good).join(', ') : 'механика из списка выше'}. После 20 игр зайди сюда — увидишь, сдвинулся ли процент.${since.length ? ` Из твоих ${since.length} игр по плану: ${top.map(f => `${f.t.toLowerCase()} — ${since.filter(f.use).filter(f.ok).length}/${since.filter(f.use).length}`).join(', ')}.` : ''}</p>
+        <p>Каждую игру держи: ${act.length ? act.map(f => f.good).join(', ') : 'механику из списка выше'}. После 20 игр зайди сюда — увидишь, сдвинулся ли процент.${since.length ? ` Из твоих ${since.length} игр по плану: ${act.map(f => `${f.t.toLowerCase()} — ${since.filter(f.use).filter(f.ok).length}/${since.filter(f.use).length}`).join(', ')}.` : ''}</p>
         <button class="linkbtn mh-dmreset">↺ Начать план заново с сегодняшнего дня</button></div></div>`;
     bindTabs();
     const set = x => { if(!x || !heroes[x]) return; st = {h: x, t0: Math.floor(Date.now()/1000)}; lsSet(key, st); draw(); };
