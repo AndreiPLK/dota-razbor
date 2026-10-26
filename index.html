@@ -919,7 +919,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261026081626';
+const BUILD = '20261026081819';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2872,8 +2872,8 @@ async function renderDream(S, box, tabsHtml, bindTabs){
   const key = 'dc_dream_' + S.id, T = S.posTable || {};
   const cnt = {}; S.year.forEach(g => cnt[g.hero] = (cnt[g.hero] || 0) + 1);
   const inv = +(Object.keys(heroes).find(k => heroes[k].localized_name === 'Invoker') || 0);
-  let st = lsGet(key) || {h: cnt[inv] ? inv : +Object.keys(cnt).sort((a,b) => cnt[b] - cnt[a])[0], t0: Math.floor(Date.now()/1000)};
   const chipsH = Object.keys(cnt).map(Number).filter(h => heroes[h] && cnt[h] >= 5).sort((a,b) => ((H(b).complexity || 2) - (H(a).complexity || 2)) || cnt[b] - cnt[a]).slice(0, 14);
+  let st = lsGet(key) || {h: (cnt[inv] || 0) >= 10 ? inv : chipsH[0] || +Object.keys(cnt).sort((a,b) => cnt[b] - cnt[a])[0], t0: Math.floor(Date.now()/1000)};
   const draw = () => {
     const h = st.h, G = S.year.filter(g => g.hero === h).sort((a,b) => a.t - b.t), N = G.length;
     const mp = Object.entries(G.reduce((o, g) => (o[g.pos] = (o[g.pos] || 0) + 1, o), {})).sort((a,b) => b[1] - a[1])[0];
@@ -2899,7 +2899,8 @@ async function renderDream(S, box, tabsHtml, bindTabs){
       .filter(f => f.gain > 0.01).sort((a,b) => b.gain - a.gain);
     const top = F.slice(0, 3), act = top.filter(f => f.k !== 'len');
     // 3) Сколько играть: от твоего текущего уровня по кривой обучения; и «твой настоящий уровень» — в играх, где делал главное правильно
-    const now = N ? (W + 5*0.5)/(N + 10) : null, g51 = now != null ? pathTo(S, {h, n: 0, now}, 0.51) : null, g52 = now != null ? pathTo(S, {h, n: 0, now}, 0.52) : null;
+    const now = N >= 10 ? (W + 5*0.5)/(N + 10) : (S.ML = S.ML || mlBuild(S), mlSimulate(S.ML, h, pos, 6, mhPerMonth(S), 15).p5);
+    const g51 = pathTo(S, {h, n: N >= 10 ? 0 : N, now}, 0.51), g52 = pathTo(S, {h, n: N >= 10 ? 0 : N, now}, 0.52);
     const real = top[0] ? top[0].w1 : null;
     // 4) Прогресс с начала плана
     const since = G.filter(g => g.t >= st.t0), sw = wr(since);
@@ -2909,11 +2910,11 @@ async function renderDream(S, box, tabsHtml, bindTabs){
     box.innerHTML = `${tabsHtml}<div class="mh-pk-panel mh-dm"><div class="mh-ovhead">🌟 Моя мечта <small>Герой, на котором хочешь играть каждую игру. Только твои игры на нём — сколько играть и что именно исправить.</small></div>
       <div class="mh-dmpick">${chipsH.map(x => `<button class="mh-dmh ${x === h ? 'on' : ''}" data-h="${x}" title="${hn(x)}"><img src="${CDN + H(x).img}" alt=""><small>${hn(x)}</small></button>`).join('')}<input class="mh-dmq" list="mhDmList" placeholder="🔍 другой герой…"><datalist id="mhDmList">${Object.values(heroes).map(x => `<option value="${x.localized_name}">`).join('')}</datalist></div>
       <div class="mh-dmgrid"><div class="mh-dmstage">${liveHero(h, 'mh-dmvid')}</div><div class="mh-dminfo"><em>мечта · ${roleShort(pos).toLowerCase()}</em><div class="mh-name">${hn(h)}</div>
-        ${N ? `<div class="mh-dmnow"><div><span>сейчас</span><b class="${wrClass(W/N)}">${pct0(W/N)}</b><small>${W}–${N - W} за ${N} ${gamesWord(N)}</small></div>
+        ${N ? `<div class="mh-dmnow"><div><span>${N >= 10 ? 'сейчас' : 'пока мало игр'}</span><b class="${wrClass(W/N)}">${pct0(W/N)}</b><small>${W}–${N - W} за ${N} ${gamesWord(N)}</small></div>
           ${N >= 10 ? `<div><span>тренд</span><b class="${late > early ? 'good' : late < early ? 'bad' : ''}">${late > early ? '↗' : late < early ? '↘' : '→'} ${pct0(late)}</b><small>первые ${half}: ${pct0(early)} → последние ${N - half}: ${pct0(late)}</small></div>` : ''}
           ${real != null && top[0].w1 > W/N ? `<div class="real"><span>твой настоящий ${hn(h)}</span><b class="${wrClass(real)}">${pct0(real)}</b><small>в играх, где ты ${top[0].good} (${top[0].n1} ${gamesWord(top[0].n1)})</small></div>` : ''}</div>` : '<p>На нём у тебя пока нет игр — начни с обучения ниже.</p>'}
         ${g51 ? `<div class="mh-dmpath">🎯 51% — <b class="${g51.far ? 'bad' : 'good'}">${goalTxt(g51)}</b>${g51.far ? '' : ` (≈ ${g51.months} мес.)`} · 52% — <b class="${g52.far ? 'bad' : 'good'}">${goalTxt(g52)}</b>
-          ${g51.far ? `<p>Если играть так же, как сейчас, — дольше 300 игр. Поэтому не «больше играть», а исправить главное ниже: ${real != null && real >= 0.5 ? `в играх, где ты это делаешь, ты <b class="good">уже в плюсе (${pct0(real)})</b>.` : 'каждый пункт поднимает процент.'}</p>` : ''}</div>` : ''}</div></div>
+          ${g51.far ? `<p>Если играть так же, как сейчас, — дольше 300 игр. Поэтому не «больше играть», а ${top.length ? 'исправить главное ниже' : 'учить механику отдельно (ниже)'}${real != null && real >= 0.5 ? `: в играх, где ты это делаешь, ты <b class="good">уже в плюсе (${pct0(real)})</b>.` : '.'}</p>` : ''}</div>` : ''}</div></div>
       ${N >= 8 && nm ? `<div class="mh-newhead">📊 Ты на нём против среднего игрока твоего ранга (за игру)</div><div class="mh-dmstats">
         ${stat('убийства', avgN(G, g => g.k), nm.k)}${stat('смерти', avgN(G, g => g.d), nm.d, true)}${stat('помощь', avgN(G, g => g.a), nm.a)}${stat('добивания', avgN(G, g => g.raw && g.raw.numLastHits), nm.cs)}${stat('урон героям', avgN(G, g => g.raw && g.raw.heroDamage), nm.hd)}${stat('урон башням', avgN(G, g => g.raw && g.raw.towerDamage), nm.td)}</div>` : ''}
       ${top.length ? `<div class="mh-newhead">🔧 Что улучшать — по твоим играм, самое важное первым</div><div class="mh-dmfix">${top.map((f, k) => `<div class="mh-dmf"><i>${f.ic}</i><div><b>${k + 1}. ${f.t}: ${f.good}</b>
