@@ -938,7 +938,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261026154250';
+const BUILD = '20261026155133';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2999,7 +2999,7 @@ async function renderLegend(S, box, tabsHtml, bindTabs){
   }).filter(r => r.top != null).sort((a,b) => b.score - a.score);
   await sleep(1200);
   // «Шторм или Инвокер?» (основатель) — эти двое всегда в сравнении, если играются на роли
-  const L = rows[0], ask = rows.filter(r => r !== L && ['Storm Spirit', 'Invoker'].includes(hn(r.h))), rest = [...ask, ...rows.slice(1).filter(r => !ask.includes(r))].slice(0, 4), pctS = v => (v >= 0 ? '+' : '−') + Math.abs(v*100).toFixed(1).replace('.0', '');
+  const L = rows[0], ask = rows.filter(r => r !== L && ['Storm Spirit', 'Invoker'].includes(hn(r.h))), rest = [...ask, ...rows.slice(1).filter(r => !ask.includes(r))].slice(0, 4), pctS = v => Math.abs(v) < 0.0005 ? '0' : (v >= 0 ? '+' : '−') + Math.abs(v*100).toFixed(1).replace('.0', '');
   const live = (h, cls) => liveHero(h, cls);
   const panel = box.querySelector('.mh-lg');
   if(!L){ panel.innerHTML = '<p class="muted">Не хватило данных о героях — попробуй через минуту.</p>'; return; }
