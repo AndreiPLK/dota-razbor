@@ -948,7 +948,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261026155709';
+const BUILD = '20261026160006';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -3016,20 +3016,20 @@ async function renderLegend(S, box, tabsHtml, bindTabs){
     return {h, top, my, skill, syn, o, nd, good: good.length, real, trend, dGap, feel, path, pr, ceil, score: ceil + 0.5*skill + 0.01*((H(h).complexity || 2) - 2)};
   }).filter(r => r.top != null).sort((a,b) => b.score - a.score);
   // 9 проверок: [иконка, название, вес, значение (больше — лучше), как показать, что значит]
-  const pp = v => (v >= 0 ? '+' : '−') + Math.abs(Math.round(v*100)) + '%';
+  const pp = v => Math.round(v*100) === 0 ? '0%' : (v >= 0 ? '+' : '−') + Math.abs(Math.round(v*100)) + '%';
   const CHECKS = [
-    ['🏆', 'Потолок у топ-игроков', 3, r => r.top, r => pct0(r.top), 'сколько побед он даёт, когда им владеют (Божество+)'],
-    ['📈', 'Награда за умение', 2, r => r.skill, r => pp(r.skill), 'насколько он сильнее у топов, чем в твоём ранге'],
-    ...(frH.length ? [['👥', `С героями ${fr}`, 2, r => r.syn, r => pp(r.syn), `синергия с его ${frH.slice(0, 3).map(f => hn(f.h)).join(', ')}`]] : []),
-    ['🎯', 'Ты, когда играешь правильно', 2, r => r.real, r => r.real != null ? pct0(r.real) : '—', 'твой % в играх, где умирал не больше нормы'],
-    ['📚', 'Учишься ли на нём', 1, r => r.trend, r => r.trend != null ? pp(r.trend) : '—', 'вторая половина твоих игр на нём против первой'],
-    ['💀', 'Смерти против нормы', 1, r => r.dGap != null ? -r.dGap : null, r => r.dGap != null ? (r.dGap > 0 ? '+' : '') + r.dGap.toFixed(1) : '—', 'на сколько чаще умираешь, чем средний игрок на нём'],
-    ['🎮', 'Твой вкус', 1, r => r.feel, r => r.feel != null ? pct0(r.feel) : '—', 'твой % на героях того же ощущения'],
-    ['⏳', 'Путь до 52%', 1, r => r.path.far ? -999 : -r.path.left, r => r.path.far ? '300+' : r.path.left ? r.path.left + ' игр' : 'уже', 'сколько игр по твоей кривой обучения'],
-    ...(duoOn ? [['🤝', `Ваши игры с ${fr}`, 1, r => r.pr.n >= 3 ? r.pr.sc : null, r => r.pr.n ? `${r.pr.w}–${r.pr.n - r.pr.w}` : '—', 'ваш общий счёт на нём, подтянутый к среднему']] : []),
+    ['🏆', 'Потолок у топ-игроков', 3, r => r.top, r => pct0(r.top), 'сколько побед он даёт, когда им владеют (Божество+)', 0.005],
+    ['📈', 'Награда за умение', 2, r => r.skill, r => pp(r.skill), 'насколько он сильнее у топов, чем в твоём ранге', 0.005],
+    ...(frH.length ? [['👥', `С героями ${fr}`, 2, r => r.syn, r => pp(r.syn), `синергия с его ${frH.slice(0, 3).map(f => hn(f.h)).join(', ')}`, 0.003]] : []),
+    ['🎯', 'Ты, когда играешь правильно', 2, r => r.real, r => r.real != null ? pct0(r.real) : '—', 'твой % в играх, где умирал не больше нормы', 0.03],
+    ['📚', 'Учишься ли на нём', 1, r => r.trend, r => r.trend != null ? pp(r.trend) : '—', 'вторая половина твоих игр на нём против первой', 0.05],
+    ['💀', 'Смерти против нормы', 1, r => r.dGap != null ? -r.dGap : null, r => r.dGap != null ? (r.dGap > 0 ? '+' : '') + r.dGap.toFixed(1) : '—', 'на сколько чаще умираешь, чем средний игрок на нём', 0.3],
+    ['🎮', 'Твой вкус', 1, r => r.feel, r => r.feel != null ? pct0(r.feel) : '—', 'твой % на героях того же ощущения', 0.01],
+    ['⏳', 'Путь до 52%', 1, r => r.path.far ? -999 : -r.path.left, r => r.path.far ? '300+' : r.path.left ? r.path.left + ' игр' : 'уже', 'сколько игр по твоей кривой обучения', 10],
+    ...(duoOn ? [['🤝', `Ваши игры с ${fr}`, 1, r => r.pr.n >= 3 ? r.pr.sc : null, r => r.pr.n ? `${r.pr.w}–${r.pr.n - r.pr.w}` : '—', 'ваш общий счёт на нём, подтянутый к среднему', 0.02]] : []),
   ];
   const duel = (a, b) => { let pa = 0, pb = 0; const res = CHECKS.map(c => { const va = c[3](a), vb = c[3](b); let w = 0;
-      if(va != null && vb != null){ if(Math.abs(va - vb) > 1e-3) w = va > vb ? 1 : -1; }
+      if(va != null && vb != null){ if(Math.abs(va - vb) > (c[6] || 1e-3)) w = va > vb ? 1 : -1; }
       if(w > 0) pa += c[2]; else if(w < 0) pb += c[2]; return {c, va, vb, w}; });
     return {pa, pb, res}; };
   if(!rows.length){ box.querySelector('.mh-lg').innerHTML = '<p class="muted">Не хватило данных о героях — попробуй через минуту.</p>'; return; }
