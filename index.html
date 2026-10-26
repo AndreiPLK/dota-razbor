@@ -488,6 +488,16 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 .mh-mini:hover{transform:translateY(-2px);border-color:rgba(196,181,253,.6)} .mh-mini img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:9px}
 .mh-mini>b{font-size:15px} .mh-mini em{font-style:normal;font-size:11.5px;color:#c4b5fd;font-weight:700} .mh-mini span{font-size:13px} .mh-mini span b{font-size:14px}
 .mh-ov-all{margin-top:10px}
+.mh-lgverd{font-size:15px;line-height:1.5;margin:8px 0 12px;padding:12px 14px;border-radius:14px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.35)}
+.mh-lgverd>b:first-child{display:block;font-size:19px;margin-bottom:4px;color:#fde68a} .mh-lgverd b.good{color:#6ee7a8} .mh-lgverd b.bad{color:#ff6b8a}
+.mh-lgduel{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.mh-lgdh,.mh-lgdr{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center}
+.mh-lgdh span{display:flex;align-items:center;justify-content:center;gap:6px;font-weight:800;font-size:14px} .mh-lgdh img{width:48px;height:27px;object-fit:cover;border-radius:5px}
+.mh-lgdr{padding:7px 10px;border-radius:12px;background:var(--panel2);font-size:14px} .mh-lgdr>span:not(:first-child){text-align:center;font-weight:700;color:var(--muted)}
+.mh-lgdr>span:first-child{display:grid;grid-template-columns:26px 1fr;column-gap:6px} .mh-lgdr i{font-style:normal;font-size:18px;grid-row:1/3} .mh-lgdr small{font-size:11px;color:var(--muted)}
+.mh-lgdr .win{color:#6ee7a8 !important;background:rgba(110,231,168,.1);border-radius:8px;padding:3px 0}
+.mh-lgdr.tot{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.45)} .mh-lgdr.tot>span{font-size:18px}
+@media(max-width:700px){.mh-lgdr{font-size:12.5px;padding:6px 8px} .mh-lgdr small{display:none} .mh-lgdh span{font-size:12px;flex-direction:column;gap:2px}}
 .mh-big.mh-legend{grid-column:1/-1;align-items:center !important;text-align:center !important;font-size:24px !important;min-height:92px;background:linear-gradient(120deg,#f59e0b,#ec4899,#8b5cf6,#f59e0b) !important;background-size:300% 100% !important;color:#fff !important;box-shadow:0 12px 40px rgba(245,158,11,.4) !important;animation:loveShine 6s linear infinite}
 .mh-caps{margin:8px 28px 0;text-align:center} .mh-capst{font-size:15px;font-weight:800}
 .mh-capsbox{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px} .mh-capsbox.hidden{display:none}
@@ -938,7 +948,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261026155133';
+const BUILD = '20261026155709';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2970,60 +2980,89 @@ async function synergyOf(hs){
   }
   return out;
 }
+// Легенда — дуэль двух лучших по 9 проверкам с весами (основатель, 26.10: «супер хитрая проверка — и жёстко: бери Шторма или Инвокер — лучшее, что с тобой случится»).
+// Победитель дуэли = легенда; вердикт — по-человечески, с честным «да, сейчас ты на нём плох, но…».
 async function renderLegend(S, box, tabsHtml, bindTabs){
-  box.innerHTML = `${tabsHtml}<div class="mh-pk-panel mh-lg"><div class="mh-lvspin"><div class="mh-slot"><div class="mh-strip">${Object.keys(heroes).sort(() => Math.random() - 0.5).slice(0, 24).map(h => `<img src="${CDN + H(+h).img}" alt="">`).join('')}</div></div><p>Считаю твой пул и ищу легенду…</p></div></div>`;
+  box.innerHTML = `${tabsHtml}<div class="mh-pk-panel mh-lg"><div class="mh-lvspin"><div class="mh-slot"><div class="mh-strip">${Object.keys(heroes).sort(() => Math.random() - 0.5).slice(0, 24).map(h => `<img src="${CDN + H(+h).img}" alt="">`).join('')}</div></div><p>Устраиваю героям дуэль: потолок, умение, друг, твои игры…</p></div></div>`;
   bindTabs();
   const T = S.posTable || {}, ps = S.posStats || {};
   let D = null; try{ const fx = await duoFriend(S); if(fx) D = await duoGames(S, fx.f); }catch{}
-  const duoOn = !!(D && D.G.length >= 10 && D.me), role = duoOn ? D.me : (ps.best || 2);
+  const duoOn = !!(D && D.G.length >= 10 && D.me), role = duoOn ? D.me : (ps.best || 2), fr = duoOn ? D.name : 'друг';
   let TD = {}; try{ TD = await loadPosTable('DIVINE_IMMORTAL'); }catch{}
-  const wrOf = r => r && r.n ? r.w/r.n : null;
-  // 1) Пул: твои герои на этой роли в плюсе (10+ игр), с другом — с вашим общим счётом
+  const wrOf = r => r && r.n ? r.w/r.n : null, wr = a => a.length ? a.filter(g => g.win).length/a.length : null;
   const mine = {}; S.year.filter(g => g.pos === role).forEach(g => { const o = mine[g.hero] = mine[g.hero] || {n: 0, w: 0, G: []}; o.n++; o.w += g.win ? 1 : 0; o.G.push(g); });
+  Object.values(mine).forEach(o => o.G.sort((a,b) => a.t - b.t));
   const pool = Object.entries(mine).map(([h, o]) => ({h: +h, ...o, wr: o.w/o.n, sm: (o.w + 5*0.5)/(o.n + 10), pr: duoOn ? duoPair(D, +h) : {n: 0}}))
     .filter(x => x.n >= 10 && x.wr >= 0.5 && !MICRO.has(hn(x.h))).sort((a,b) => (b.sm + (b.pr.n >= 5 ? 0.5*(b.pr.sc - D.base) : 0)) - (a.sm + (a.pr.n >= 5 ? 0.5*(a.pr.sc - D.base) : 0))).slice(0, 3);
-  // 2) Кандидаты в легенду: настоящие герои этой роли у топ-игроков (≥1500 игр и ≥40% игр героя — на этой роли), сложность 2+, без юнитов
   const cands = Object.keys(TD).map(Number).filter(h => heroes[h] && !MICRO.has(hn(h)) && (H(h).complexity || 2) >= 2 && TD[h][role] && TD[h][role].n >= 1500
     && TD[h][role].n >= 0.4*Object.values(TD[h]).reduce((t, r) => t + r.n, 0));
   const frH = duoOn ? Object.entries(D.G.filter(g => g.fp === D.fr).reduce((o, g) => (o[g.fh] = (o[g.fh] || 0) + 1, o), {})).sort((a,b) => b[1] - a[1]).slice(0, 6).map(([h, n]) => ({h: +h, n})) : [];
   let SY = {}; if(frH.length){ try{ SY = await synergyOf(cands); }catch{} }
+  // твой вкус: % побед на героях того же ощущения (взрыв / удар / полёт / комбо)
+  const recAll = {}; S.year.forEach(g => { const o = recAll[g.hero] = recAll[g.hero] || {n: 0, w: 0}; o.n++; o.w += g.win ? 1 : 0; });
+  const fid = n => +(Object.keys(heroes).find(k => heroes[k].localized_name === n) || 0);
+  const feelWr = {}; FEELS.forEach(f => { const hs = [...new Set(f[4])].map(fid), n = hs.reduce((t, h) => t + (recAll[h] ? recAll[h].n : 0), 0), w = hs.reduce((t, h) => t + (recAll[h] ? recAll[h].w : 0), 0); feelWr[f[0]] = n >= 20 ? w/n : null; });
   const rows = cands.map(h => {
     const top = wrOf(TD[h][role]), my = wrOf((T[h] || {})[role]), skill = top != null && my != null ? top - my : 0;
     const wsum = frH.reduce((t, f) => t + (SY[h] && SY[h][f.h] != null ? f.n : 0), 0), syn = wsum ? frH.reduce((t, f) => t + (SY[h] && SY[h][f.h] != null ? SY[h][f.h]*f.n : 0), 0)/wsum/100 : 0;
-    const o = mine[h], nd = (T[h] || {})[role] ? Math.max(3, Math.round(T[h][role].d)) : 6;
-    const good = o ? o.G.filter(g => g.d <= nd) : [], real = good.length >= 5 ? good.filter(g => g.win).length/good.length : null;
-    const pr = duoOn ? duoPair(D, h) : {n: 0};
-    // потолок «если научишься, в дуо»: уровень топ-игроков + половина синергии с героями друга + немного твоего следа
+    const o = mine[h], nm = (T[h] || {})[role], nd = nm ? Math.max(3, Math.round(nm.d)) : 6;
+    const good = o ? o.G.filter(g => g.d <= nd) : [], real = good.length >= 5 ? wr(good) : null;
+    const half = o ? Math.floor(o.n/2) : 0, trend = o && o.n >= 10 ? wr(o.G.slice(half)) - wr(o.G.slice(0, half)) : null;
+    const dGap = o && o.n >= 5 && nm ? o.G.reduce((t, g) => t + g.d, 0)/o.n - nm.d : null;
+    const fw = FEELS.filter(f => f[4].includes(hn(h))).map(f => feelWr[f[0]]).filter(v => v != null), feel = fw.length ? Math.max(...fw) : null;
+    const now = o && o.n >= 10 ? (o.w + 5*0.5)/(o.n + 10) : (S.ML = S.ML || mlBuild(S), mlSimulate(S.ML, h, role, 6, mhPerMonth(S), 15).p5);
+    const path = pathTo(S, {h, n: o && o.n < 10 ? o.n : 0, now}, 0.52), pr = duoOn ? duoPair(D, h) : {n: 0};
     const ceil = top + 0.5*clamp(syn, -0.05, 0.05) + (real != null ? 0.15*(real - top) : 0);
-    return {h, top, my, skill, syn, o, nd, good: good.length, real, pr, ceil, score: ceil + 0.5*skill + 0.01*((H(h).complexity || 2) - 2)};
+    return {h, top, my, skill, syn, o, nd, good: good.length, real, trend, dGap, feel, path, pr, ceil, score: ceil + 0.5*skill + 0.01*((H(h).complexity || 2) - 2)};
   }).filter(r => r.top != null).sort((a,b) => b.score - a.score);
-  await sleep(1200);
-  // «Шторм или Инвокер?» (основатель) — эти двое всегда в сравнении, если играются на роли
-  const L = rows[0], ask = rows.filter(r => r !== L && ['Storm Spirit', 'Invoker'].includes(hn(r.h))), rest = [...ask, ...rows.slice(1).filter(r => !ask.includes(r))].slice(0, 4), pctS = v => Math.abs(v) < 0.0005 ? '0' : (v >= 0 ? '+' : '−') + Math.abs(v*100).toFixed(1).replace('.0', '');
-  const live = (h, cls) => liveHero(h, cls);
+  // 9 проверок: [иконка, название, вес, значение (больше — лучше), как показать, что значит]
+  const pp = v => (v >= 0 ? '+' : '−') + Math.abs(Math.round(v*100)) + '%';
+  const CHECKS = [
+    ['🏆', 'Потолок у топ-игроков', 3, r => r.top, r => pct0(r.top), 'сколько побед он даёт, когда им владеют (Божество+)'],
+    ['📈', 'Награда за умение', 2, r => r.skill, r => pp(r.skill), 'насколько он сильнее у топов, чем в твоём ранге'],
+    ...(frH.length ? [['👥', `С героями ${fr}`, 2, r => r.syn, r => pp(r.syn), `синергия с его ${frH.slice(0, 3).map(f => hn(f.h)).join(', ')}`]] : []),
+    ['🎯', 'Ты, когда играешь правильно', 2, r => r.real, r => r.real != null ? pct0(r.real) : '—', 'твой % в играх, где умирал не больше нормы'],
+    ['📚', 'Учишься ли на нём', 1, r => r.trend, r => r.trend != null ? pp(r.trend) : '—', 'вторая половина твоих игр на нём против первой'],
+    ['💀', 'Смерти против нормы', 1, r => r.dGap != null ? -r.dGap : null, r => r.dGap != null ? (r.dGap > 0 ? '+' : '') + r.dGap.toFixed(1) : '—', 'на сколько чаще умираешь, чем средний игрок на нём'],
+    ['🎮', 'Твой вкус', 1, r => r.feel, r => r.feel != null ? pct0(r.feel) : '—', 'твой % на героях того же ощущения'],
+    ['⏳', 'Путь до 52%', 1, r => r.path.far ? -999 : -r.path.left, r => r.path.far ? '300+' : r.path.left ? r.path.left + ' игр' : 'уже', 'сколько игр по твоей кривой обучения'],
+    ...(duoOn ? [['🤝', `Ваши игры с ${fr}`, 1, r => r.pr.n >= 3 ? r.pr.sc : null, r => r.pr.n ? `${r.pr.w}–${r.pr.n - r.pr.w}` : '—', 'ваш общий счёт на нём, подтянутый к среднему']] : []),
+  ];
+  const duel = (a, b) => { let pa = 0, pb = 0; const res = CHECKS.map(c => { const va = c[3](a), vb = c[3](b); let w = 0;
+      if(va != null && vb != null){ if(Math.abs(va - vb) > 1e-3) w = va > vb ? 1 : -1; }
+      if(w > 0) pa += c[2]; else if(w < 0) pb += c[2]; return {c, va, vb, w}; });
+    return {pa, pb, res}; };
+  if(!rows.length){ box.querySelector('.mh-lg').innerHTML = '<p class="muted">Не хватило данных о героях — попробуй через минуту.</p>'; return; }
+  // соперник: Шторм/Инвокер, если они есть (вопрос основателя), иначе второй по потолку
+  const r0 = rows[0], ask = rows.filter(r => r !== r0 && ['Storm Spirit', 'Invoker'].includes(hn(r.h))), r1 = ask[0] || rows[1];
+  let L = r0, R = r1, dd = r1 ? duel(r0, r1) : {pa: 1, pb: 0, res: []};
+  if(r1 && dd.pb > dd.pa){ L = r1; R = r0; dd = duel(L, R); }
+  const tot = CHECKS.reduce((t, c) => t + c[2], 0), share = dd.pa/Math.max(1, dd.pa + dd.pb);
+  await sleep(1000);
+  const lwr = L.o ? L.o.w/L.o.n : null, bestR = R ? dd.res.filter(x => x.w < 0).sort((a,b) => b.c[2] - a.c[2])[0] : null;
+  const verdict = `<div class="mh-lgverd"><b>Братан, твоя легенда — ${hn(L.h)}.</b> ${R ? `${dd.pa} из ${tot} очков проверки за него против ${dd.pb} у ${hn(R.h)}.` : ''}
+    ${lwr != null && L.o.n >= 10 && lwr < 0.5 ? ` Да, сейчас ты на нём <b class="bad">${pct0(lwr)}</b> — играешь пока плохо.${L.real != null && L.real > lwr ? ` Но в играх, где ты не умираешь больше ${L.nd} раз, у тебя <b class="good">${pct0(L.real)}</b>. Значит, дело не в герое — дело в смертях. Научишься — и с ${fr} будете тащить.` : ' Но потолок у героя — один из лучших на роли: научишься — будешь тащить.'}`
+      : lwr != null && L.o.n >= 10 ? ` Ты уже на нём в плюсе — <b class="good">${pct0(lwr)}</b>. Дальше только вверх.` : ` Ты на нём почти не играл — путь с нуля, но потолок того стоит.`}
+    ${R ? (share >= 0.65 ? ` <b>Обязательно играй ${hn(L.h)}</b> — это лучшее, что может с тобой случиться на ${roleShort(role).toLowerCase()}.` : ` Перевес небольшой, но выбор — ${hn(L.h)}.`) : ''}
+    ${R && bestR ? ` ${hn(R.h)} — запасная легенда: у него сильнее «${bestR.c[1].toLowerCase()}».` : ''}</div>`;
+  const pctS = v => Math.abs(v) < 0.0005 ? '0' : (v >= 0 ? '+' : '−') + Math.abs(v*100).toFixed(1).replace('.0', '');
   const panel = box.querySelector('.mh-lg');
-  if(!L){ panel.innerHTML = '<p class="muted">Не хватило данных о героях — попробуй через минуту.</p>'; return; }
-  const frNames = frH.slice(0, 3).map(f => hn(f.h)).join(', ');
   panel.innerHTML = `<div class="mh-lvflash"></div><div class="mh-lghead">👑 Мой пул и легенда</div>
-    <div class="mh-lvduo">${duoOn ? `👥 Ты — ${roleShort(role).toLowerCase()}, ${D.name} — ${roleShort(D.fr).toLowerCase()} · вместе ${D.G.length} ${gamesWord(D.G.length)}` : `Твоя роль: ${roleShort(role).toLowerCase()}`}</div>
-    <div class="mh-newhead">✅ На ком ты выигрываешь сейчас</div>
-    ${pool.length ? `<div class="mh-lgpool">${pool.map((x, k) => `<div class="mh-lgp"><img src="${CDN + RENDER + heroShort(x.h)}.png" alt="" loading="lazy"><div><em>${['🥇 главный', '🥈 если забанят', '🥉 третий'][k]}</em><b>${hn(x.h)}</b><span><b class="${wrClass(x.wr)}">${pct0(x.wr)}</b> за ${x.n} ${gamesWord(x.n)}</span>${x.pr.n ? `<small>с ${D.name}: ${x.pr.w}–${x.pr.n - x.pr.w}</small>` : ''}</div></div>`).join('')}</div>`
-      : `<p class="muted">На этой роли у тебя пока нет героя с 10+ играми в плюсе — легенда ниже и есть твой путь.</p>`}
-    <div class="mh-newhead lg">👑 Легенда — если научишься, ${duoOn ? `в дуо с ${D.name} ` : ''}будешь тащить</div>
-    <div class="mh-lggrid"><div class="mh-lvstage" style="--c:#fbbf24"><div class="mh-podhero"><div class="mh-beam"></div><div class="mh-ring2"></div>${Array.from({length: 9}, (_, k) => `<i class="mh-spark" style="left:${8 + k*10}%;animation-delay:${(k*0.37).toFixed(2)}s"></i>`).join('')}${live(L.h, 'mh-lvvid')}</div></div>
-      <div class="mh-lvinfo"><em>${roleShort(role).toLowerCase()} · ${CPLX[H(L.h).complexity || 2]} герой</em><div class="mh-name mh-lvname">${hn(L.h)}</div>
-        <div class="mh-lgceil">потолок с ${duoOn ? D.name : 'командой'}: <b class="${wrClass(L.ceil)}">≈${pct0(L.ceil)}</b></div>
-        <div class="mh-lvlayers">
-          <div class="mh-lvl" style="animation-delay:.6s"><i>🏆</i><div><b>Когда им владеют</b><span>у Божеств и Титанов на ${roleShort(role).toLowerCase()} — <b class="${wrClass(L.top)}">${pct0(L.top)}</b> побед${rows.slice().sort((a,b) => b.top - a.top)[0].h === L.h ? ' — больше всех на этой роли' : ''} (в твоём ранге — ${pct0(L.my)})</span></div></div>
-          <div class="mh-lvl" style="animation-delay:.85s"><i>📈</i><div><b>Награда за умение</b><span>${L.skill > 0.003 ? `у топ-игроков на ${pctS(L.skill)}% выше, чем в твоём ранге — чем лучше играешь, тем сильнее он` : 'одинаково силён в любом ранге'}</span></div></div>
-          ${frH.length ? `<div class="mh-lvl" style="animation-delay:1.1s"><i>👥</i><div><b>С героями ${D.name}</b><span>с его ${frNames} — <b class="${L.syn >= 0 ? 'good' : 'bad'}">${pctS(L.syn)}%</b> к победам вместе${L.pr.n ? ` · ваши общие игры на нём: ${L.pr.w}–${L.pr.n - L.pr.w}` : ''}</span></div></div>` : ''}
-          <div class="mh-lvl" style="animation-delay:1.35s"><i>🎯</i><div><b>Твой след</b><span>${L.o ? `у тебя на нём ${pct0(L.o.w/L.o.n)} за ${L.o.n} ${gamesWord(L.o.n)}${L.real != null ? `, а в играх, где ты умер ≤ ${L.nd} раз, — <b class="${wrClass(L.real)}">${pct0(L.real)}</b> (${L.good} ${gamesWord(L.good)}): это ты, когда играешь правильно` : ''}` : 'ты на нём ещё не играл — путь с нуля, план в «Моей мечте»'}</span></div></div>
-        </div>
+    <div class="mh-lvduo">${duoOn ? `👥 Ты — ${roleShort(role).toLowerCase()}, ${fr} — ${roleShort(D.fr).toLowerCase()} · вместе ${D.G.length} ${gamesWord(D.G.length)}` : `Твоя роль: ${roleShort(role).toLowerCase()}`}</div>
+    <div class="mh-lggrid"><div class="mh-lvstage" style="--c:#fbbf24"><div class="mh-podhero"><div class="mh-beam"></div><div class="mh-ring2"></div>${Array.from({length: 9}, (_, k) => `<i class="mh-spark" style="left:${8 + k*10}%;animation-delay:${(k*0.37).toFixed(2)}s"></i>`).join('')}${liveHero(L.h, 'mh-lvvid')}</div></div>
+      <div class="mh-lvinfo"><em>👑 легенда · ${roleShort(role).toLowerCase()} · ${CPLX[H(L.h).complexity || 2]} герой</em><div class="mh-name mh-lvname">${hn(L.h)}</div>
+        <div class="mh-lgceil">потолок с ${duoOn ? fr : 'командой'}: <b class="${wrClass(L.ceil)}">≈${pct0(L.ceil)}</b></div>${verdict}
         <div class="mh-lvbtns"><button class="mh-lvyes mh-lgplan" data-h="${L.h}">🌟 План: как к нему прийти</button></div></div></div>
-    <div class="mh-newhead">Почему он, а не другие</div>
-    <div class="mh-lgcmp"><div class="mh-lgrow hd"><span></span><span>у топ-игроков</span><span>награда за умение</span>${frH.length ? '<span>с героями друга</span>' : ''}<span>твой след</span><span>потолок</span></div>
-      ${[L, ...rest].map((r, k) => `<div class="mh-lgrow ${k ? '' : 'on'}"><span><img src="${CDN + H(r.h).img}" alt="">${hn(r.h)}</span><span>${pct0(r.top)}</span><span class="${r.skill > 0 ? 'good' : ''}">${pctS(r.skill)}</span>${frH.length ? `<span class="${r.syn >= 0 ? 'good' : 'bad'}">${pctS(r.syn)}</span>` : ''}<span>${r.real != null ? pct0(r.real) : r.o ? pct0(r.o.w/r.o.n) : '—'}</span><span><b class="${wrClass(r.ceil)}">${pct0(r.ceil)}</b></span></div>`).join('')}</div>
-    <p class="hint">«У топ-игроков» — % побед героя на этой позиции у Божеств и Титанов. «Награда за умение» — насколько это выше, чем в твоём ранге. «С героями друга» — синергия Stratz с героями, которых ${duoOn ? D.name : 'друг'} берёт в ваших играх. «Твой след» — твой % в играх, где умирал не больше нормы.</p>`;
+    ${R ? `<div class="mh-newhead lg">⚔️ ${hn(L.h)} против ${hn(R.h)} — ${CHECKS.length} проверок</div>
+    <div class="mh-lgduel"><div class="mh-lgdh"><span></span><span><img src="${CDN + H(L.h).img}" alt="">${hn(L.h)}</span><span><img src="${CDN + H(R.h).img}" alt="">${hn(R.h)}</span></div>
+      ${dd.res.map(x => `<div class="mh-lgdr"><span><i>${x.c[0]}</i><b>${x.c[1]}</b><small>${x.c[5]} · вес ${x.c[2]}</small></span><span class="${x.w > 0 ? 'win' : ''}">${x.c[4](L)}${x.w > 0 ? ' ✓' : ''}</span><span class="${x.w < 0 ? 'win' : ''}">${x.c[4](R)}${x.w < 0 ? ' ✓' : ''}</span></div>`).join('')}
+      <div class="mh-lgdr tot"><span><b>Итог</b></span><span class="${dd.pa >= dd.pb ? 'win' : ''}">${dd.pa}</span><span class="${dd.pb > dd.pa ? 'win' : ''}">${dd.pb}</span></div></div>` : ''}
+    <div class="mh-newhead">✅ На ком ты выигрываешь сейчас</div>
+    ${pool.length ? `<div class="mh-lgpool">${pool.map((x, k) => `<div class="mh-lgp"><img src="${CDN + RENDER + heroShort(x.h)}.png" alt="" loading="lazy"><div><em>${['🥇 главный', '🥈 если забанят', '🥉 третий'][k]}</em><b>${hn(x.h)}</b><span><b class="${wrClass(x.wr)}">${pct0(x.wr)}</b> за ${x.n} ${gamesWord(x.n)}</span>${x.pr.n ? `<small>с ${fr}: ${x.pr.w}–${x.pr.n - x.pr.w}</small>` : ''}</div></div>`).join('')}</div><p class="hint">Пока учишь легенду — в рейтинге, когда надо выиграть, бери их.</p>`
+      : `<p class="muted">На этой роли у тебя пока нет героя с 10+ играми в плюсе — легенда и есть твой путь.</p>`}
+    <div class="mh-newhead">Остальные кандидаты</div>
+    <div class="mh-lgcmp"><div class="mh-lgrow hd"><span></span><span>у топ-игроков</span><span>награда за умение</span>${frH.length ? '<span>с героями друга</span>' : ''}<span>ты, когда правильно</span><span>потолок</span></div>
+      ${rows.filter(r => r !== L).slice(0, 5).map(r => `<div class="mh-lgrow ${r === R ? 'on' : ''}"><span><img src="${CDN + H(r.h).img}" alt="">${hn(r.h)}</span><span>${pct0(r.top)}</span><span class="${r.skill > 0 ? 'good' : ''}">${pctS(r.skill)}</span>${frH.length ? `<span class="${r.syn >= 0 ? 'good' : 'bad'}">${pctS(r.syn)}</span>` : ''}<span>${r.real != null ? pct0(r.real) : '—'}</span><span><b class="${wrClass(r.ceil)}">${pct0(r.ceil)}</b></span></div>`).join('')}</div>`;
   panel.querySelector('.mh-lgplan').onclick = () => { lsSet('dc_dream_' + S.id, {h: L.h, t0: Math.floor(Date.now()/1000)}); renderDream(S, box, tabsHtml, bindTabs); box.scrollIntoView({behavior: 'smooth', block: 'start'}); };
 }
 
