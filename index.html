@@ -919,7 +919,7 @@ input:focus,select:focus{outline:none;border-color:#8b5cf6;box-shadow:0 0 0 3px 
 <script>
 const STRATZ = 'https://api.stratz.com/graphql';
 // Версия сборки: GitHub Pages и браузер держат старую страницу до 10 минут — сверяемся с опубликованной и перезагружаемся
-const BUILD = '20261026081819';
+const BUILD = '20261026081954';
 (async () => { try{ const t = await (await fetch(location.pathname + '?bv=' + Date.now(), {cache: 'no-store'})).text(), m = t.match(/const BUILD = '(\d+)'/);
   if(m && m[1] !== BUILD && !sessionStorage.getItem('dc_reload_' + m[1])){ sessionStorage.setItem('dc_reload_' + m[1], '1'); location.reload(); } }catch{} })();
 const CDN = 'https://cdn.cloudflare.steamstatic.com';
@@ -2888,7 +2888,7 @@ async function renderDream(S, box, tabsHtml, bindTabs){
     const lenWin = wr(G.filter(g => g.dur < 35*60)), lenLoss = wr(G.filter(g => g.dur >= 35*60)), shortBetter = (lenWin ?? 0) >= (lenLoss ?? 0);
     const F = [
       {k: 'lane', ic: '🛣', t: 'Линия', ok: g => g.lane >= 0, use: g => g.lane != null, good: 'не проиграл линию', bad: 'проиграл линию', tip: 'первые 10 минут: бутылка, руны на 2-й и 4-й минуте, не размениваться хп — линию достаточно не проиграть'},
-      {k: 'death', ic: '💀', t: 'Смерти', ok: g => g.d <= dThr, use: () => true, good: `умер ≤ ${dThr} раз`, bad: `умер больше ${dThr} раз`, tip: `цель — не больше ${dThr} смертей за игру${nm ? ` (средний игрок на нём в твоём ранге: ${nm.d.toFixed(1)})` : ''}: перед дракой проверь кнопку выхода (Ghost Walk / Blink), не ходи первым в туман`},
+      {k: 'death', ic: '💀', t: 'Смерти', ok: g => g.d <= dThr, use: () => true, good: `умер ≤ ${dThr} раз`, bad: `умер больше ${dThr} раз`, tip: `цель — не больше ${dThr} смертей за игру${nm ? ` (средний игрок на нём в твоём ранге: ${nm.d.toFixed(1)})` : ''}: перед дракой проверь, есть ли у тебя выход (прыжок, невидимость, BKB), не ходи первым в туман`},
       ...(gpmT ? [{k: 'farm', ic: '💰', t: 'Фарм', ok: g => g.gpm >= gpmT, use: g => g.gpm != null, good: `GPM ≥ ${gpmT}`, bad: `GPM ниже ${gpmT}`, tip: `GPM ${gpmT}+ (как в твоих победах на нём): между драками — лесные лагеря и линия, не стоять без дела`}] : []),
       {k: 'len', ic: '⏱', t: 'Длина игры', ok: g => shortBetter ? g.dur < 35*60 : g.dur >= 35*60, use: () => true, good: shortBetter ? 'игра короче 35 минут' : 'игра дольше 35 минут', bad: shortBetter ? 'игра 35+ минут' : 'игра короче 35 минут',
         tip: shortBetter ? 'ты сильнее в начале: после 20-й минуты зови друга и команду ломать башни, не дай игре затянуться' : 'ты сильнее к концу: не лезь в ранние драки без нужды, фарми к своим предметам'},
